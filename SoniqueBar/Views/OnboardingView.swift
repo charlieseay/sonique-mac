@@ -5,6 +5,7 @@ struct OnboardingView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var urlDraft = ""
     @State private var keyDraft = ""
+    @State private var externalDraft = ""
 
     var body: some View {
         VStack(spacing: 20) {
@@ -12,11 +13,21 @@ struct OnboardingView: View {
                 .font(.headline)
 
             VStack(alignment: .leading, spacing: 6) {
-                Text("Server URL")
+                Text("Local URL")
                     .font(.caption)
                     .foregroundStyle(.secondary)
                 TextField("http://192.168.0.x:3000", text: $urlDraft)
                     .textFieldStyle(.roundedBorder)
+
+                Text("Remote URL (optional)")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .padding(.top, 4)
+                TextField("http://100.x.x.x:3000 or tunnel URL", text: $externalDraft)
+                    .textFieldStyle(.roundedBorder)
+                Text("Used by the iPhone when not on your local network — Tailscale IP, Cloudflare tunnel, etc.")
+                    .font(.caption)
+                    .foregroundStyle(.tertiary)
 
                 Text("API Key (optional)")
                     .font(.caption)
@@ -37,16 +48,18 @@ struct OnboardingView: View {
             }
         }
         .padding(24)
-        .frame(width: 300)
+        .frame(width: 320)
         .onAppear {
             urlDraft = monitor.settings.serverURL
             keyDraft = monitor.settings.apiKey
+            externalDraft = monitor.settings.externalURL
         }
     }
 
     private func save() {
         monitor.settings.serverURL = urlDraft.trimmingCharacters(in: .whitespaces)
         monitor.settings.apiKey = keyDraft.trimmingCharacters(in: .whitespaces)
+        monitor.settings.externalURL = externalDraft.trimmingCharacters(in: .whitespaces)
         monitor.startPolling()
         dismiss()
     }

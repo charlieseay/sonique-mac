@@ -3,91 +3,100 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 77;
+	objectVersion = 56;
 	objects = {
 
 /* Begin PBXBuildFile section */
-		BB000021000000000000021 = {isa = PBXBuildFile; fileRef = BB000020000000000000020; };
-		BB000023000000000000023 = {isa = PBXBuildFile; fileRef = BB000022000000000000022; };
-		BB000025000000000000025 = {isa = PBXBuildFile; fileRef = BB000024000000000000024; };
-		BB000027000000000000027 = {isa = PBXBuildFile; fileRef = BB000026000000000000026; };
-		BB000029000000000000029 = {isa = PBXBuildFile; fileRef = BB000028000000000000028; };
-		BB00002D00000000000000D = {isa = PBXBuildFile; fileRef = BB00002C00000000000000C; };
-		BB000017000000000000017 = {isa = PBXBuildFile; fileRef = BB000016000000000000016; };
+		BB000021000000000000021 /* SoniqueBarApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB000020000000000000020 /* SoniqueBarApp.swift */; };
+		BB000023000000000000023 /* AssistantProfile.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB000022000000000000022 /* AssistantProfile.swift */; };
+		BB000025000000000000025 /* MacSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB000024000000000000024 /* MacSettings.swift */; };
+		BB000027000000000000027 /* ServerMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB000026000000000000026 /* ServerMonitor.swift */; };
+		BB000029000000000000029 /* StatusPopover.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB000028000000000000028 /* StatusPopover.swift */; };
+		BB00002D00000000000000D /* OnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB00002C00000000000000C /* OnboardingView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
-		BB000020000000000000020 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "SoniqueBarApp.swift"; path = "SoniqueBar/SoniqueBarApp.swift"; sourceTree = SOURCE_ROOT; };
-		BB000022000000000000022 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "AssistantProfile.swift"; path = "SoniqueBar/Models/AssistantProfile.swift"; sourceTree = SOURCE_ROOT; };
-		BB000024000000000000024 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "MacSettings.swift"; path = "SoniqueBar/Services/MacSettings.swift"; sourceTree = SOURCE_ROOT; };
-		BB000026000000000000026 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "ServerMonitor.swift"; path = "SoniqueBar/Services/ServerMonitor.swift"; sourceTree = SOURCE_ROOT; };
-		BB000028000000000000028 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "StatusPopover.swift"; path = "SoniqueBar/Views/StatusPopover.swift"; sourceTree = SOURCE_ROOT; };
-		BB00002C00000000000000C = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "OnboardingView.swift"; path = "SoniqueBar/Views/OnboardingView.swift"; sourceTree = SOURCE_ROOT; };
-		BB000014000000000000014 = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = SoniqueBar.entitlements; sourceTree = SOURCE_ROOT; };
-		BB000016000000000000016 = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; name = Info.plist; path = SoniqueBar/Resources/Info.plist; sourceTree = SOURCE_ROOT; };
-		BB000004000000000000004 = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = SoniqueBar.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		BB000004000000000000004 /* SoniqueBar.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = SoniqueBar.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		BB000014000000000000014 /* SoniqueBar.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = SoniqueBar.entitlements; sourceTree = SOURCE_ROOT; };
+		BB000016000000000000016 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; name = Info.plist; path = SoniqueBar/Resources/Info.plist; sourceTree = SOURCE_ROOT; };
+		BB000020000000000000020 /* SoniqueBarApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = SoniqueBarApp.swift; path = SoniqueBar/SoniqueBarApp.swift; sourceTree = SOURCE_ROOT; };
+		BB000022000000000000022 /* AssistantProfile.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AssistantProfile.swift; path = SoniqueBar/Models/AssistantProfile.swift; sourceTree = SOURCE_ROOT; };
+		BB000024000000000000024 /* MacSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = MacSettings.swift; path = SoniqueBar/Services/MacSettings.swift; sourceTree = SOURCE_ROOT; };
+		BB000026000000000000026 /* ServerMonitor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = ServerMonitor.swift; path = SoniqueBar/Services/ServerMonitor.swift; sourceTree = SOURCE_ROOT; };
+		BB000028000000000000028 /* StatusPopover.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = StatusPopover.swift; path = SoniqueBar/Views/StatusPopover.swift; sourceTree = SOURCE_ROOT; };
+		BB00002C00000000000000C /* OnboardingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = OnboardingView.swift; path = SoniqueBar/Views/OnboardingView.swift; sourceTree = SOURCE_ROOT; };
 /* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		BB000007000000000000007 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
 		BB000002000000000000002 = {
 			isa = PBXGroup;
 			children = (
-				BB00000F00000000000000F,
-				BB000014000000000000014,
-				BB000003000000000000003,
+				BB00000F00000000000000F /* SoniqueBar */,
+				BB000014000000000000014 /* SoniqueBar.entitlements */,
+				BB000003000000000000003 /* Products */,
 			);
 			sourceTree = "<group>";
 		};
-		BB000003000000000000003 = {
+		BB000003000000000000003 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				BB000004000000000000004,
+				BB000004000000000000004 /* SoniqueBar.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
 		};
-		BB00000F00000000000000F = {
+		BB00000F00000000000000F /* SoniqueBar */ = {
 			isa = PBXGroup;
 			children = (
-				BB000020000000000000020,
-				BB000010000000000000010,
-				BB000011000000000000011,
-				BB000012000000000000012,
-				BB000013000000000000013,
+				BB000020000000000000020 /* SoniqueBarApp.swift */,
+				BB000010000000000000010 /* Models */,
+				BB000011000000000000011 /* Services */,
+				BB000012000000000000012 /* Views */,
+				BB000013000000000000013 /* Resources */,
 			);
 			name = SoniqueBar;
 			sourceTree = "<group>";
 		};
-		BB000010000000000000010 = {
+		BB000010000000000000010 /* Models */ = {
 			isa = PBXGroup;
 			children = (
-				BB000022000000000000022,
+				BB000022000000000000022 /* AssistantProfile.swift */,
 			);
 			name = Models;
 			sourceTree = "<group>";
 		};
-		BB000011000000000000011 = {
+		BB000011000000000000011 /* Services */ = {
 			isa = PBXGroup;
 			children = (
-				BB000024000000000000024,
-				BB000026000000000000026,
+				BB000024000000000000024 /* MacSettings.swift */,
+				BB000026000000000000026 /* ServerMonitor.swift */,
 			);
 			name = Services;
 			sourceTree = "<group>";
 		};
-		BB000012000000000000012 = {
+		BB000012000000000000012 /* Views */ = {
 			isa = PBXGroup;
 			children = (
-				BB000028000000000000028,
-				BB00002C00000000000000C,
+				BB000028000000000000028 /* StatusPopover.swift */,
+				BB00002C00000000000000C /* OnboardingView.swift */,
 			);
 			name = Views;
 			sourceTree = "<group>";
 		};
-		BB000013000000000000013 = {
+		BB000013000000000000013 /* Resources */ = {
 			isa = PBXGroup;
 			children = (
-				BB000016000000000000016,
+				BB000016000000000000016 /* Info.plist */,
 			);
 			name = Resources;
 			sourceTree = "<group>";
@@ -95,13 +104,13 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		BB000008000000000000008 = {
+		BB000008000000000000008 /* SoniqueBar */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = BB00000C00000000000000C;
+			buildConfigurationList = BB00000C00000000000000C /* Build configuration list for PBXNativeTarget "SoniqueBar" */;
 			buildPhases = (
-				BB000005000000000000005,
-				BB000007000000000000007,
-				BB000006000000000000006,
+				BB000005000000000000005 /* Sources */,
+				BB000007000000000000007 /* Frameworks */,
+				BB000006000000000000006 /* Resources */,
 			);
 			buildRules = (
 			);
@@ -109,20 +118,20 @@
 			);
 			name = SoniqueBar;
 			productName = SoniqueBar;
-			productReference = BB000004000000000000004;
+			productReference = BB000004000000000000004 /* SoniqueBar.app */;
 			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
-		BB000001000000000000001 = {
+		BB000001000000000000001 /* Project object */ = {
 			isa = PBXProject;
 			attributes = {
 				BuildIndependentTargetsInParallel = 1;
 				LastSwiftUpdateCheck = 1600;
 				LastUpgradeCheck = 1600;
 			};
-			buildConfigurationList = BB00000B00000000000000B;
+			buildConfigurationList = BB00000B00000000000000B /* Build configuration list for PBXProject "SoniqueBar" */;
 			compatibilityVersion = "Xcode 14.0";
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
@@ -131,17 +140,17 @@
 				Base,
 			);
 			mainGroup = BB000002000000000000002;
-			productRefGroup = BB000003000000000000003;
+			productRefGroup = BB000003000000000000003 /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				BB000008000000000000008,
+				BB000008000000000000008 /* SoniqueBar */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
-		BB000006000000000000006 = {
+		BB000006000000000000006 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -151,33 +160,23 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
-		BB000005000000000000005 = {
+		BB000005000000000000005 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				BB000021000000000000021,
-				BB000023000000000000023,
-				BB000025000000000000025,
-				BB000027000000000000027,
-				BB000029000000000000029,
-				BB00002D00000000000000D,
+				BB000021000000000000021 /* SoniqueBarApp.swift in Sources */,
+				BB000023000000000000023 /* AssistantProfile.swift in Sources */,
+				BB000025000000000000025 /* MacSettings.swift in Sources */,
+				BB000027000000000000027 /* ServerMonitor.swift in Sources */,
+				BB000029000000000000029 /* StatusPopover.swift in Sources */,
+				BB00002D00000000000000D /* OnboardingView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
 
-/* Begin PBXFrameworksBuildPhase section */
-		BB000007000000000000007 = {
-			isa = PBXFrameworksBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-/* End PBXFrameworksBuildPhase section */
-
 /* Begin XCBuildConfiguration section */
-		BB000009000000000000009 = {
+		BB000009000000000000009 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
@@ -194,7 +193,7 @@
 			};
 			name = Debug;
 		};
-		BB00000A00000000000000A = {
+		BB00000A00000000000000A /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
@@ -204,7 +203,7 @@
 			};
 			name = Release;
 		};
-		BB00000D00000000000000D = {
+		BB00000D00000000000000D /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGN_ENTITLEMENTS = SoniqueBar.entitlements;
@@ -212,15 +211,16 @@
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 7NSS5CJL9E;
 				ENABLE_HARDENED_RUNTIME = YES;
-				INFOPLIST_FILE = "SoniqueBar/Resources/Info.plist";
+				INFOPLIST_FILE = SoniqueBar/Resources/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 13.0;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = "com.seayniclabs.soniquebar";
+				PRODUCT_BUNDLE_IDENTIFIER = com.seayniclabs.soniquebar;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = macosx;
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -228,7 +228,7 @@
 			};
 			name = Debug;
 		};
-		BB00000E00000000000000E = {
+		BB00000E00000000000000E /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGN_ENTITLEMENTS = SoniqueBar.entitlements;
@@ -236,15 +236,16 @@
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 7NSS5CJL9E;
 				ENABLE_HARDENED_RUNTIME = YES;
-				INFOPLIST_FILE = "SoniqueBar/Resources/Info.plist";
+				INFOPLIST_FILE = SoniqueBar/Resources/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 13.0;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = "com.seayniclabs.soniquebar";
+				PRODUCT_BUNDLE_IDENTIFIER = com.seayniclabs.soniquebar;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = macosx;
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -255,25 +256,25 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		BB00000B00000000000000B = {
+		BB00000B00000000000000B /* Build configuration list for PBXProject "SoniqueBar" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
-				BB000009000000000000009,
-				BB00000A00000000000000A,
+				BB000009000000000000009 /* Debug */,
+				BB00000A00000000000000A /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		BB00000C00000000000000C = {
+		BB00000C00000000000000C /* Build configuration list for PBXNativeTarget "SoniqueBar" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
-				BB00000D00000000000000D,
-				BB00000E00000000000000E,
+				BB00000D00000000000000D /* Debug */,
+				BB00000E00000000000000E /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
 	};
-	rootObject = BB000001000000000000001;
+	rootObject = BB000001000000000000001 /* Project object */;
 }

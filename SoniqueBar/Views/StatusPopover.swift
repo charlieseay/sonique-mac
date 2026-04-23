@@ -28,7 +28,7 @@ struct StatusPopover: View {
             .padding(.bottom, 14)
 
             // QR code for iOS onboarding
-            if monitor.isOnline, let qrURL = URL(string: monitor.settings.normalizedURL + "/api/assistant/qr") {
+            if monitor.isOnline, let qrURL = makeQRURL() {
                 Divider()
                 VStack(spacing: 6) {
                     AsyncImage(url: qrURL) { phase in
@@ -85,6 +85,16 @@ struct StatusPopover: View {
         .sheet(isPresented: $showOnboarding) {
             OnboardingView().environmentObject(monitor)
         }
+    }
+
+    private func makeQRURL() -> URL? {
+        var urlString = monitor.settings.normalizedURL + "/api/assistant/qr"
+        let ext = monitor.settings.normalizedExternalURL
+        if !ext.isEmpty,
+           let encoded = ext.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) {
+            urlString += "?external=\(encoded)"
+        }
+        return URL(string: urlString)
     }
 
     @ViewBuilder
