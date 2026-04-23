@@ -65,7 +65,8 @@ struct StatusPopover: View {
             Divider()
 
             VStack(spacing: 1) {
-                popoverButton("Open Dashboard", icon: "square.grid.2x2") {
+                popoverButton("Open Dashboard", icon: "square.grid.2x2",
+                              disabled: monitor.containerManager.state != .running) {
                     if let url = URL(string: monitor.settings.effectiveURL) {
                         NSWorkspace.shared.open(url)
                     }
@@ -189,7 +190,7 @@ struct StatusPopover: View {
     // MARK: - QR code
 
     private func localQRImage() -> NSImage? {
-        let local = "http://localhost:3000"
+        let local = "http://localhost:3100"
         guard !local.isEmpty else { return nil }
 
         var items: [URLQueryItem] = [URLQueryItem(name: "local", value: local)]
@@ -241,14 +242,14 @@ struct StatusPopover: View {
 
     // MARK: - Button
 
-    private func popoverButton(_ title: String, icon: String, action: @escaping () -> Void) -> some View {
+    private func popoverButton(_ title: String, icon: String, disabled: Bool = false, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             HStack(spacing: 10) {
                 Image(systemName: icon)
                     .frame(width: 16)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(disabled ? Color(nsColor: .tertiaryLabelColor) : .secondary)
                 Text(title)
-                    .foregroundStyle(.primary)
+                    .foregroundStyle(disabled ? Color(nsColor: .tertiaryLabelColor) : .primary)
                 Spacer()
             }
             .padding(.horizontal, 14)
@@ -256,6 +257,7 @@ struct StatusPopover: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        .disabled(disabled)
         .background(Color.primary.opacity(0.001))
         .hoverEffect()
     }

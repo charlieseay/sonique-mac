@@ -22,8 +22,8 @@ class MacSettings: ObservableObject {
         !caelDirectory.trimmingCharacters(in: .whitespaces).isEmpty
     }
 
-    // Always localhost:3000 — SoniqueBar manages the local CAAL stack
-    var effectiveURL: String { "http://localhost:3000" }
+    // Always localhost:3100 — CAAL frontend port (3000 avoided to not conflict with other local services)
+    var effectiveURL: String { "http://localhost:3100" }
 
     var normalizedExternalURL: String {
         externalURL.hasSuffix("/") ? String(externalURL.dropLast()) : externalURL
