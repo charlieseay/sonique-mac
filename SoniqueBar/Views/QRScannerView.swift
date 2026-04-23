@@ -1,23 +1,37 @@
 import SwiftUI
 import AVFoundation
+import Vision
 import AppKit
 
 struct QRScannerView: NSViewRepresentable {
     let onScan: (String) -> Void
 
-    class Coordinator: NSObject, AVCaptureMetadataOutputObjectsDelegate {
+    class Coordinator: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
         let parent: QRScannerView
         var session: AVCaptureSession?
+        var didScan = false
 
         init(_ parent: QRScannerView) { self.parent = parent }
 
-        func metadataOutput(_ output: AVCaptureMetadataOutput,
-                            didOutput metadataObjects: [AVMetadataObject],
-                            from connection: AVCaptureConnection) {
-            guard let obj = metadataObjects.first as? AVMetadataMachineReadableCodeObject,
-                  let str = obj.stringValue else { return }
-            session?.stopRunning()
-            DispatchQueue.main.async { self.parent.onScan(str) }
+        func captureOutput(_ output: AVCaptureOutput,
+                           didOutput sampleBuffer: CMSampleBuffer,
+                           from connection: AVCaptureConnection) {
+            guard !didScan,
+                  let pixelBuffer = CMSampleBufferGetImageBuffer(sampleBuffer) else { return }
+
+            let request = VNDetectBarcodesRequest { [weak self] req, _ in
+                guard let self,
+                      !self.didScan,
+                      let result = req.results?.first as? VNBarcodeObservation,
+                      result.symbology == .qr,
+                      let payload = result.payloadStringValue else { return }
+                self.didScan = true
+                self.session?.stopRunning()
+                DispatchQueue.main.async { self.parent.onScan(payload) }
+            }
+
+            try? VNImageRequestHandler(cvPixelBuffer: pixelBuffer, options: [:])
+                .perform([request])
         }
     }
 
@@ -31,19 +45,21 @@ struct QRScannerView: NSViewRepresentable {
         context.coordinator.session = session
 
         guard let device = AVCaptureDevice.default(for: .video),
-              let input = try? AVCaptureDeviceInput(device: device) else { return view }
+              let input = try? AVCaptureDeviceInput(device: device),
+              session.canAddInput(input) else { return view }
         session.addInput(input)
 
-        let output = AVCaptureMetadataOutput()
+        let output = AVCaptureVideoDataOutput()
+        output.setSampleBufferDelegate(context.coordinator,
+                                       queue: DispatchQueue(label: "qr.scan"))
+        guard session.canAddOutput(output) else { return view }
         session.addOutput(output)
-        output.setMetadataObjectsDelegate(context.coordinator, queue: .main)
-        output.metadataObjectTypes = [.qr]
 
         let preview = AVCaptureVideoPreviewLayer(session: session)
         preview.videoGravity = .resizeAspectFill
         view.layer?.addSublayer(preview)
 
-        DispatchQueue.global(qos: .background).async { session.startRunning() }
+        DispatchQueue.global(qos: .userInitiated).async { session.startRunning() }
         return view
     }
 
