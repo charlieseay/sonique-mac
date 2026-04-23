@@ -57,7 +57,7 @@ class ContainerManager: ObservableObject {
 
         let running = await isStackRunning(docker: docker)
         state = running ? .running : .idle
-        if running { startMonitoring(caelDirectory: dir) }
+        startMonitoring(caelDirectory: dir)
     }
 
     func start(caelDirectory: String) async {
@@ -103,10 +103,15 @@ class ContainerManager: ObservableObject {
         monitorTask = Task { [weak self] in
             guard let self else { return }
             while !Task.isCancelled {
-                try? await Task.sleep(for: .seconds(30))
+                try? await Task.sleep(for: .seconds(15))
                 guard !Task.isCancelled, let docker = dockerPath else { break }
+                guard !state.isBusy else { continue }
                 let running = await isStackRunning(docker: docker)
-                if !running && state == .running { state = .idle }
+                if running {
+                    state = .running
+                } else if state == .running {
+                    state = .idle
+                }
             }
         }
     }
