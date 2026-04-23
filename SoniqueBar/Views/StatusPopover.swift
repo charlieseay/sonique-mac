@@ -1,5 +1,6 @@
 import SwiftUI
 import AppKit
+import CoreImage.CIFilterBuiltins
 
 struct StatusPopover: View {
     @EnvironmentObject var monitor: ServerMonitor
@@ -27,31 +28,17 @@ struct StatusPopover: View {
             .padding(.top, 18)
             .padding(.bottom, 14)
 
-            // QR code for iOS onboarding
-            if monitor.isOnline, let qrURL = makeQRURL() {
+            // QR code for iOS onboarding — generated locally, visible as soon as URL is configured
+            if monitor.settings.isConfigured, let qrImage = localQRImage() {
                 Divider()
                 VStack(spacing: 6) {
-                    AsyncImage(url: qrURL) { phase in
-                        switch phase {
-                        case .success(let img):
-                            img.resizable()
-                                .interpolation(.none)
-                                .scaledToFit()
-                                .frame(width: 160, height: 160)
-                                .background(.white)
-                                .clipShape(RoundedRectangle(cornerRadius: 8))
-                        case .failure:
-                            RoundedRectangle(cornerRadius: 8)
-                                .fill(Color.secondary.opacity(0.1))
-                                .frame(width: 160, height: 160)
-                                .overlay(Image(systemName: "qrcode").font(.largeTitle).foregroundStyle(.secondary))
-                        default:
-                            RoundedRectangle(cornerRadius: 8)
-                                .fill(Color.secondary.opacity(0.1))
-                                .frame(width: 160, height: 160)
-                                .overlay(ProgressView())
-                        }
-                    }
+                    Image(nsImage: qrImage)
+                        .interpolation(.none)
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 160, height: 160)
+                        .background(.white)
+                        .clipShape(RoundedRectangle(cornerRadius: 8))
                     Text("Scan with Sonique on iPhone")
                         .font(.system(size: 11))
                         .foregroundStyle(.secondary)
@@ -87,14 +74,31 @@ struct StatusPopover: View {
         }
     }
 
-    private func makeQRURL() -> URL? {
-        var urlString = monitor.settings.normalizedURL + "/api/assistant/qr"
+    private func localQRImage() -> NSImage? {
+        let local = monitor.settings.normalizedURL
+        guard !local.isEmpty else { return nil }
+
+        var items: [URLQueryItem] = [URLQueryItem(name: "local", value: local)]
         let ext = monitor.settings.normalizedExternalURL
-        if !ext.isEmpty,
-           let encoded = ext.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) {
-            urlString += "?external=\(encoded)"
-        }
-        return URL(string: urlString)
+        if !ext.isEmpty { items.append(URLQueryItem(name: "external", value: ext)) }
+        let key = monitor.settings.apiKey
+        if !key.isEmpty { items.append(URLQueryItem(name: "key", value: key)) }
+
+        var comps = URLComponents()
+        comps.scheme = "sonique"
+        comps.host = "connect"
+        comps.queryItems = items
+        guard let qrString = comps.url?.absoluteString,
+              let data = qrString.data(using: .utf8) else { return nil }
+
+        let filter = CIFilter.qrCodeGenerator()
+        filter.message = data
+        filter.correctionLevel = "M"
+        guard let output = filter.outputImage else { return nil }
+        let scaled = output.transformed(by: CGAffineTransform(scaleX: 10, y: 10))
+        let context = CIContext()
+        guard let cgImage = context.createCGImage(scaled, from: scaled.extent) else { return nil }
+        return NSImage(cgImage: cgImage, size: NSSize(width: 160, height: 160))
     }
 
     @ViewBuilder
