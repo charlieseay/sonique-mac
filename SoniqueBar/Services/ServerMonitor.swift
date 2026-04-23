@@ -59,7 +59,7 @@ class ServerMonitor: ObservableObject {
 
     /// Posts the macOS system timezone to CAAL so the agent uses the correct local time.
     private func syncTimezone() async {
-        guard let url = URL(string: "\(settings.effectiveURL)/settings") else { return }
+        guard let url = URL(string: "\(settings.effectiveURL)/api/settings") else { return }
         let (tzId, tzDisplay) = ContainerManager.systemTimezone()
         guard let body = try? JSONSerialization.data(withJSONObject: [
             "settings": ["timezone_id": tzId, "timezone_display": tzDisplay]

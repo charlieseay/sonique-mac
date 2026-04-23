@@ -3,10 +3,12 @@ import SwiftUI
 struct OnboardingView: View {
     @EnvironmentObject var monitor: ServerMonitor
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.dismissWindow) private var dismissWindow
 
     @State private var caelDirDraft = "~/Projects/cael"
     @State private var externalDraft = ""
     @State private var keyDraft = ""
+    @State private var ttsVoiceDraft = PiperVoice.defaultVoice.id
 
     var body: some View {
         VStack(spacing: 20) {
@@ -65,11 +67,30 @@ struct OnboardingView: View {
                     SecureField("Leave empty if not set", text: $keyDraft)
                         .textFieldStyle(.roundedBorder)
                 }
+
+                Divider()
+
+                // Voice selection
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Voice")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    Picker("", selection: $ttsVoiceDraft) {
+                        ForEach(PiperVoice.all) { voice in
+                            Text(voice.label).tag(voice.id)
+                        }
+                    }
+                    .pickerStyle(.menu)
+                    .labelsHidden()
+                }
             }
 
             HStack {
                 if monitor.settings.isConfigured {
-                    Button("Cancel") { dismiss() }
+                    Button("Cancel") {
+                        dismissWindow(id: "settings")
+                        dismiss()
+                    }
                 }
                 Spacer()
                 Button("Save") { save() }
@@ -83,6 +104,7 @@ struct OnboardingView: View {
             caelDirDraft  = monitor.settings.caelDirectory
             externalDraft = monitor.settings.externalURL
             keyDraft      = monitor.settings.apiKey
+            ttsVoiceDraft = monitor.settings.ttsVoiceId
         }
     }
 
@@ -90,8 +112,26 @@ struct OnboardingView: View {
         monitor.settings.caelDirectory = caelDirDraft.trimmingCharacters(in: .whitespaces)
         monitor.settings.externalURL   = externalDraft.trimmingCharacters(in: .whitespaces)
         monitor.settings.apiKey        = keyDraft.trimmingCharacters(in: .whitespaces)
+        monitor.settings.ttsVoiceId    = ttsVoiceDraft
         Task { await monitor.containerManager.setup(caelDirectory: monitor.settings.caelDirectory) }
+        Task { await syncVoice() }
         monitor.startPolling()
+        dismissWindow(id: "settings")
         dismiss()
+    }
+
+    private func syncVoice() async {
+        guard let url = URL(string: "\(monitor.settings.effectiveURL)/api/settings") else { return }
+        guard let body = try? JSONSerialization.data(withJSONObject: [
+            "settings": ["tts_voice_piper": ttsVoiceDraft]
+        ]) else { return }
+        var req = URLRequest(url: url, timeoutInterval: 5)
+        req.httpMethod = "POST"
+        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        if !monitor.settings.apiKey.isEmpty {
+            req.setValue(monitor.settings.apiKey, forHTTPHeaderField: "x-api-key")
+        }
+        req.httpBody = body
+        _ = try? await URLSession.shared.data(for: req)
     }
 }

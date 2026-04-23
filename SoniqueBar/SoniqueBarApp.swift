@@ -18,6 +18,24 @@ struct SoniqueBarApp: App {
             BarLabel(monitor: monitor)
         }
         .menuBarExtraStyle(.window)
+
+        Window("Sonique Settings", id: "settings") {
+            OnboardingView()
+                .environmentObject(monitor)
+        }
+        .windowResizability(.contentSize)
+
+        Window("About Sonique", id: "about") {
+            AboutView()
+                .environmentObject(monitor.premium)
+        }
+        .windowResizability(.contentSize)
+
+        Window("Upgrade Sonique", id: "upgrade") {
+            MacUpgradeView()
+                .environmentObject(monitor.premium)
+        }
+        .windowResizability(.contentSize)
     }
 }
 

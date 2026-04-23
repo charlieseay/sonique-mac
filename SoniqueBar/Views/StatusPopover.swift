@@ -8,9 +8,7 @@ private let caelRepoURL = "https://github.com/CoreWorxLab/CAAL"
 
 struct StatusPopover: View {
     @EnvironmentObject var monitor: ServerMonitor
-    @State private var showOnboarding = false
-    @State private var showAbout = false
-    @State private var showUpgrade = false
+    @Environment(\.openWindow) private var openWindow
 
     var body: some View {
         VStack(spacing: 0) {
@@ -76,10 +74,12 @@ struct StatusPopover: View {
                 }
                 Divider().padding(.horizontal, 8).padding(.vertical, 2)
                 popoverButton("Settings", icon: "gearshape") {
-                    showOnboarding = true
+                    openWindow(id: "settings")
+                    NSApp.activate(ignoringOtherApps: true)
                 }
                 popoverButton("About & Support", icon: "heart") {
-                    showAbout = true
+                    openWindow(id: "about")
+                    NSApp.activate(ignoringOtherApps: true)
                 }
                 Divider().padding(.horizontal, 8).padding(.vertical, 2)
                 popoverButton("Quit Sonique", icon: "power") {
@@ -89,15 +89,6 @@ struct StatusPopover: View {
             .padding(.vertical, 6)
         }
         .frame(width: 240)
-        .sheet(isPresented: $showOnboarding) {
-            OnboardingView().environmentObject(monitor)
-        }
-        .sheet(isPresented: $showAbout) {
-            AboutView().environmentObject(monitor.premium)
-        }
-        .sheet(isPresented: $showUpgrade) {
-            MacUpgradeView().environmentObject(monitor.premium)
-        }
     }
 
     // MARK: - Container status row
@@ -178,7 +169,10 @@ struct StatusPopover: View {
                 .font(.system(size: 11))
                 .foregroundStyle(.secondary)
             Spacer()
-            Button("Remove Ads") { showUpgrade = true }
+            Button("Remove Ads") {
+                openWindow(id: "upgrade")
+                NSApp.activate(ignoringOtherApps: true)
+            }
                 .font(.system(size: 10, weight: .semibold))
                 .foregroundStyle(Color(red: 0.6, green: 0.3, blue: 0.9))
                 .buttonStyle(.plain)
@@ -190,14 +184,25 @@ struct StatusPopover: View {
     // MARK: - QR code
 
     private func localQRImage() -> NSImage? {
-        let ip = monitor.containerManager.lanIP.isEmpty ? "localhost" : monitor.containerManager.lanIP
-        let local = "http://\(ip):3100"
-        guard !local.isEmpty else { return nil }
-
-        var items: [URLQueryItem] = [URLQueryItem(name: "local", value: local)]
-        // External URL only included for premium users — free tier is local-only
+        let lanIP = monitor.containerManager.lanIP.isEmpty ? "localhost" : monitor.containerManager.lanIP
+        let lanURL = "http://\(lanIP):3100"
         let ext = monitor.settings.normalizedExternalURL
-        if !ext.isEmpty && monitor.premium.isPremium { items.append(URLQueryItem(name: "external", value: ext)) }
+        let hasExternal = !ext.isEmpty && monitor.premium.isPremium
+
+        // When a premium user has configured an external URL (Tailscale, tunnel, etc.),
+        // that URL is the one path that works everywhere — home LAN, cellular, traveling.
+        // Put it in the primary `local` slot so the iOS app picks it over the LAN IP.
+        // Without this, the iOS app prefers the LAN IP at home and never exercises the
+        // external path, making the premium remote-access setup silently useless.
+        let primary = hasExternal ? ext : lanURL
+        guard !primary.isEmpty else { return nil }
+
+        var items: [URLQueryItem] = [URLQueryItem(name: "local", value: primary)]
+        // Keep the raw LAN IP as a fallback hint for clients that want to prefer
+        // same-subnet direct routing when detectable.
+        if hasExternal && lanURL != primary {
+            items.append(URLQueryItem(name: "lan", value: lanURL))
+        }
         let key = monitor.settings.apiKey
         if !key.isEmpty { items.append(URLQueryItem(name: "key", value: key)) }
 
@@ -273,6 +278,12 @@ struct StatusPopover: View {
 struct MacUpgradeView: View {
     @EnvironmentObject var premium: PremiumManager
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.dismissWindow) private var dismissWindow
+
+    private func close() {
+        dismissWindow(id: "upgrade")
+        dismiss()
+    }
 
     @State private var code = ""
     @State private var invalid = false
@@ -330,7 +341,7 @@ struct MacUpgradeView: View {
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
 
-            Button("Not Now") { dismiss() }
+            Button("Not Now") { close() }
                 .buttonStyle(.plain)
                 .foregroundStyle(.secondary)
                 .font(.caption)
@@ -338,13 +349,13 @@ struct MacUpgradeView: View {
         .padding(28)
         .frame(width: 320)
         .onChange(of: premium.isPremium) { newVal in
-            if newVal { dismiss() }
+            if newVal { close() }
         }
     }
 
     private func apply() {
         if premium.redeem(code) {
-            dismiss()
+            close()
         } else {
             invalid = true
         }
@@ -367,6 +378,7 @@ struct MacUpgradeView: View {
 struct AboutView: View {
     @EnvironmentObject var premium: PremiumManager
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.dismissWindow) private var dismissWindow
 
     var body: some View {
         VStack(spacing: 20) {
@@ -414,7 +426,10 @@ struct AboutView: View {
                 .foregroundStyle(.blue)
             }
 
-            Button("Close") { dismiss() }
+            Button("Close") {
+                dismissWindow(id: "about")
+                dismiss()
+            }
                 .buttonStyle(.plain)
                 .foregroundStyle(.secondary)
                 .font(.caption)
