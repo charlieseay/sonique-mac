@@ -180,6 +180,7 @@ else:
         let envPath = "\(directory)/.env"
         guard !FileManager.default.fileExists(atPath: envPath) else { return }
         let ip = await localIP()
+        let (tzId, tzDisplay) = Self.systemTimezone()
         let content = """
             CAAL_HOST_IP=\(ip)
             LIVEKIT_API_KEY=devkey
@@ -190,9 +191,22 @@ else:
             OLLAMA_THINK=false
             TTS_PROVIDER=piper
             TTS_VOICE=speaches-ai/piper-en_US-ryan-high
-            TIMEZONE=America/Chicago
+            TIMEZONE=\(tzId)
+            TIMEZONE_DISPLAY=\(tzDisplay)
             """
         try? content.write(toFile: envPath, atomically: true, encoding: .utf8)
+    }
+
+    /// Returns (IANA identifier, human-readable name) for the current system timezone.
+    static func systemTimezone() -> (identifier: String, displayName: String) {
+        let tz = TimeZone.current
+        let identifier = tz.identifier
+        var displayName = tz.localizedName(for: .standard, locale: .current) ?? "Local Time"
+        displayName = displayName
+            .replacingOccurrences(of: " Standard Time", with: " Time")
+            .replacingOccurrences(of: " Daylight Time", with: " Time")
+            .replacingOccurrences(of: " Daylight Saving Time", with: " Time")
+        return (identifier, displayName)
     }
 
     private func expand(_ path: String) -> String {

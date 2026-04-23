@@ -37,6 +37,8 @@ class ServerMonitor: ObservableObject {
         await fetchProfile()
     }
 
+    private var timezoneSynced = false
+
     private func checkHealth() async {
         guard let url = URL(string: "\(settings.effectiveURL)/api/settings") else {
             isOnline = false; return
@@ -46,8 +48,29 @@ class ServerMonitor: ObservableObject {
         do {
             let (_, response) = try await URLSession.shared.data(for: req)
             let code = (response as? HTTPURLResponse)?.statusCode ?? 0
+            let wasOffline = !isOnline
             isOnline = code == 200 || code == 401
+            // Sync timezone once per session when CAAL first comes online
+            if isOnline && (wasOffline || !timezoneSynced) {
+                await syncTimezone()
+            }
         } catch { isOnline = false }
+    }
+
+    /// Posts the macOS system timezone to CAAL so the agent uses the correct local time.
+    private func syncTimezone() async {
+        guard let url = URL(string: "\(settings.effectiveURL)/settings") else { return }
+        let (tzId, tzDisplay) = ContainerManager.systemTimezone()
+        guard let body = try? JSONSerialization.data(withJSONObject: [
+            "settings": ["timezone_id": tzId, "timezone_display": tzDisplay]
+        ]) else { return }
+        var req = URLRequest(url: url, timeoutInterval: 5)
+        req.httpMethod = "POST"
+        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        if !settings.apiKey.isEmpty { req.setValue(settings.apiKey, forHTTPHeaderField: "x-api-key") }
+        req.httpBody = body
+        _ = try? await URLSession.shared.data(for: req)
+        timezoneSynced = true
     }
 
     private func fetchProfile() async {
