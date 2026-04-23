@@ -53,10 +53,8 @@ struct StatusPopover: View {
             }
 
             // CAAL container status
-            if monitor.settings.managedMode {
-                Divider()
-                containerStatusRow
-            }
+            Divider()
+            containerStatusRow
 
             // House ad — hidden for premium users
             if !monitor.premium.isPremium {
@@ -191,7 +189,7 @@ struct StatusPopover: View {
     // MARK: - QR code
 
     private func localQRImage() -> NSImage? {
-        let local = monitor.settings.managedMode ? "http://localhost:3000" : monitor.settings.normalizedURL
+        let local = "http://localhost:3000"
         guard !local.isEmpty else { return nil }
 
         var items: [URLQueryItem] = [URLQueryItem(name: "local", value: local)]

@@ -16,9 +16,7 @@ class ServerMonitor: ObservableObject {
     init() {
         Task { [weak self] in
             guard let self else { return }
-            if settings.managedMode {
-                await containerManager.setup(caelDirectory: settings.caelDirectory)
-            }
+            await containerManager.setup(caelDirectory: settings.caelDirectory)
             startPolling()
         }
     }
