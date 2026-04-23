@@ -76,6 +76,7 @@ class ContainerManager: ObservableObject {
 
         let (_, code) = await run(docker, args, directory: dir, capture: false)
         if code == 0 {
+            await seedSettingsIfNeeded(docker: docker)
             state = .running
             startMonitoring(caelDirectory: dir)
         } else {
@@ -138,6 +139,43 @@ class ContainerManager: ObservableObject {
         return "127.0.0.1"
     }
 
+    private func seedSettingsIfNeeded(docker: String) async {
+        // Inject Sonique defaults into CAAL's settings volume on first run.
+        // Only writes keys that are still at their CAAL defaults so user customizations survive.
+        let script = """
+python3 -c "
+import json, os
+path = '/app/config/settings.json'
+defaults = {
+    'first_launch_completed': True,
+    'wake_word_enabled': False,
+    'tts_provider': 'piper',
+    'tts_voice_piper': 'speaches-ai/piper-en_US-ryan-high',
+    'ollama_host': 'http://host.docker.internal:11434',
+    'ollama_model': 'mistral:7b',
+}
+try:
+    with open(path) as f:
+        s = json.load(f)
+except Exception:
+    s = {}
+changed = False
+for k, v in defaults.items():
+    if k not in s:
+        s[k] = v
+        changed = True
+if changed:
+    os.makedirs('/app/config', exist_ok=True)
+    with open(path, 'w') as f:
+        json.dump(s, f, indent=2)
+    print('seeded')
+else:
+    print('ok')
+"
+"""
+        await run(docker, ["exec", "caal-agent", "/bin/sh", "-c", script])
+    }
+
     private func writeEnvIfNeeded(directory: String) async {
         let envPath = "\(directory)/.env"
         guard !FileManager.default.fileExists(atPath: envPath) else { return }
@@ -148,9 +186,10 @@ class ContainerManager: ObservableObject {
             LIVEKIT_API_SECRET=secret
             LLM_PROVIDER=ollama
             OLLAMA_HOST=http://host.docker.internal:11434
-            OLLAMA_MODEL=ministral-3:8b
+            OLLAMA_MODEL=mistral:7b
             OLLAMA_THINK=false
-            TTS_VOICE=af_heart
+            TTS_PROVIDER=piper
+            TTS_VOICE=speaches-ai/piper-en_US-ryan-high
             TIMEZONE=America/Chicago
             """
         try? content.write(toFile: envPath, atomically: true, encoding: .utf8)
