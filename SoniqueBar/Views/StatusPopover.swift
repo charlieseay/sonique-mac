@@ -190,7 +190,8 @@ struct StatusPopover: View {
     // MARK: - QR code
 
     private func localQRImage() -> NSImage? {
-        let local = "http://localhost:3100"
+        let ip = monitor.containerManager.lanIP.isEmpty ? "localhost" : monitor.containerManager.lanIP
+        let local = "http://\(ip):3100"
         guard !local.isEmpty else { return nil }
 
         var items: [URLQueryItem] = [URLQueryItem(name: "local", value: local)]

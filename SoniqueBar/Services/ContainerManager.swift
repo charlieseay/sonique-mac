@@ -41,6 +41,7 @@ enum ContainerState: Equatable {
 @MainActor
 class ContainerManager: ObservableObject {
     @Published var state: ContainerState = .unknown
+    @Published var lanIP: String = ""
 
     private var dockerPath: String?
     private var monitorTask: Task<Void, Never>?
@@ -54,6 +55,8 @@ class ContainerManager: ObservableObject {
 
         let dir = expand(caelDirectory)
         guard FileManager.default.fileExists(atPath: dir) else { state = .noProject; return }
+
+        lanIP = await localIP()
 
         let running = await isStackRunning(docker: docker)
         state = running ? .running : .idle
