@@ -9,6 +9,7 @@ struct SoniqueBarApp: App {
             if monitor.settings.isConfigured {
                 StatusPopover()
                     .environmentObject(monitor)
+                    .environmentObject(monitor.premium)
             } else {
                 OnboardingView()
                     .environmentObject(monitor)
