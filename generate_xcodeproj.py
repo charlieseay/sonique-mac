@@ -48,7 +48,6 @@ SOURCE_FILES = [
     ("settings_ref", "settings_build", "SoniqueBar/Services/MacSettings.swift",    "services_group"),
     ("monitor_ref",  "monitor_build",  "SoniqueBar/Services/ServerMonitor.swift",  "services_group"),
     ("status_ref",   "status_build",   "SoniqueBar/Views/StatusPopover.swift",     "views_group"),
-    ("qr_ref",       "qr_build",       "SoniqueBar/Views/QRScannerView.swift",     "views_group"),
     ("onboard_ref",  "onboard_build",  "SoniqueBar/Views/OnboardingView.swift",    "views_group"),
 ]
 

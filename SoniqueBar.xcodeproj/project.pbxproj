@@ -12,7 +12,6 @@
 		BB000025000000000000025 = {isa = PBXBuildFile; fileRef = BB000024000000000000024; };
 		BB000027000000000000027 = {isa = PBXBuildFile; fileRef = BB000026000000000000026; };
 		BB000029000000000000029 = {isa = PBXBuildFile; fileRef = BB000028000000000000028; };
-		BB00002B00000000000000B = {isa = PBXBuildFile; fileRef = BB00002A00000000000000A; };
 		BB00002D00000000000000D = {isa = PBXBuildFile; fileRef = BB00002C00000000000000C; };
 		BB000017000000000000017 = {isa = PBXBuildFile; fileRef = BB000016000000000000016; };
 /* End PBXBuildFile section */
@@ -23,7 +22,6 @@
 		BB000024000000000000024 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "MacSettings.swift"; path = "SoniqueBar/Services/MacSettings.swift"; sourceTree = SOURCE_ROOT; };
 		BB000026000000000000026 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "ServerMonitor.swift"; path = "SoniqueBar/Services/ServerMonitor.swift"; sourceTree = SOURCE_ROOT; };
 		BB000028000000000000028 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "StatusPopover.swift"; path = "SoniqueBar/Views/StatusPopover.swift"; sourceTree = SOURCE_ROOT; };
-		BB00002A00000000000000A = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "QRScannerView.swift"; path = "SoniqueBar/Views/QRScannerView.swift"; sourceTree = SOURCE_ROOT; };
 		BB00002C00000000000000C = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "OnboardingView.swift"; path = "SoniqueBar/Views/OnboardingView.swift"; sourceTree = SOURCE_ROOT; };
 		BB000014000000000000014 = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = SoniqueBar.entitlements; sourceTree = SOURCE_ROOT; };
 		BB000016000000000000016 = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; name = Info.plist; path = SoniqueBar/Resources/Info.plist; sourceTree = SOURCE_ROOT; };
@@ -81,7 +79,6 @@
 			isa = PBXGroup;
 			children = (
 				BB000028000000000000028,
-				BB00002A00000000000000A,
 				BB00002C00000000000000C,
 			);
 			name = Views;
@@ -163,7 +160,6 @@
 				BB000025000000000000025,
 				BB000027000000000000027,
 				BB000029000000000000029,
-				BB00002B00000000000000B,
 				BB00002D00000000000000D,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

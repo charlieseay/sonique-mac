@@ -27,6 +27,38 @@ struct StatusPopover: View {
             .padding(.top, 18)
             .padding(.bottom, 14)
 
+            // QR code for iOS onboarding
+            if monitor.isOnline, let qrURL = URL(string: monitor.settings.normalizedURL + "/api/assistant/qr") {
+                Divider()
+                VStack(spacing: 6) {
+                    AsyncImage(url: qrURL) { phase in
+                        switch phase {
+                        case .success(let img):
+                            img.resizable()
+                                .interpolation(.none)
+                                .scaledToFit()
+                                .frame(width: 160, height: 160)
+                                .background(.white)
+                                .clipShape(RoundedRectangle(cornerRadius: 8))
+                        case .failure:
+                            RoundedRectangle(cornerRadius: 8)
+                                .fill(Color.secondary.opacity(0.1))
+                                .frame(width: 160, height: 160)
+                                .overlay(Image(systemName: "qrcode").font(.largeTitle).foregroundStyle(.secondary))
+                        default:
+                            RoundedRectangle(cornerRadius: 8)
+                                .fill(Color.secondary.opacity(0.1))
+                                .frame(width: 160, height: 160)
+                                .overlay(ProgressView())
+                        }
+                    }
+                    Text("Scan with Sonique on iPhone")
+                        .font(.system(size: 11))
+                        .foregroundStyle(.secondary)
+                }
+                .padding(.vertical, 14)
+            }
+
             Divider()
 
             VStack(spacing: 1) {
