@@ -11,6 +11,8 @@
 		BB000023000000000000023 /* AssistantProfile.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB000022000000000000022 /* AssistantProfile.swift */; };
 		BB000025000000000000025 /* MacSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB000024000000000000024 /* MacSettings.swift */; };
 		BB000027000000000000027 /* ServerMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB000026000000000000026 /* ServerMonitor.swift */; };
+		BB000031000000000000031 /* ContainerManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB000030000000000000030 /* ContainerManager.swift */; };
+		BB000033000000000000033 /* PremiumManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB000032000000000000032 /* PremiumManager.swift */; };
 		BB000029000000000000029 /* StatusPopover.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB000028000000000000028 /* StatusPopover.swift */; };
 		BB00002D00000000000000D /* OnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB00002C00000000000000C /* OnboardingView.swift */; };
 /* End PBXBuildFile section */
@@ -23,6 +25,8 @@
 		BB000022000000000000022 /* AssistantProfile.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AssistantProfile.swift; path = SoniqueBar/Models/AssistantProfile.swift; sourceTree = SOURCE_ROOT; };
 		BB000024000000000000024 /* MacSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = MacSettings.swift; path = SoniqueBar/Services/MacSettings.swift; sourceTree = SOURCE_ROOT; };
 		BB000026000000000000026 /* ServerMonitor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = ServerMonitor.swift; path = SoniqueBar/Services/ServerMonitor.swift; sourceTree = SOURCE_ROOT; };
+		BB000030000000000000030 /* ContainerManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = ContainerManager.swift; path = SoniqueBar/Services/ContainerManager.swift; sourceTree = SOURCE_ROOT; };
+		BB000032000000000000032 /* PremiumManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = PremiumManager.swift; path = SoniqueBar/Services/PremiumManager.swift; sourceTree = SOURCE_ROOT; };
 		BB000028000000000000028 /* StatusPopover.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = StatusPopover.swift; path = SoniqueBar/Views/StatusPopover.swift; sourceTree = SOURCE_ROOT; };
 		BB00002C00000000000000C /* OnboardingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = OnboardingView.swift; path = SoniqueBar/Views/OnboardingView.swift; sourceTree = SOURCE_ROOT; };
 /* End PBXFileReference section */
@@ -80,6 +84,8 @@
 			children = (
 				BB000024000000000000024 /* MacSettings.swift */,
 				BB000026000000000000026 /* ServerMonitor.swift */,
+				BB000030000000000000030 /* ContainerManager.swift */,
+				BB000032000000000000032 /* PremiumManager.swift */,
 			);
 			name = Services;
 			sourceTree = "<group>";
@@ -168,6 +174,8 @@
 				BB000023000000000000023 /* AssistantProfile.swift in Sources */,
 				BB000025000000000000025 /* MacSettings.swift in Sources */,
 				BB000027000000000000027 /* ServerMonitor.swift in Sources */,
+				BB000031000000000000031 /* ContainerManager.swift in Sources */,
+				BB000033000000000000033 /* PremiumManager.swift in Sources */,
 				BB000029000000000000029 /* StatusPopover.swift in Sources */,
 				BB00002D00000000000000D /* OnboardingView.swift in Sources */,
 			);

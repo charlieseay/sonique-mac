@@ -8,10 +8,20 @@ class ServerMonitor: ObservableObject {
     @Published var avatarImage: NSImage?
 
     let settings = MacSettings()
+    let containerManager = ContainerManager()
+    let premium = PremiumManager()
 
     private var pollTask: Task<Void, Never>?
 
-    init() { startPolling() }
+    init() {
+        Task { [weak self] in
+            guard let self else { return }
+            if settings.managedMode {
+                await containerManager.setup(caelDirectory: settings.caelDirectory)
+            }
+            startPolling()
+        }
+    }
 
     func startPolling() {
         pollTask?.cancel()
@@ -30,7 +40,7 @@ class ServerMonitor: ObservableObject {
     }
 
     private func checkHealth() async {
-        guard let url = URL(string: "\(settings.normalizedURL)/api/settings") else {
+        guard let url = URL(string: "\(settings.effectiveURL)/api/settings") else {
             isOnline = false; return
         }
         var req = URLRequest(url: url, timeoutInterval: 5)
@@ -43,7 +53,7 @@ class ServerMonitor: ObservableObject {
     }
 
     private func fetchProfile() async {
-        guard let url = URL(string: "\(settings.normalizedURL)/api/assistant/profile") else { return }
+        guard let url = URL(string: "\(settings.effectiveURL)/api/assistant/profile") else { return }
         var req = URLRequest(url: url, timeoutInterval: 5)
         if !settings.apiKey.isEmpty { req.setValue(settings.apiKey, forHTTPHeaderField: "x-api-key") }
         do {
@@ -51,7 +61,7 @@ class ServerMonitor: ObservableObject {
             let p = try JSONDecoder().decode(AssistantProfile.self, from: data)
             if p != profile { profile = p }
             if let avatarPath = p.avatarUrl,
-               let avatarURL = URL(string: "\(settings.normalizedURL)\(avatarPath)") {
+               let avatarURL = URL(string: "\(settings.effectiveURL)\(avatarPath)") {
                 await fetchAvatar(from: avatarURL)
             }
         } catch {}
