@@ -1,7 +1,9 @@
 import SwiftUI
+import AppKit
 
 @main
 struct SoniqueBarApp: App {
+    @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
     @StateObject private var monitor = ServerMonitor()
 
     var body: some Scene {
@@ -16,6 +18,9 @@ struct SoniqueBarApp: App {
             }
         } label: {
             BarLabel(monitor: monitor)
+        }
+        .onChange(of: appDelegate.isTerminating) { _, terminating in
+            if terminating { monitor.sidecarManager.stopSync() }
         }
         .menuBarExtraStyle(.window)
 
@@ -36,6 +41,20 @@ struct SoniqueBarApp: App {
                 .environmentObject(monitor.premium)
         }
         .windowResizability(.contentSize)
+    }
+}
+
+/// Bridges `applicationWillTerminate` into SwiftUI. SidecarManager listens
+/// for `isTerminating` flipping to true and runs its synchronous cleanup
+/// (SIGTERM → 5 s → SIGKILL) before the process exits.
+final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
+    @Published var isTerminating = false
+
+    func applicationWillTerminate(_ notification: Notification) {
+        isTerminating = true
+        // Give the SwiftUI onChange handler a moment to run synchronously.
+        // SidecarManager.stopSync() is bounded (5 s grace + SIGKILL).
+        RunLoop.current.run(until: Date().addingTimeInterval(0.05))
     }
 }
 

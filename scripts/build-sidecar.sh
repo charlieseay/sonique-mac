@@ -25,12 +25,20 @@ set -euo pipefail
 # Config
 # ---------------------------------------------------------------------------
 
-PYTHON_VERSION="3.11.11"
+# Python 3.12 is required on macOS: piper-phonemize 1.1.x ships its macOS arm64
+# wheel only for 3.12 (the Linux caal-tts container uses 3.11 because that's
+# where the Linux wheels exist — wheel availability is platform-dependent).
+PYTHON_VERSION="3.12.8"
 PYTHON_BUILD_TAG="20241219"  # python-build-standalone release tag
 PYTHON_URL="https://github.com/astral-sh/python-build-standalone/releases/download/${PYTHON_BUILD_TAG}/cpython-${PYTHON_VERSION}+${PYTHON_BUILD_TAG}-aarch64-apple-darwin-install_only.tar.gz"
 
 OLLAMA_VERSION="v0.5.7"
 OLLAMA_URL="https://github.com/ollama/ollama/releases/download/${OLLAMA_VERSION}/ollama-darwin"
+
+# Piper TTS — ship the standalone binary (piper-tts Python package has no
+# macOS arm64 wheels because piper-phonemize doesn't publish them).
+PIPER_VERSION="2023.11.14-2"
+PIPER_URL="https://github.com/rhasspy/piper/releases/download/${PIPER_VERSION}/piper_macos_aarch64.tar.gz"
 
 LLM_MODEL="qwen2.5:3b"
 LLM_MODEL_DISPLAY="Qwen 2.5 3B Instruct"
@@ -106,7 +114,7 @@ STAGE="$(mktemp -d /tmp/sonique-sidecar.XXXXXX)"
 trap 'rm -rf "$STAGE"' EXIT
 
 log "staging in $STAGE"
-mkdir -p "$STAGE/python" "$STAGE/services/caal-stt" "$STAGE/services/caal-tts" "$STAGE/services/caal-agent" "$STAGE/ollama/models" "$STAGE/models/piper" "$STAGE/models/whisper"
+mkdir -p "$STAGE/python" "$STAGE/services/caal-stt" "$STAGE/services/caal-tts" "$STAGE/services/caal-agent" "$STAGE/ollama/models" "$STAGE/models/piper" "$STAGE/models/whisper" "$STAGE/piper"
 
 # ---------------------------------------------------------------------------
 # 1. Python 3.11 standalone
@@ -141,8 +149,9 @@ VENV_PY="$STAGE/python/venv/bin/python"
   requests==2.32.3 \
   python-multipart==0.0.20
 
-# caal-tts deps (Piper requires Python 3.11)
-"$VENV_PIP" install --quiet piper-tts==1.2.0
+# caal-tts deps — no piper-tts package on macOS arm64 (no piper-phonemize
+# wheel). Binary-backed tts_server.py from sonique-mac/Sidecar/ replaces
+# the Linux caal-tts server.py. Only needs fastapi + uvicorn + pydantic.
 
 # caal-agent deps (livekit.agents + plugins)
 "$VENV_PIP" install --quiet \
@@ -157,7 +166,10 @@ VENV_PY="$STAGE/python/venv/bin/python"
 log "copying caal-stt / caal-tts / caal-agent sources from $CAEL_REPO"
 
 cp -R "$CAEL_REPO/services/caal-stt/." "$STAGE/services/caal-stt/"
-cp -R "$CAEL_REPO/services/caal-tts/." "$STAGE/services/caal-tts/"
+# caal-tts: use the macOS binary-backed variant shipped in sonique-mac, not
+# the cael repo's Python-package-backed one. Same HTTP contract.
+SIDECAR_SRC="$(cd "$(dirname "$0")/.." && pwd)/Sidecar"
+cp "$SIDECAR_SRC/tts_server.py" "$STAGE/services/caal-tts/server.py"
 
 # caal-agent: voice_agent.py + src/caal/ package + prompt/
 cp "$CAEL_REPO/voice_agent.py" "$STAGE/services/caal-agent/"
@@ -167,6 +179,12 @@ cp -R "$CAEL_REPO/src" "$STAGE/services/caal-agent/src"
 # ---------------------------------------------------------------------------
 # 4. Piper voice (Ryan default)
 # ---------------------------------------------------------------------------
+
+log "staging Piper binary (macOS arm64)"
+PIPER_TAR="$CACHE_DIR/piper_macos_aarch64.tar.gz"
+fetch "$PIPER_URL" "$PIPER_TAR"
+tar -xzf "$PIPER_TAR" -C "$STAGE/piper" --strip-components=1
+chmod +x "$STAGE/piper/piper"
 
 log "staging Piper voice: $PIPER_VOICE"
 fetch "$PIPER_VOICE_ONNX_URL" "$CACHE_DIR/${PIPER_VOICE}.onnx"
@@ -247,6 +265,7 @@ case "$SERVICE" in
     export HOST=127.0.0.1 PORT=8082
     export TTS_VOICE=en_US-ryan-high
     export TTS_VOICE_DIR="$ROOT/models/piper"
+    export PIPER_BIN="$ROOT/piper/piper"
     cd "$ROOT/services/caal-tts"
     exec python -m uvicorn server:app --host 127.0.0.1 --port 8082 --log-level warning
     ;;

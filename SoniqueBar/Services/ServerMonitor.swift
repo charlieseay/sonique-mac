@@ -9,6 +9,7 @@ class ServerMonitor: ObservableObject {
 
     let settings = MacSettings()
     let containerManager = ContainerManager()
+    let sidecarManager = SidecarManager()
     let premium = PremiumManager()
 
     private var pollTask: Task<Void, Never>?
@@ -16,8 +17,29 @@ class ServerMonitor: ObservableObject {
     init() {
         Task { [weak self] in
             guard let self else { return }
-            await containerManager.setup(caelDirectory: settings.caelDirectory)
+            switch settings.deploymentMode {
+            case .networked:
+                await containerManager.setup(caelDirectory: settings.caelDirectory)
+            case .embedded:
+                await sidecarManager.start()
+            }
             startPolling()
+        }
+    }
+
+    /// Apply a deployment-mode change at runtime: tear down the supervisor
+    /// that's currently driving CAAL and bring up the other. Called from the
+    /// Settings UI when the user flips the toggle.
+    func applyDeploymentMode(_ mode: SidecarManager.DeploymentMode) async {
+        settings.deploymentMode = mode
+        switch mode {
+        case .networked:
+            sidecarManager.stop()
+            await containerManager.setup(caelDirectory: settings.caelDirectory)
+        case .embedded:
+            // Leave networked stack running — user may have other tools
+            // pointed at it. Just bring up the sidecar instead.
+            await sidecarManager.start()
         }
     }
 

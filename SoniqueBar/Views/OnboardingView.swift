@@ -9,6 +9,7 @@ struct OnboardingView: View {
     @State private var externalDraft = ""
     @State private var keyDraft = ""
     @State private var ttsVoiceDraft = PiperVoice.defaultVoice.id
+    @State private var deploymentModeDraft: SidecarManager.DeploymentMode = .networked
 
     var body: some View {
         VStack(spacing: 20) {
@@ -83,6 +84,28 @@ struct OnboardingView: View {
                     .pickerStyle(.menu)
                     .labelsHidden()
                 }
+
+                Divider()
+
+                // Deployment mode
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Deployment mode")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    Picker("", selection: $deploymentModeDraft) {
+                        ForEach(SidecarManager.DeploymentMode.allCases) { mode in
+                            Text(mode.label).tag(mode)
+                        }
+                    }
+                    .pickerStyle(.menu)
+                    .labelsHidden()
+                    Text(deploymentModeDraft == .embedded
+                        ? "Embedded — ships a bundled Python runtime, Ollama, STT, TTS inside the app. No Docker or external services required."
+                        : "Networked — uses the Docker-based CAAL stack in the directory above. Keep if you already run CAAL for other tools.")
+                        .font(.caption)
+                        .foregroundStyle(.tertiary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
             }
 
             HStack {
@@ -101,10 +124,11 @@ struct OnboardingView: View {
         .padding(24)
         .frame(width: 340)
         .onAppear {
-            caelDirDraft  = monitor.settings.caelDirectory
-            externalDraft = monitor.settings.externalURL
-            keyDraft      = monitor.settings.apiKey
-            ttsVoiceDraft = monitor.settings.ttsVoiceId
+            caelDirDraft        = monitor.settings.caelDirectory
+            externalDraft       = monitor.settings.externalURL
+            keyDraft            = monitor.settings.apiKey
+            ttsVoiceDraft       = monitor.settings.ttsVoiceId
+            deploymentModeDraft = monitor.settings.deploymentMode
         }
     }
 
@@ -113,7 +137,14 @@ struct OnboardingView: View {
         monitor.settings.externalURL   = externalDraft.trimmingCharacters(in: .whitespaces)
         monitor.settings.apiKey        = keyDraft.trimmingCharacters(in: .whitespaces)
         monitor.settings.ttsVoiceId    = ttsVoiceDraft
-        Task { await monitor.containerManager.setup(caelDirectory: monitor.settings.caelDirectory) }
+
+        let modeChanged = deploymentModeDraft != monitor.settings.deploymentMode
+        if modeChanged {
+            Task { await monitor.applyDeploymentMode(deploymentModeDraft) }
+        } else if deploymentModeDraft == .networked {
+            Task { await monitor.containerManager.setup(caelDirectory: monitor.settings.caelDirectory) }
+        }
+
         Task { await syncVoice() }
         monitor.startPolling()
         dismissWindow(id: "settings")
