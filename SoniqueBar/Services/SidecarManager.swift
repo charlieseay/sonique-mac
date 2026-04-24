@@ -66,7 +66,7 @@ final class SidecarManager: ObservableObject {
 
     private static let healthInterval: TimeInterval = 2.0
     private static let maxRestartAttempts = 3
-    private static let gracefulShutdownSeconds: Double = 5.0
+    nonisolated private static let gracefulShutdownSeconds: Double = 5.0
 
     // MARK: - Runtime
 
