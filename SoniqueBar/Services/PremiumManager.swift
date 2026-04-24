@@ -13,10 +13,17 @@ class PremiumManager: ObservableObject {
     private static let validCode = "SONIQUE-2025"
     private static let keychainKey = "com.seayniclabs.soniquebar.unlockcode"
 
-    @Published private(set) var isPremium = false
+    /// OPEN-MODE OVERRIDE — set to `true` while Sonique is private (internal
+    /// testing + dogfooding). When `true`, `isPremium` is hardcoded to `true`
+    /// and every feature behind the donation paywall is unlocked regardless
+    /// of Keychain state. Flip back to `false` before the public launch so
+    /// the unlock-code flow re-engages.
+    static let openMode = true
+
+    @Published private(set) var isPremium: Bool = openMode
 
     init() {
-        isPremium = storedCode() == Self.validCode
+        if !Self.openMode { isPremium = storedCode() == Self.validCode }
     }
 
     // Returns true if the code is valid and saves it.
