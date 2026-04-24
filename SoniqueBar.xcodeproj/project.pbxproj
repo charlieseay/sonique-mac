@@ -14,6 +14,7 @@
 		BB000031000000000000031 /* ContainerManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB000030000000000000030 /* ContainerManager.swift */; };
 		BB000033000000000000033 /* PremiumManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB000032000000000000032 /* PremiumManager.swift */; };
 		BB000035000000000000035 /* SidecarManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB000034000000000000034 /* SidecarManager.swift */; };
+		BB000037000000000000037 /* python-runtime.tar.gz in Resources */ = {isa = PBXBuildFile; fileRef = BB000036000000000000036 /* python-runtime.tar.gz */; };
 		BB000029000000000000029 /* StatusPopover.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB000028000000000000028 /* StatusPopover.swift */; };
 		BB00002D00000000000000D /* OnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB00002C00000000000000C /* OnboardingView.swift */; };
 /* End PBXBuildFile section */
@@ -29,6 +30,7 @@
 		BB000030000000000000030 /* ContainerManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = ContainerManager.swift; path = SoniqueBar/Services/ContainerManager.swift; sourceTree = SOURCE_ROOT; };
 		BB000032000000000000032 /* PremiumManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = PremiumManager.swift; path = SoniqueBar/Services/PremiumManager.swift; sourceTree = SOURCE_ROOT; };
 		BB000034000000000000034 /* SidecarManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = SidecarManager.swift; path = SoniqueBar/Services/SidecarManager.swift; sourceTree = SOURCE_ROOT; };
+		BB000036000000000000036 /* python-runtime.tar.gz */ = {isa = PBXFileReference; lastKnownFileType = archive.gzip; name = "python-runtime.tar.gz"; path = "Sidecar/bootstrap/python-runtime.tar.gz"; sourceTree = SOURCE_ROOT; };
 		BB000028000000000000028 /* StatusPopover.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = StatusPopover.swift; path = SoniqueBar/Views/StatusPopover.swift; sourceTree = SOURCE_ROOT; };
 		BB00002C00000000000000C /* OnboardingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = OnboardingView.swift; path = SoniqueBar/Views/OnboardingView.swift; sourceTree = SOURCE_ROOT; };
 /* End PBXFileReference section */
@@ -106,6 +108,7 @@
 			isa = PBXGroup;
 			children = (
 				BB000016000000000000016 /* Info.plist */,
+				BB000036000000000000036 /* python-runtime.tar.gz */,
 			);
 			name = Resources;
 			sourceTree = "<group>";
@@ -163,6 +166,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				BB000037000000000000037 /* python-runtime.tar.gz in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

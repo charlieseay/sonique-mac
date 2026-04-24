@@ -45,8 +45,7 @@ class MacSettings: ObservableObject {
 
         let bundledTarballExists = Bundle.main.url(
             forResource: "python-runtime",
-            withExtension: "tar.gz",
-            subdirectory: "Sidecar"
+            withExtension: "tar.gz"
         ) != nil
         let stored = UserDefaults.standard.string(forKey: "deploymentMode")
         let fallback: SidecarManager.DeploymentMode = bundledTarballExists ? .embedded : .networked

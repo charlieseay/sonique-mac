@@ -213,27 +213,36 @@ fetch "$OLLAMA_URL" "$OLLAMA_BIN"
 chmod +x "$OLLAMA_BIN"
 cp "$OLLAMA_BIN" "$STAGE/ollama/ollama"
 
-log "pulling $LLM_MODEL_DISPLAY via temporary Ollama instance"
-OLLAMA_MODELS="$CACHE_DIR/ollama-models" "$OLLAMA_BIN" serve >"$CACHE_DIR/ollama-pull.log" 2>&1 &
-OLLAMA_PID=$!
-sleep 3
+log "pulling $LLM_MODEL_DISPLAY via temporary Ollama instance (host-port-free)"
+# Use port 11435 to avoid any collision with a host Ollama on 11434. Both
+# `serve` and `pull` must see the same OLLAMA_HOST + OLLAMA_MODELS or the
+# pull silently writes to the wrong cache.
+export OLLAMA_HOST=127.0.0.1:11435
+export OLLAMA_MODELS="$CACHE_DIR/ollama-models"
+mkdir -p "$OLLAMA_MODELS"
 
-# Wait until Ollama is responsive
+"$OLLAMA_BIN" serve >"$CACHE_DIR/ollama-pull.log" 2>&1 &
+OLLAMA_PID=$!
+sleep 2
+
+# Wait until our temp Ollama is responsive
 for i in {1..20}; do
-  if curl -fsS http://127.0.0.1:11434/api/tags >/dev/null 2>&1; then break; fi
+  if curl -fsS "http://${OLLAMA_HOST}/api/tags" >/dev/null 2>&1; then break; fi
   sleep 1
   [[ $i -eq 20 ]] && die "temporary Ollama never came up — see $CACHE_DIR/ollama-pull.log"
 done
 
-if ! OLLAMA_MODELS="$CACHE_DIR/ollama-models" "$OLLAMA_BIN" list 2>/dev/null | grep -q "^${LLM_MODEL%:*}"; then
-  OLLAMA_MODELS="$CACHE_DIR/ollama-models" "$OLLAMA_BIN" pull "$LLM_MODEL"
+if ! "$OLLAMA_BIN" list 2>/dev/null | grep -q "^${LLM_MODEL%:*}"; then
+  "$OLLAMA_BIN" pull "$LLM_MODEL"
 else
   log "cached: $LLM_MODEL"
 fi
 
 kill "$OLLAMA_PID" 2>/dev/null || true
 wait "$OLLAMA_PID" 2>/dev/null || true
+unset OLLAMA_HOST OLLAMA_MODELS
 
+[[ -d "$CACHE_DIR/ollama-models" ]] || die "ollama pull did not populate $CACHE_DIR/ollama-models"
 cp -R "$CACHE_DIR/ollama-models/." "$STAGE/ollama/models/"
 
 # ---------------------------------------------------------------------------

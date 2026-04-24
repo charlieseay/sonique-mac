@@ -128,10 +128,9 @@ final class SidecarManager: ObservableObject {
 
         guard let bundledTarball = Bundle.main.url(
             forResource: "python-runtime",
-            withExtension: "tar.gz",
-            subdirectory: "Sidecar"
+            withExtension: "tar.gz"
         ) else {
-            throw SidecarError.bundleResourceMissing("Sidecar/python-runtime.tar.gz")
+            throw SidecarError.bundleResourceMissing("python-runtime.tar.gz")
         }
 
         let shaMarker = support.appendingPathComponent(".tarball.sha256")
