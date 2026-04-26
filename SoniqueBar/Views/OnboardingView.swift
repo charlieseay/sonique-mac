@@ -52,8 +52,16 @@ struct OnboardingView: View {
                     Text("Remote URL (optional)")
                         .font(.caption)
                         .foregroundStyle(.secondary)
-                    TextField("http://100.x.x.x:3000 or tunnel URL", text: $externalDraft)
-                        .textFieldStyle(.roundedBorder)
+                    HStack(spacing: 6) {
+                        TextField("http://100.x.x.x:3100 or tunnel URL", text: $externalDraft)
+                            .textFieldStyle(.roundedBorder)
+                        Button("Tailscale") {
+                            Task { await detectTailscale() }
+                        }
+                        .buttonStyle(.bordered)
+                        .controlSize(.small)
+                        .help("Auto-detect your Tailscale IP")
+                    }
                     Text("Tailscale IP, Cloudflare tunnel, etc. — used by iPhone when away from home.")
                         .font(.caption)
                         .foregroundStyle(.tertiary)
@@ -129,6 +137,12 @@ struct OnboardingView: View {
             keyDraft            = monitor.settings.apiKey
             ttsVoiceDraft       = monitor.settings.ttsVoiceId
             deploymentModeDraft = monitor.settings.deploymentMode
+        }
+    }
+
+    private func detectTailscale() async {
+        if let ip = await monitor.detectTailscaleIP() {
+            externalDraft = "http://\(ip):3100"
         }
     }
 

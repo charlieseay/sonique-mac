@@ -17,6 +17,10 @@
 		BB000037000000000000037 /* python-runtime.tar.gz in Resources */ = {isa = PBXBuildFile; fileRef = BB000036000000000000036 /* python-runtime.tar.gz */; };
 		BB000029000000000000029 /* StatusPopover.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB000028000000000000028 /* StatusPopover.swift */; };
 		BB00002D00000000000000D /* OnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB00002C00000000000000C /* OnboardingView.swift */; };
+		BB000039000000000000039 /* ChatMessage.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB000038000000000000038 /* ChatMessage.swift */; };
+		BB00003B00000000000003B /* ChatManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB00003A00000000000003A /* ChatManager.swift */; };
+		BB00003D00000000000003D /* SystemControlManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB00003C00000000000003C /* SystemControlManager.swift */; };
+		BB00003F00000000000003F /* ChatView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB00003E00000000000003E /* ChatView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -33,6 +37,10 @@
 		BB000036000000000000036 /* python-runtime.tar.gz */ = {isa = PBXFileReference; lastKnownFileType = archive.gzip; name = "python-runtime.tar.gz"; path = "Sidecar/bootstrap/python-runtime.tar.gz"; sourceTree = SOURCE_ROOT; };
 		BB000028000000000000028 /* StatusPopover.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = StatusPopover.swift; path = SoniqueBar/Views/StatusPopover.swift; sourceTree = SOURCE_ROOT; };
 		BB00002C00000000000000C /* OnboardingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = OnboardingView.swift; path = SoniqueBar/Views/OnboardingView.swift; sourceTree = SOURCE_ROOT; };
+		BB000038000000000000038 /* ChatMessage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = ChatMessage.swift; path = SoniqueBar/Models/ChatMessage.swift; sourceTree = SOURCE_ROOT; };
+		BB00003A00000000000003A /* ChatManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = ChatManager.swift; path = SoniqueBar/Services/ChatManager.swift; sourceTree = SOURCE_ROOT; };
+		BB00003C00000000000003C /* SystemControlManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = SystemControlManager.swift; path = SoniqueBar/Services/SystemControlManager.swift; sourceTree = SOURCE_ROOT; };
+		BB00003E00000000000003E /* ChatView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = ChatView.swift; path = SoniqueBar/Views/ChatView.swift; sourceTree = SOURCE_ROOT; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -79,6 +87,7 @@
 			isa = PBXGroup;
 			children = (
 				BB000022000000000000022 /* AssistantProfile.swift */,
+				BB000038000000000000038 /* ChatMessage.swift */,
 			);
 			name = Models;
 			sourceTree = "<group>";
@@ -91,6 +100,8 @@
 				BB000030000000000000030 /* ContainerManager.swift */,
 				BB000032000000000000032 /* PremiumManager.swift */,
 				BB000034000000000000034 /* SidecarManager.swift */,
+				BB00003A00000000000003A /* ChatManager.swift */,
+				BB00003C00000000000003C /* SystemControlManager.swift */,
 			);
 			name = Services;
 			sourceTree = "<group>";
@@ -100,6 +111,7 @@
 			children = (
 				BB000028000000000000028 /* StatusPopover.swift */,
 				BB00002C00000000000000C /* OnboardingView.swift */,
+				BB00003E00000000000003E /* ChatView.swift */,
 			);
 			name = Views;
 			sourceTree = "<group>";
@@ -186,6 +198,10 @@
 				BB000035000000000000035 /* SidecarManager.swift in Sources */,
 				BB000029000000000000029 /* StatusPopover.swift in Sources */,
 				BB00002D00000000000000D /* OnboardingView.swift in Sources */,
+				BB000039000000000000039 /* ChatMessage.swift in Sources */,
+				BB00003B00000000000003B /* ChatManager.swift in Sources */,
+				BB00003D00000000000003D /* SystemControlManager.swift in Sources */,
+				BB00003F00000000000003F /* ChatView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

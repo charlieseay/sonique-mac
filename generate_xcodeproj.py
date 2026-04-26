@@ -40,15 +40,28 @@ UUIDS = {
     "qr_build":          "BB00002B00000000000000B",
     "onboard_ref":       "BB00002C00000000000000C",
     "onboard_build":     "BB00002D00000000000000D",
+    # New files: chat, system control
+    "chatmsg_ref":       "BB000038000000000000038",
+    "chatmsg_build":     "BB000039000000000000039",
+    "chatmgr_ref":       "BB00003A00000000000003A",
+    "chatmgr_build":     "BB00003B00000000000003B",
+    "sysctl_ref":        "BB00003C00000000000003C",
+    "sysctl_build":      "BB00003D00000000000003D",
+    "chatview_ref":      "BB00003E00000000000003E",
+    "chatview_build":    "BB00003F00000000000003F",
 }
 
 SOURCE_FILES = [
-    ("app_ref",      "app_build",      "SoniqueBar/SoniqueBarApp.swift",           "sources_group"),
-    ("profile_ref",  "profile_build",  "SoniqueBar/Models/AssistantProfile.swift", "models_group"),
-    ("settings_ref", "settings_build", "SoniqueBar/Services/MacSettings.swift",    "services_group"),
-    ("monitor_ref",  "monitor_build",  "SoniqueBar/Services/ServerMonitor.swift",  "services_group"),
-    ("status_ref",   "status_build",   "SoniqueBar/Views/StatusPopover.swift",     "views_group"),
-    ("onboard_ref",  "onboard_build",  "SoniqueBar/Views/OnboardingView.swift",    "views_group"),
+    ("app_ref",      "app_build",      "SoniqueBar/SoniqueBarApp.swift",                        "sources_group"),
+    ("profile_ref",  "profile_build",  "SoniqueBar/Models/AssistantProfile.swift",              "models_group"),
+    ("chatmsg_ref",  "chatmsg_build",  "SoniqueBar/Models/ChatMessage.swift",                   "models_group"),
+    ("settings_ref", "settings_build", "SoniqueBar/Services/MacSettings.swift",                 "services_group"),
+    ("monitor_ref",  "monitor_build",  "SoniqueBar/Services/ServerMonitor.swift",               "services_group"),
+    ("chatmgr_ref",  "chatmgr_build",  "SoniqueBar/Services/ChatManager.swift",                 "services_group"),
+    ("sysctl_ref",   "sysctl_build",   "SoniqueBar/Services/SystemControlManager.swift",        "services_group"),
+    ("status_ref",   "status_build",   "SoniqueBar/Views/StatusPopover.swift",                  "views_group"),
+    ("onboard_ref",  "onboard_build",  "SoniqueBar/Views/OnboardingView.swift",                 "views_group"),
+    ("chatview_ref", "chatview_build", "SoniqueBar/Views/ChatView.swift",                       "views_group"),
 ]
 
 def u(key):

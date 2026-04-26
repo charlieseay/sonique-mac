@@ -6,11 +6,14 @@ class ServerMonitor: ObservableObject {
     @Published var isOnline = false
     @Published var profile: AssistantProfile?
     @Published var avatarImage: NSImage?
+    @Published var hasActiveVoiceSession = false
 
     let settings = MacSettings()
     let containerManager = ContainerManager()
     let sidecarManager = SidecarManager()
     let premium = PremiumManager()
+    let systemControl = SystemControlManager()
+    let chatManager = ChatManager()
 
     private var pollTask: Task<Void, Never>?
 
@@ -45,6 +48,8 @@ class ServerMonitor: ObservableObject {
 
     func startPolling() {
         pollTask?.cancel()
+        chatManager.configure(backendURL: settings.backendURL, apiKey: settings.apiKey)
+        systemControl.start(backendURL: settings.backendURL, apiKey: settings.apiKey)
         pollTask = Task {
             while !Task.isCancelled {
                 await refresh()
@@ -72,11 +77,48 @@ class ServerMonitor: ObservableObject {
             let code = (response as? HTTPURLResponse)?.statusCode ?? 0
             let wasOffline = !isOnline
             isOnline = code == 200 || code == 401
-            // Sync timezone once per session when CAAL first comes online
             if isOnline && (wasOffline || !timezoneSynced) {
                 await syncTimezone()
             }
         } catch { isOnline = false }
+
+        await checkActiveSession()
+    }
+
+    private func checkActiveSession() async {
+        guard isOnline,
+              let url = URL(string: "\(settings.backendURL)/api/chat/sessions")
+        else { hasActiveVoiceSession = false; return }
+        var req = URLRequest(url: url, timeoutInterval: 3)
+        if !settings.apiKey.isEmpty { req.setValue(settings.apiKey, forHTTPHeaderField: "x-api-key") }
+        guard let (data, _) = try? await URLSession.shared.data(for: req),
+              let payload = try? JSONDecoder().decode(SessionsPayload.self, from: data)
+        else { hasActiveVoiceSession = false; return }
+        hasActiveVoiceSession = !payload.sessions.isEmpty
+    }
+
+    /// Detect the local Tailscale IP (if Tailscale is installed and connected).
+    func detectTailscaleIP() async -> String? {
+        let task = Process()
+        task.executableURL = URL(fileURLWithPath: "/usr/bin/env")
+        task.arguments = ["tailscale", "ip", "-4"]
+        let pipe = Pipe()
+        task.standardOutput = pipe
+        task.standardError = Pipe()
+        try? task.run()
+        task.waitUntilExit()
+        let output = String(data: pipe.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8)?
+            .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        guard task.terminationStatus == 0, !output.isEmpty else { return nil }
+        return output
+    }
+
+    private struct SessionsPayload: Decodable {
+        let sessions: [SessionInfo]
+        struct SessionInfo: Decodable {
+            let sessionId: String
+            enum CodingKeys: String, CodingKey { case sessionId = "session_id" }
+        }
     }
 
     /// Posts the macOS system timezone to CAAL so the agent uses the correct local time.

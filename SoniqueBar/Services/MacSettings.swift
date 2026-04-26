@@ -14,6 +14,11 @@ extension PiperVoice {
         PiperVoice(id: "speaches-ai/piper-en_US-libritts_r-medium", label: "LibriTTS (Neutral)"),
     ]
     static let defaultVoice = all[0]
+
+    /// Compact label for inline picker in the status popover.
+    var shortLabel: String {
+        label.components(separatedBy: " (").first ?? label
+    }
 }
 
 class MacSettings: ObservableObject {
@@ -57,8 +62,11 @@ class MacSettings: ObservableObject {
         !caelDirectory.trimmingCharacters(in: .whitespaces).isEmpty
     }
 
-    // Always localhost:3100 — CAAL frontend port (3000 avoided to not conflict with other local services)
+    // Next.js frontend (health, profile, QR, settings)
     var effectiveURL: String { "http://localhost:3100" }
+
+    // FastAPI webhook server (chat, mac-actions, memory, etc.)
+    var backendURL: String { "http://localhost:8889" }
 
     var normalizedExternalURL: String {
         externalURL.hasSuffix("/") ? String(externalURL.dropLast()) : externalURL

@@ -22,11 +22,41 @@ struct StatusPopover: View {
 
                 HStack(spacing: 5) {
                     Circle()
-                        .fill(monitor.isOnline ? Color.green : Color.red)
+                        .fill(onlineColor)
                         .frame(width: 7, height: 7)
-                    Text(monitor.isOnline ? "Online" : "Offline")
+                    Text(statusLabel)
                         .font(.system(size: 12))
                         .foregroundStyle(.secondary)
+                }
+
+                // Active voice session badge
+                if monitor.hasActiveVoiceSession {
+                    HStack(spacing: 4) {
+                        Image(systemName: "waveform")
+                            .font(.system(size: 10))
+                        Text("Voice session active")
+                            .font(.system(size: 10))
+                    }
+                    .foregroundStyle(Color(red: 0.4, green: 0.3, blue: 0.9))
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 3)
+                    .background(Color(red: 0.4, green: 0.3, blue: 0.9).opacity(0.1))
+                    .clipShape(Capsule())
+                }
+
+                // System control executing badge
+                if monitor.systemControl.isExecuting {
+                    HStack(spacing: 4) {
+                        ProgressView().scaleEffect(0.5).frame(width: 10, height: 10)
+                        Text(monitor.systemControl.lastActionDescription)
+                            .font(.system(size: 10))
+                            .lineLimit(1)
+                    }
+                    .foregroundStyle(.secondary)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 3)
+                    .background(Color(nsColor: .controlBackgroundColor))
+                    .clipShape(Capsule())
                 }
             }
             .padding(.top, 18)
@@ -63,6 +93,15 @@ struct StatusPopover: View {
             Divider()
 
             VStack(spacing: 1) {
+                // Quick voice presets inline
+                voicePresetRow
+
+                Divider().padding(.horizontal, 8).padding(.vertical, 2)
+
+                popoverButton("Chat with \(monitor.profile?.name ?? "Cael")", icon: "bubble.left.and.bubble.right") {
+                    openWindow(id: "chat")
+                    NSApp.activate(ignoringOtherApps: true)
+                }
                 popoverButton("Open Dashboard", icon: "square.grid.2x2",
                               disabled: monitor.containerManager.state != .running) {
                     if let url = URL(string: monitor.settings.effectiveURL) {
@@ -89,6 +128,66 @@ struct StatusPopover: View {
             .padding(.vertical, 6)
         }
         .frame(width: 240)
+    }
+
+    // MARK: - Quick voice preset row
+
+    private var voicePresetRow: some View {
+        HStack(spacing: 8) {
+            Image(systemName: "waveform.badge.microphone")
+                .frame(width: 16)
+                .foregroundStyle(.secondary)
+                .font(.system(size: 12))
+            Text("Voice")
+                .font(.system(size: 13))
+            Spacer()
+            Picker("", selection: Binding(
+                get: { monitor.settings.ttsVoiceId },
+                set: { newId in
+                    monitor.settings.ttsVoiceId = newId
+                    Task { await syncVoice(newId) }
+                }
+            )) {
+                ForEach(PiperVoice.all) { v in
+                    Text(v.shortLabel).tag(v.id)
+                }
+            }
+            .pickerStyle(.menu)
+            .labelsHidden()
+            .frame(width: 120)
+            .controlSize(.small)
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 7)
+    }
+
+    private func syncVoice(_ voiceId: String) async {
+        guard let url = URL(string: "\(monitor.settings.effectiveURL)/api/settings") else { return }
+        guard let body = try? JSONSerialization.data(withJSONObject: [
+            "settings": ["tts_voice_piper": voiceId]
+        ]) else { return }
+        var req = URLRequest(url: url, timeoutInterval: 5)
+        req.httpMethod = "POST"
+        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        if !monitor.settings.apiKey.isEmpty {
+            req.setValue(monitor.settings.apiKey, forHTTPHeaderField: "x-api-key")
+        }
+        req.httpBody = body
+        _ = try? await URLSession.shared.data(for: req)
+    }
+
+    // MARK: - Status helpers
+
+    private var onlineColor: Color {
+        if !monitor.isOnline { return .red }
+        if monitor.hasActiveVoiceSession { return Color(red: 0.4, green: 0.3, blue: 0.9) }
+        return .green
+    }
+
+    private var statusLabel: String {
+        if !monitor.isOnline { return "Offline" }
+        if monitor.hasActiveVoiceSession { return "In session" }
+        return "Online"
     }
 
     // MARK: - Container status row

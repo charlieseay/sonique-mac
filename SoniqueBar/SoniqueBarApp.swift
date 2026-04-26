@@ -22,6 +22,14 @@ struct SoniqueBarApp: App {
         .onChange(of: appDelegate.isTerminating) { _, terminating in
             if terminating { monitor.sidecarManager.stopSync() }
         }
+        .onChange(of: appDelegate.openChatRequested) { _, requested in
+            if requested {
+                appDelegate.openChatRequested = false
+                NSApp.activate(ignoringOtherApps: true)
+                // openWindow is not directly accessible here; use notification
+                NotificationCenter.default.post(name: .openChatWindow, object: nil)
+            }
+        }
         .menuBarExtraStyle(.window)
 
         Window("Sonique Settings", id: "settings") {
@@ -29,6 +37,13 @@ struct SoniqueBarApp: App {
                 .environmentObject(monitor)
         }
         .windowResizability(.contentSize)
+
+        Window("Chat", id: "chat") {
+            ChatView()
+                .environmentObject(monitor)
+        }
+        .windowResizability(.contentSize)
+        .defaultPosition(.center)
 
         Window("About Sonique", id: "about") {
             AboutView()
@@ -44,31 +59,64 @@ struct SoniqueBarApp: App {
     }
 }
 
-/// Bridges `applicationWillTerminate` into SwiftUI. SidecarManager listens
-/// for `isTerminating` flipping to true and runs its synchronous cleanup
-/// (SIGTERM → 5 s → SIGKILL) before the process exits.
+/// Bridges `applicationWillTerminate` into SwiftUI and registers the global
+/// chat hotkey (⌘⌥C) so the chat window can be opened from any context.
 final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
     @Published var isTerminating = false
+    @Published var openChatRequested = false
+
+    private var hotKeyMonitor: Any?
+
+    func applicationDidFinishLaunching(_ notification: Notification) {
+        // Global hotkey: ⌘⌥C — opens the Chat window from anywhere
+        hotKeyMonitor = NSEvent.addGlobalMonitorForEvents(matching: .keyDown) { [weak self] event in
+            guard event.modifierFlags.contains([.command, .option]),
+                  event.characters?.lowercased() == "c"
+            else { return }
+            DispatchQueue.main.async { self?.openChatRequested = true }
+        }
+    }
 
     func applicationWillTerminate(_ notification: Notification) {
+        if let monitor = hotKeyMonitor {
+            NSEvent.removeMonitor(monitor)
+        }
         isTerminating = true
-        // Give the SwiftUI onChange handler a moment to run synchronously.
-        // SidecarManager.stopSync() is bounded (5 s grace + SIGKILL).
         RunLoop.current.run(until: Date().addingTimeInterval(0.05))
     }
 }
 
 private struct BarLabel: View {
     @ObservedObject var monitor: ServerMonitor
+    @Environment(\.openWindow) private var openWindow
 
     var body: some View {
-        if let img = monitor.avatarImage {
-            Image(nsImage: circularImage(img, size: 18))
-                .resizable()
-                .frame(width: 18, height: 18)
-        } else {
-            Image(systemName: "waveform")
+        Group {
+            if let img = monitor.avatarImage {
+                Image(nsImage: circularImage(img, size: 18))
+                    .resizable()
+                    .frame(width: 18, height: 18)
+                    .opacity(monitor.isOnline ? 1.0 : 0.4)
+            } else {
+                Image(systemName: barIcon)
+                    .foregroundStyle(barColor)
+            }
         }
+        .onReceive(NotificationCenter.default.publisher(for: .openChatWindow)) { _ in
+            openWindow(id: "chat")
+        }
+    }
+
+    private var barIcon: String {
+        if monitor.systemControl.isExecuting { return "gearshape.fill" }
+        if monitor.hasActiveVoiceSession { return "waveform.circle.fill" }
+        return "waveform"
+    }
+
+    private var barColor: Color {
+        if !monitor.isOnline { return Color(nsColor: .tertiaryLabelColor) }
+        if monitor.hasActiveVoiceSession { return Color(red: 0.4, green: 0.3, blue: 0.9) }
+        return .primary
     }
 
     private func circularImage(_ source: NSImage, size: CGFloat) -> NSImage {
@@ -82,4 +130,8 @@ private struct BarLabel: View {
         result.unlockFocus()
         return result
     }
+}
+
+extension Notification.Name {
+    static let openChatWindow = Notification.Name("SoniqueOpenChatWindow")
 }
