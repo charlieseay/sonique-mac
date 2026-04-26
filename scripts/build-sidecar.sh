@@ -117,13 +117,13 @@ log "staging in $STAGE"
 mkdir -p "$STAGE/python" "$STAGE/services/caal-stt" "$STAGE/services/caal-tts" "$STAGE/services/caal-agent" "$STAGE/ollama/models" "$STAGE/models/piper" "$STAGE/models/whisper" "$STAGE/piper"
 
 # ---------------------------------------------------------------------------
-# 1. Python 3.11 standalone
+# 1. Python standalone runtime
 # ---------------------------------------------------------------------------
 
 PY_TAR="$CACHE_DIR/python-${PYTHON_VERSION}-arm64.tar.gz"
 fetch "$PYTHON_URL" "$PY_TAR"
 
-log "extracting Python 3.11 runtime"
+log "extracting Python ${PYTHON_VERSION} runtime"
 tar -xzf "$PY_TAR" -C "$STAGE/python" --strip-components=1
 
 PYBIN="$STAGE/python/bin/python3"
@@ -131,18 +131,19 @@ PYBIN="$STAGE/python/bin/python3"
 "$PYBIN" --version
 
 # ---------------------------------------------------------------------------
-# 2. caal-stt + caal-tts deps into a venv under python/
+# 2. Install all deps directly into the standalone Python (no venv)
+#
+# A venv stores its activation symlinks as absolute paths, which break when
+# the tarball is unpacked at a different prefix on the end-user's machine.
+# Installing into the standalone Python's own site-packages produces only
+# regular files — no path-dependent symlinks.
 # ---------------------------------------------------------------------------
 
-log "creating bundled venv and installing service deps"
-"$PYBIN" -m venv "$STAGE/python/venv"
-VENV_PIP="$STAGE/python/venv/bin/pip"
-VENV_PY="$STAGE/python/venv/bin/python"
-
-"$VENV_PIP" install --quiet --upgrade pip
+log "installing service deps into standalone Python (no venv)"
+"$PYBIN" -m pip install --quiet --upgrade pip
 
 # caal-stt deps
-"$VENV_PIP" install --quiet \
+"$PYBIN" -m pip install --quiet \
   fastapi==0.115.6 \
   "uvicorn[standard]==0.34.0" \
   faster-whisper==1.1.1 \
@@ -154,7 +155,7 @@ VENV_PY="$STAGE/python/venv/bin/python"
 # the Linux caal-tts server.py. Only needs fastapi + uvicorn + pydantic.
 
 # caal-agent deps (livekit.agents + plugins)
-"$VENV_PIP" install --quiet \
+"$PYBIN" -m pip install --quiet \
   "livekit-agents[openai,silero,groq]==1.3.3" \
   anthropic==0.42.0 \
   httpx==0.27.2
@@ -197,9 +198,8 @@ cp "$CACHE_DIR/${PIPER_VOICE}.onnx.json" "$STAGE/models/piper/"
 # ---------------------------------------------------------------------------
 
 log "staging faster-whisper model: $WHISPER_MODEL"
-# huggingface-cli via the bundled venv — keeps the download self-contained
-"$VENV_PIP" install --quiet "huggingface-hub[cli]==0.27.0"
-HF_HOME="$CACHE_DIR/hf" "$STAGE/python/venv/bin/huggingface-cli" download "$WHISPER_REPO" \
+"$PYBIN" -m pip install --quiet "huggingface-hub[cli]==0.27.0"
+HF_HOME="$CACHE_DIR/hf" "$STAGE/python/bin/huggingface-cli" download "$WHISPER_REPO" \
   --local-dir "$STAGE/models/whisper/$WHISPER_MODEL" \
   --local-dir-use-symlinks False \
   >/dev/null
@@ -259,7 +259,7 @@ set -euo pipefail
 ROOT="${1:?launcher requires sidecar root as first arg}"
 SERVICE="${2:?launcher requires service name as second arg}"
 
-export PATH="$ROOT/python/venv/bin:$ROOT/python/bin:$PATH"
+export PATH="$ROOT/python/bin:$PATH"
 export PYTHONUNBUFFERED=1
 
 case "$SERVICE" in
