@@ -54,15 +54,22 @@ final class SidecarManager: ObservableObject {
 
     @Published private(set) var state: State = .stopped
     @Published private(set) var serviceHealth: [String: Bool] = [:]
+    /// True when a user-installed Ollama is reachable at 127.0.0.1:11434.
+    /// Ollama is not bundled — this is informational only; it does not gate
+    /// sidecar state. The UI surfaces it as a separate "Local LLM" indicator.
+    @Published private(set) var ollamaAvailable: Bool = false
 
     // MARK: - Config
 
+    // Sidecar-owned processes: STT, TTS, and the CAAL agent.
+    // Ollama is the user's responsibility and is NOT spawned here.
     private static let services: [ServiceEndpoint] = [
-        ServiceEndpoint(name: "ollama", port: 11434, healthURL: URL(string: "http://127.0.0.1:11434/api/tags")),
-        ServiceEndpoint(name: "stt",    port: 8081,  healthURL: URL(string: "http://127.0.0.1:8081/health")),
-        ServiceEndpoint(name: "tts",    port: 8082,  healthURL: URL(string: "http://127.0.0.1:8082/health")),
-        ServiceEndpoint(name: "agent",  port: nil,   healthURL: nil),  // no HTTP health endpoint; checked by process liveness
+        ServiceEndpoint(name: "stt",   port: 8081, healthURL: URL(string: "http://127.0.0.1:8081/health")),
+        ServiceEndpoint(name: "tts",   port: 8082, healthURL: URL(string: "http://127.0.0.1:8082/health")),
+        ServiceEndpoint(name: "agent", port: nil,  healthURL: nil),  // no HTTP health endpoint; checked by process liveness
     ]
+
+    private static let ollamaHealthURL = URL(string: "http://127.0.0.1:11434/api/tags")!
 
     private static let healthInterval: TimeInterval = 2.0
     private static let maxRestartAttempts = 3
@@ -266,6 +273,19 @@ final class SidecarManager: ObservableObject {
             for await (name, ok) in group {
                 serviceHealth[name] = ok
             }
+        }
+        // Probe user's Ollama separately — does not affect sidecar state
+        ollamaAvailable = await probeURL(Self.ollamaHealthURL)
+    }
+
+    private nonisolated func probeURL(_ url: URL) async -> Bool {
+        var req = URLRequest(url: url, timeoutInterval: 1.5)
+        req.httpMethod = "GET"
+        do {
+            let (_, response) = try await URLSession.shared.data(for: req)
+            return (response as? HTTPURLResponse).map { (200..<300).contains($0.statusCode) } ?? false
+        } catch {
+            return false
         }
     }
 

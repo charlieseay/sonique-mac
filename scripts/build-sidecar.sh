@@ -2,17 +2,19 @@
 #
 # build-sidecar.sh — produce Sidecar/bootstrap/python-runtime.tar.gz
 #
-# Bundles everything SoniqueBar needs to run CAAL without Docker, without
-# host Ollama, without any user-installed prerequisites:
+# Bundles the Sonique voice pipeline — STT, TTS, and agent — as a
+# self-contained sidecar. Ollama is NOT bundled; the user provides their own
+# Ollama installation and model. Local LLM features require Ollama running
+# at 127.0.0.1:11434 with at least one model loaded.
 #
-#   - Python 3.11 standalone (python-build-standalone, macOS arm64)
+# Bundled components:
+#   - Python 3.12 standalone (python-build-standalone, macOS arm64)
 #   - caal-stt (faster-whisper small.en)
 #   - caal-tts (Piper with en_US-ryan-high voice)
 #   - caal-agent (voice_agent.py + livekit-agents)
-#   - Ollama binary (macOS arm64) + Qwen 2.5 3B Instruct model
 #
 # Runs idempotently. Downloads are cached in --cache-dir (default:
-# ~/.cache/sonique-sidecar-build/). Final tarball ~3.0-3.5 GB.
+# ~/.cache/sonique-sidecar-build/). Final tarball ~400-500 MB.
 #
 # Usage:
 #   scripts/build-sidecar.sh [--cache-dir PATH] [--cael-repo PATH] [--out PATH]
@@ -32,16 +34,10 @@ PYTHON_VERSION="3.12.8"
 PYTHON_BUILD_TAG="20241219"  # python-build-standalone release tag
 PYTHON_URL="https://github.com/astral-sh/python-build-standalone/releases/download/${PYTHON_BUILD_TAG}/cpython-${PYTHON_VERSION}+${PYTHON_BUILD_TAG}-aarch64-apple-darwin-install_only.tar.gz"
 
-OLLAMA_VERSION="v0.5.7"
-OLLAMA_URL="https://github.com/ollama/ollama/releases/download/${OLLAMA_VERSION}/ollama-darwin"
-
 # Piper TTS — ship the standalone binary (piper-tts Python package has no
 # macOS arm64 wheels because piper-phonemize doesn't publish them).
 PIPER_VERSION="2023.11.14-2"
 PIPER_URL="https://github.com/rhasspy/piper/releases/download/${PIPER_VERSION}/piper_macos_aarch64.tar.gz"
-
-LLM_MODEL="qwen2.5:3b"
-LLM_MODEL_DISPLAY="Qwen 2.5 3B Instruct"
 
 PIPER_VOICE="en_US-ryan-high"
 PIPER_VOICE_ONNX_URL="https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_US/ryan/high/en_US-ryan-high.onnx"
@@ -114,7 +110,7 @@ STAGE="$(mktemp -d /tmp/sonique-sidecar.XXXXXX)"
 trap 'rm -rf "$STAGE"' EXIT
 
 log "staging in $STAGE"
-mkdir -p "$STAGE/python" "$STAGE/services/caal-stt" "$STAGE/services/caal-tts" "$STAGE/services/caal-agent" "$STAGE/ollama/models" "$STAGE/models/piper" "$STAGE/models/whisper" "$STAGE/piper"
+mkdir -p "$STAGE/python" "$STAGE/services/caal-stt" "$STAGE/services/caal-tts" "$STAGE/services/caal-agent" "$STAGE/models/piper" "$STAGE/models/whisper" "$STAGE/piper"
 
 # ---------------------------------------------------------------------------
 # 1. Python standalone runtime
@@ -205,48 +201,7 @@ HF_HOME="$CACHE_DIR/hf" "$STAGE/python/bin/huggingface-cli" download "$WHISPER_R
   >/dev/null
 
 # ---------------------------------------------------------------------------
-# 6. Ollama binary + Qwen 2.5 3B model
-# ---------------------------------------------------------------------------
-
-OLLAMA_BIN="$CACHE_DIR/ollama-darwin-arm64"
-fetch "$OLLAMA_URL" "$OLLAMA_BIN"
-chmod +x "$OLLAMA_BIN"
-cp "$OLLAMA_BIN" "$STAGE/ollama/ollama"
-
-log "pulling $LLM_MODEL_DISPLAY via temporary Ollama instance (host-port-free)"
-# Use port 11435 to avoid any collision with a host Ollama on 11434. Both
-# `serve` and `pull` must see the same OLLAMA_HOST + OLLAMA_MODELS or the
-# pull silently writes to the wrong cache.
-export OLLAMA_HOST=127.0.0.1:11435
-export OLLAMA_MODELS="$CACHE_DIR/ollama-models"
-mkdir -p "$OLLAMA_MODELS"
-
-"$OLLAMA_BIN" serve >"$CACHE_DIR/ollama-pull.log" 2>&1 &
-OLLAMA_PID=$!
-sleep 2
-
-# Wait until our temp Ollama is responsive
-for i in {1..20}; do
-  if curl -fsS "http://${OLLAMA_HOST}/api/tags" >/dev/null 2>&1; then break; fi
-  sleep 1
-  [[ $i -eq 20 ]] && die "temporary Ollama never came up — see $CACHE_DIR/ollama-pull.log"
-done
-
-if ! "$OLLAMA_BIN" list 2>/dev/null | grep -q "^${LLM_MODEL%:*}"; then
-  "$OLLAMA_BIN" pull "$LLM_MODEL"
-else
-  log "cached: $LLM_MODEL"
-fi
-
-kill "$OLLAMA_PID" 2>/dev/null || true
-wait "$OLLAMA_PID" 2>/dev/null || true
-unset OLLAMA_HOST OLLAMA_MODELS
-
-[[ -d "$CACHE_DIR/ollama-models" ]] || die "ollama pull did not populate $CACHE_DIR/ollama-models"
-cp -R "$CACHE_DIR/ollama-models/." "$STAGE/ollama/models/"
-
-# ---------------------------------------------------------------------------
-# 7. Launcher script (what SidecarManager executes)
+# 6. Launcher script (what SidecarManager executes)
 # ---------------------------------------------------------------------------
 
 log "writing launcher.sh"
@@ -278,14 +233,6 @@ case "$SERVICE" in
     cd "$ROOT/services/caal-tts"
     exec python -m uvicorn server:app --host 127.0.0.1 --port 8082 --log-level warning
     ;;
-  ollama)
-    export OLLAMA_MODELS="$ROOT/ollama/models"
-    export OLLAMA_HOST=127.0.0.1:11434
-    export OLLAMA_KEEP_ALIVE=5m
-    export OLLAMA_MAX_LOADED_MODELS=1
-    export OLLAMA_NUM_PARALLEL=1
-    exec "$ROOT/ollama/ollama" serve
-    ;;
   agent)
     export LIVEKIT_URL="${LIVEKIT_URL:-ws://127.0.0.1:7880}"
     export LIVEKIT_API_KEY="${LIVEKIT_API_KEY:-devkey}"
@@ -309,7 +256,7 @@ LAUNCHER
 chmod +x "$STAGE/launcher.sh"
 
 # ---------------------------------------------------------------------------
-# 8. Manifest
+# 7. Manifest
 # ---------------------------------------------------------------------------
 
 cat > "$STAGE/manifest.json" <<MANIFEST
@@ -317,22 +264,20 @@ cat > "$STAGE/manifest.json" <<MANIFEST
   "schema": 1,
   "built_at": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
   "python_version": "${PYTHON_VERSION}",
-  "ollama_version": "${OLLAMA_VERSION}",
-  "llm_model": "${LLM_MODEL}",
-  "llm_model_display": "${LLM_MODEL_DISPLAY}",
   "piper_voice": "${PIPER_VOICE}",
   "whisper_model": "${WHISPER_MODEL}",
+  "ollama_required": true,
+  "ollama_note": "Not bundled. User must install Ollama and load a model. Probed at 127.0.0.1:11434.",
   "services": [
-    { "name": "ollama", "port": 11434, "health": "http://127.0.0.1:11434/api/tags" },
-    { "name": "stt",    "port": 8081,  "health": "http://127.0.0.1:8081/health" },
-    { "name": "tts",    "port": 8082,  "health": "http://127.0.0.1:8082/health" },
-    { "name": "agent",  "port": null,  "health": null }
+    { "name": "stt",   "port": 8081, "health": "http://127.0.0.1:8081/health" },
+    { "name": "tts",   "port": 8082, "health": "http://127.0.0.1:8082/health" },
+    { "name": "agent", "port": null, "health": null }
   ]
 }
 MANIFEST
 
 # ---------------------------------------------------------------------------
-# 9. Pack
+# 8. Pack
 # ---------------------------------------------------------------------------
 
 log "packing tarball → $OUT"
