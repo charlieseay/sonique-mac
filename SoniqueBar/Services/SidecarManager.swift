@@ -98,12 +98,13 @@ final class SidecarManager: ObservableObject {
             state = .starting
             try spawnAll(root: root)
 
-            let ready = await waitForReady(timeout: 30.0)
+            // 120s budget: STT loads the faster-whisper model on cold start (~60-90s)
+            let ready = await waitForReady(timeout: 120.0)
             if ready {
                 state = .running
                 startHealthTimer()
             } else {
-                state = .failed("sidecar did not become healthy within 30 s")
+                state = .failed("sidecar did not become healthy within 120 s")
                 stopSync()
             }
         } catch {
