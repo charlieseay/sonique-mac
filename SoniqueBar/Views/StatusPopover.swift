@@ -120,6 +120,12 @@ struct StatusPopover: View {
                     openWindow(id: "about")
                     NSApp.activate(ignoringOtherApps: true)
                 }
+                popoverToggle("Show in Dock", icon: "dock.rectangle",
+                              isOn: monitor.settings.showInDock) {
+                    let show = !monitor.settings.showInDock
+                    monitor.settings.showInDock = show
+                    NSApp.setActivationPolicy(show ? .regular : .accessory)
+                }
                 Divider().padding(.horizontal, 8).padding(.vertical, 2)
                 popoverButton("Quit Sonique", icon: "power") {
                     NSApplication.shared.terminate(nil)
@@ -363,6 +369,29 @@ struct StatusPopover: View {
         }
         .buttonStyle(.plain)
         .disabled(disabled)
+        .background(Color.primary.opacity(0.001))
+        .hoverEffect()
+    }
+
+    private func popoverToggle(_ title: String, icon: String, isOn: Bool, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            HStack(spacing: 10) {
+                Image(systemName: icon)
+                    .frame(width: 16)
+                    .foregroundStyle(.secondary)
+                Text(title)
+                Spacer()
+                if isOn {
+                    Image(systemName: "checkmark")
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 7)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
         .background(Color.primary.opacity(0.001))
         .hoverEffect()
     }

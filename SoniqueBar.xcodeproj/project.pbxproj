@@ -21,6 +21,7 @@
 		BB00003B00000000000003B /* ChatManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB00003A00000000000003A /* ChatManager.swift */; };
 		BB00003D00000000000003D /* SystemControlManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB00003C00000000000003C /* SystemControlManager.swift */; };
 		BB00003F00000000000003F /* ChatView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB00003E00000000000003E /* ChatView.swift */; };
+		BB000041000000000000041 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = BB000040000000000000040 /* Assets.xcassets */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -41,6 +42,7 @@
 		BB00003A00000000000003A /* ChatManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = ChatManager.swift; path = SoniqueBar/Services/ChatManager.swift; sourceTree = SOURCE_ROOT; };
 		BB00003C00000000000003C /* SystemControlManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = SystemControlManager.swift; path = SoniqueBar/Services/SystemControlManager.swift; sourceTree = SOURCE_ROOT; };
 		BB00003E00000000000003E /* ChatView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = ChatView.swift; path = SoniqueBar/Views/ChatView.swift; sourceTree = SOURCE_ROOT; };
+		BB000040000000000000040 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; name = Assets.xcassets; path = SoniqueBar/Resources/Assets.xcassets; sourceTree = SOURCE_ROOT; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -120,6 +122,7 @@
 			isa = PBXGroup;
 			children = (
 				BB000016000000000000016 /* Info.plist */,
+				BB000040000000000000040 /* Assets.xcassets */,
 				BB000036000000000000036 /* python-runtime.tar.gz */,
 			);
 			name = Resources;
@@ -178,6 +181,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				BB000041000000000000041 /* Assets.xcassets in Resources */,
 				BB000037000000000000037 /* python-runtime.tar.gz in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -251,6 +255,7 @@
 					"@executable_path/../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.seayniclabs.soniquebar;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -276,6 +281,7 @@
 					"@executable_path/../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.seayniclabs.soniquebar;
 				PRODUCT_NAME = "$(TARGET_NAME)";

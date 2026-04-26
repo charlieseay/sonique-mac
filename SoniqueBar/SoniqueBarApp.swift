@@ -68,6 +68,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
     private var hotKeyMonitor: Any?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        // Restore dock visibility preference (default: hidden — pure menu bar app)
+        if UserDefaults.standard.bool(forKey: "showInDock") {
+            NSApp.setActivationPolicy(.regular)
+        }
+
         // Global hotkey: ⌘⌥C — opens the Chat window from anywhere
         hotKeyMonitor = NSEvent.addGlobalMonitorForEvents(matching: .keyDown) { [weak self] event in
             guard event.modifierFlags.contains([.command, .option]),

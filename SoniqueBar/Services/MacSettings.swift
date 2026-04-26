@@ -41,12 +41,16 @@ class MacSettings: ObservableObject {
     @Published var deploymentMode: SidecarManager.DeploymentMode {
         didSet { UserDefaults.standard.set(deploymentMode.rawValue, forKey: "deploymentMode") }
     }
+    @Published var showInDock: Bool {
+        didSet { UserDefaults.standard.set(showInDock, forKey: "showInDock") }
+    }
 
     init() {
         self.apiKey        = UserDefaults.standard.string(forKey: "apiKey")        ?? ""
         self.externalURL   = UserDefaults.standard.string(forKey: "externalURL")   ?? ""
         self.caelDirectory = UserDefaults.standard.string(forKey: "caelDirectory") ?? "~/Projects/cael"
         self.ttsVoiceId    = UserDefaults.standard.string(forKey: "ttsVoiceId")    ?? PiperVoice.defaultVoice.id
+        self.showInDock    = UserDefaults.standard.bool(forKey: "showInDock")
 
         let bundledTarballExists = Bundle.main.url(
             forResource: "python-runtime",
