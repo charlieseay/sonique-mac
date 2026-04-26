@@ -228,6 +228,14 @@ final class SidecarManager: ObservableObject {
         env["USER"] = ProcessInfo.processInfo.environment["USER"] ?? NSUserName()
         env["LANG"] = "en_US.UTF-8"
         env["TZ"] = "America/Chicago"
+        // Home Assistant REST credentials — only injected when configured
+        let defaults = UserDefaults.standard
+        if let url = defaults.string(forKey: "haURL"), !url.isEmpty {
+            env["HA_URL"] = url
+        }
+        if let token = defaults.string(forKey: "haToken"), !token.isEmpty {
+            env["HA_TOKEN"] = token
+        }
         return env
     }
 

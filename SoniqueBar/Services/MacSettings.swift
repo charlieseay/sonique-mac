@@ -68,6 +68,12 @@ class MacSettings: ObservableObject {
     @Published var ttsVoiceId: String {
         didSet { UserDefaults.standard.set(ttsVoiceId, forKey: "ttsVoiceId") }
     }
+    @Published var haURL: String {
+        didSet { UserDefaults.standard.set(haURL, forKey: "haURL") }
+    }
+    @Published var haToken: String {
+        didSet { UserDefaults.standard.set(haToken, forKey: "haToken") }
+    }
     /// Which supervisor drives CAAL: the legacy networked Docker stack
     /// (`ContainerManager`) or the bundled embedded runtime (`SidecarManager`).
     /// Defaults to `.embedded` when the bundled tarball is present, `.networked`
@@ -90,6 +96,8 @@ class MacSettings: ObservableObject {
         self.externalURL   = UserDefaults.standard.string(forKey: "externalURL")   ?? ""
         self.caelDirectory = UserDefaults.standard.string(forKey: "caelDirectory") ?? "~/Projects/cael"
         self.ttsVoiceId    = UserDefaults.standard.string(forKey: "ttsVoiceId")    ?? PiperVoice.defaultVoice.id
+        self.haURL         = UserDefaults.standard.string(forKey: "haURL")         ?? ""
+        self.haToken       = UserDefaults.standard.string(forKey: "haToken")       ?? ""
         self.showInDock    = UserDefaults.standard.bool(forKey: "showInDock")
         self.launchAtLogin = UserDefaults.standard.object(forKey: "launchAtLogin") as? Bool ?? true
 

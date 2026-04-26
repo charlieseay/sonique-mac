@@ -11,6 +11,8 @@ struct OnboardingView: View {
     @State private var ttsVoiceDraft = PiperVoice.defaultVoice.id
     @State private var deploymentModeDraft: SidecarManager.DeploymentMode = .networked
     @State private var launchAtLoginDraft = true
+    @State private var haURLDraft = ""
+    @State private var haTokenDraft = ""
 
     var body: some View {
         VStack(spacing: 20) {
@@ -109,8 +111,25 @@ struct OnboardingView: View {
                     .pickerStyle(.menu)
                     .labelsHidden()
                     Text(deploymentModeDraft == .embedded
-                        ? "Embedded — ships a bundled Python runtime, Ollama, STT, TTS inside the app. No Docker or external services required."
+                        ? "Embedded — bundled Python runtime with STT, TTS, and voice agent. Requires Ollama installed separately for local LLM."
                         : "Networked — uses the Docker-based CAAL stack in the directory above. Keep if you already run CAAL for other tools.")
+                        .font(.caption)
+                        .foregroundStyle(.tertiary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+
+                Divider()
+
+                // Home Assistant
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Home Assistant (optional)")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    TextField("http://192.168.0.x:8123", text: $haURLDraft)
+                        .textFieldStyle(.roundedBorder)
+                    SecureField("Long-lived access token", text: $haTokenDraft)
+                        .textFieldStyle(.roundedBorder)
+                    Text("Enables voice control of lights, switches, covers, and more.")
                         .font(.caption)
                         .foregroundStyle(.tertiary)
                         .fixedSize(horizontal: false, vertical: true)
@@ -146,6 +165,8 @@ struct OnboardingView: View {
             ttsVoiceDraft       = monitor.settings.ttsVoiceId
             deploymentModeDraft = monitor.settings.deploymentMode
             launchAtLoginDraft  = monitor.settings.launchAtLogin
+            haURLDraft          = monitor.settings.haURL
+            haTokenDraft        = monitor.settings.haToken
         }
     }
 
@@ -161,6 +182,8 @@ struct OnboardingView: View {
         monitor.settings.apiKey        = keyDraft.trimmingCharacters(in: .whitespaces)
         monitor.settings.ttsVoiceId    = ttsVoiceDraft
         monitor.settings.launchAtLogin = launchAtLoginDraft
+        monitor.settings.haURL         = haURLDraft.trimmingCharacters(in: .whitespaces)
+        monitor.settings.haToken       = haTokenDraft.trimmingCharacters(in: .whitespaces)
 
         let modeChanged = deploymentModeDraft != monitor.settings.deploymentMode
         if modeChanged {
