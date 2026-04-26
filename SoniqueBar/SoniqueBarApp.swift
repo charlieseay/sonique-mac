@@ -6,6 +6,12 @@ struct SoniqueBarApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
     @StateObject private var monitor = ServerMonitor()
 
+    init() {
+        // On first install, register for launch at login (matches the default on in Settings).
+        // Only fires once — subsequent launches respect the user's saved preference.
+        LaunchAtLoginManager.applyDefault()
+    }
+
     var body: some Scene {
         MenuBarExtra {
             if monitor.settings.isConfigured {

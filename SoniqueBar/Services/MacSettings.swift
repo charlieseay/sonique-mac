@@ -1,4 +1,38 @@
 import Foundation
+import ServiceManagement
+import os.log
+
+private let lalLog = Logger(subsystem: "com.seayniclabs.soniquebar", category: "LaunchAtLogin")
+
+enum LaunchAtLoginManager {
+    static var isEnabled: Bool { SMAppService.mainApp.status == .enabled }
+
+    static func set(enabled: Bool) {
+        do {
+            if enabled {
+                if SMAppService.mainApp.status != .enabled {
+                    try SMAppService.mainApp.register()
+                    lalLog.info("registered for launch at login")
+                }
+            } else {
+                if SMAppService.mainApp.status == .enabled {
+                    try SMAppService.mainApp.unregister()
+                    lalLog.info("unregistered from launch at login")
+                }
+            }
+        } catch {
+            lalLog.error("SMAppService: \(error.localizedDescription)")
+        }
+    }
+
+    /// Registers on first install only. Subsequent launches honour the saved preference.
+    static func applyDefault() {
+        let key = "launchAtLoginDefaultApplied"
+        guard !UserDefaults.standard.bool(forKey: key) else { return }
+        UserDefaults.standard.set(true, forKey: key)
+        set(enabled: true)
+    }
+}
 
 struct PiperVoice: Identifiable, Hashable {
     let id: String       // model ID sent to CAAL
@@ -44,6 +78,12 @@ class MacSettings: ObservableObject {
     @Published var showInDock: Bool {
         didSet { UserDefaults.standard.set(showInDock, forKey: "showInDock") }
     }
+    @Published var launchAtLogin: Bool {
+        didSet {
+            UserDefaults.standard.set(launchAtLogin, forKey: "launchAtLogin")
+            LaunchAtLoginManager.set(enabled: launchAtLogin)
+        }
+    }
 
     init() {
         self.apiKey        = UserDefaults.standard.string(forKey: "apiKey")        ?? ""
@@ -51,6 +91,7 @@ class MacSettings: ObservableObject {
         self.caelDirectory = UserDefaults.standard.string(forKey: "caelDirectory") ?? "~/Projects/cael"
         self.ttsVoiceId    = UserDefaults.standard.string(forKey: "ttsVoiceId")    ?? PiperVoice.defaultVoice.id
         self.showInDock    = UserDefaults.standard.bool(forKey: "showInDock")
+        self.launchAtLogin = UserDefaults.standard.object(forKey: "launchAtLogin") as? Bool ?? true
 
         let bundledTarballExists = Bundle.main.url(
             forResource: "python-runtime",

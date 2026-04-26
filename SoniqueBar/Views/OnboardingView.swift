@@ -10,6 +10,7 @@ struct OnboardingView: View {
     @State private var keyDraft = ""
     @State private var ttsVoiceDraft = PiperVoice.defaultVoice.id
     @State private var deploymentModeDraft: SidecarManager.DeploymentMode = .networked
+    @State private var launchAtLoginDraft = true
 
     var body: some View {
         VStack(spacing: 20) {
@@ -114,6 +115,13 @@ struct OnboardingView: View {
                         .foregroundStyle(.tertiary)
                         .fixedSize(horizontal: false, vertical: true)
                 }
+
+                Divider()
+
+                // Launch at login
+                Toggle("Launch at login", isOn: $launchAtLoginDraft)
+                    .toggleStyle(.switch)
+                    .controlSize(.small)
             }
 
             HStack {
@@ -137,6 +145,7 @@ struct OnboardingView: View {
             keyDraft            = monitor.settings.apiKey
             ttsVoiceDraft       = monitor.settings.ttsVoiceId
             deploymentModeDraft = monitor.settings.deploymentMode
+            launchAtLoginDraft  = monitor.settings.launchAtLogin
         }
     }
 
@@ -151,6 +160,7 @@ struct OnboardingView: View {
         monitor.settings.externalURL   = externalDraft.trimmingCharacters(in: .whitespaces)
         monitor.settings.apiKey        = keyDraft.trimmingCharacters(in: .whitespaces)
         monitor.settings.ttsVoiceId    = ttsVoiceDraft
+        monitor.settings.launchAtLogin = launchAtLoginDraft
 
         let modeChanged = deploymentModeDraft != monitor.settings.deploymentMode
         if modeChanged {
