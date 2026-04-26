@@ -86,15 +86,18 @@ class ServerMonitor: ObservableObject {
     }
 
     private func checkActiveSession() async {
+        // /health returns active_sessions: [...LiveKit room names...] — non-empty means
+        // a voice session is live. This is accurate because LiveKit rooms only exist
+        // while there's an active WebRTC connection.
         guard isOnline,
-              let url = URL(string: "\(settings.backendURL)/api/chat/sessions")
+              let url = URL(string: "\(settings.backendURL)/health")
         else { hasActiveVoiceSession = false; return }
         var req = URLRequest(url: url, timeoutInterval: 3)
         if !settings.apiKey.isEmpty { req.setValue(settings.apiKey, forHTTPHeaderField: "x-api-key") }
         guard let (data, _) = try? await URLSession.shared.data(for: req),
-              let payload = try? JSONDecoder().decode(SessionsPayload.self, from: data)
+              let payload = try? JSONDecoder().decode(HealthPayload.self, from: data)
         else { hasActiveVoiceSession = false; return }
-        hasActiveVoiceSession = !payload.sessions.isEmpty
+        hasActiveVoiceSession = !payload.activeSessions.isEmpty
     }
 
     /// Detect the local Tailscale IP (if Tailscale is installed and connected).
@@ -113,11 +116,12 @@ class ServerMonitor: ObservableObject {
         return output
     }
 
-    private struct SessionsPayload: Decodable {
-        let sessions: [SessionInfo]
-        struct SessionInfo: Decodable {
-            let sessionId: String
-            enum CodingKeys: String, CodingKey { case sessionId = "session_id" }
+    private struct HealthPayload: Decodable {
+        let status: String
+        let activeSessions: [String]
+        enum CodingKeys: String, CodingKey {
+            case status
+            case activeSessions = "active_sessions"
         }
     }
 
