@@ -46,6 +46,15 @@ class ContainerManager: ObservableObject {
     private var dockerPath: String?
     private var monitorTask: Task<Void, Never>?
 
+    private struct ProviderSeedDefaults {
+        static let llmProvider = "ollama"
+        static let preferredModelLabel = "gemma4"
+        static let fallbackPolicy = "local_only"
+        static let nvidiaFeatureEnabled = false
+        /// Empty until the user sets a base URL (no baked-in vendor hostnames).
+        static let nvidiaBaseURL = ""
+    }
+
     func setup(caelDirectory: String) async {
         dockerPath = findDocker()
         guard let docker = dockerPath else { state = .notInstalled; return }
@@ -149,6 +158,11 @@ path = '/app/config/settings.json'
 defaults = {
     'first_launch_completed': True,
     'wake_word_enabled': False,
+    'llm_provider': '\(ProviderSeedDefaults.llmProvider)',
+    'llm_model_label': '\(ProviderSeedDefaults.preferredModelLabel)',
+    'llm_fallback_policy': '\(ProviderSeedDefaults.fallbackPolicy)',
+    'nvidia_feature_enabled': \(ProviderSeedDefaults.nvidiaFeatureEnabled ? "True" : "False"),
+    'nvidia_base_url': '\(ProviderSeedDefaults.nvidiaBaseURL)',
     'tts_provider': 'piper',
     'tts_voice_piper': 'speaches-ai/piper-en_US-ryan-high',
     'ollama_host': 'http://host.docker.internal:11434',
@@ -189,6 +203,9 @@ else:
             OLLAMA_HOST=http://host.docker.internal:11434
             OLLAMA_MODEL=gemma4
             OLLAMA_THINK=false
+            NVIDIA_FEATURE_ENABLED=false
+            NVIDIA_BASE_URL=<nvidia-base-url>
+            NVIDIA_MODEL=<nvidia-model-placeholder>
             TTS_PROVIDER=piper
             TTS_VOICE=speaches-ai/piper-en_US-ryan-high
             TIMEZONE=\(tzId)

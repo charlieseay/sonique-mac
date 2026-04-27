@@ -13,6 +13,11 @@ struct OnboardingView: View {
     @State private var launchAtLoginDraft = true
     @State private var haURLDraft = ""
     @State private var haTokenDraft = ""
+    @State private var llmProviderDraft: SoniqueBarLLMProvider = .ollama
+    @State private var preferredModelDraft = "gemma4"
+    @State private var fallbackPolicyDraft: SoniqueBarFallbackPolicy = .localOnly
+    @State private var nvidiaBaseURLDraft = ""
+    @State private var nvidiaFeatureDraft = false
 
     var body: some View {
         VStack(spacing: 20) {
@@ -98,6 +103,60 @@ struct OnboardingView: View {
 
                 Divider()
 
+                // LLM provider (UI scaffold only)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("LLM provider")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+
+                    Toggle("NVIDIA NIM options (experimental)", isOn: $nvidiaFeatureDraft)
+                        .toggleStyle(.switch)
+                        .controlSize(.small)
+                        .onChange(of: nvidiaFeatureDraft) { _, enabled in
+                            if !enabled, llmProviderDraft == .nvidia {
+                                llmProviderDraft = .ollama
+                            }
+                        }
+                    Text("Off by default. UI + prefs only until CAAL task #284.")
+                        .font(.caption)
+                        .foregroundStyle(.tertiary)
+                        .fixedSize(horizontal: false, vertical: true)
+
+                    Picker("", selection: $llmProviderDraft) {
+                        ForEach(nvidiaFeatureDraft ? SoniqueBarLLMProvider.allCases : [.ollama]) { provider in
+                            Text(provider.label).tag(provider)
+                        }
+                    }
+                    .pickerStyle(.menu)
+                    .labelsHidden()
+
+                    TextField("Model label (display only)", text: $preferredModelDraft)
+                        .textFieldStyle(.roundedBorder)
+
+                    Picker("Fallback", selection: $fallbackPolicyDraft) {
+                        ForEach(SoniqueBarFallbackPolicy.allCases) { policy in
+                            Text(policy.label).tag(policy)
+                        }
+                    }
+                    .pickerStyle(.menu)
+
+                    Text(fallbackPolicyDraft.routingHint)
+                        .font(.caption)
+                        .foregroundStyle(.tertiary)
+                        .fixedSize(horizontal: false, vertical: true)
+
+                    if nvidiaFeatureDraft {
+                        TextField("NVIDIA endpoint base URL", text: $nvidiaBaseURLDraft)
+                            .textFieldStyle(.roundedBorder)
+                        Text("Use a placeholder-friendly URL; API keys are never stored here.")
+                            .font(.caption)
+                            .foregroundStyle(.tertiary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+
+                Divider()
+
                 // Deployment mode
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Deployment mode")
@@ -167,6 +226,11 @@ struct OnboardingView: View {
             launchAtLoginDraft  = monitor.settings.launchAtLogin
             haURLDraft          = monitor.settings.haURL
             haTokenDraft        = monitor.settings.haToken
+            llmProviderDraft    = monitor.settings.llmProvider
+            preferredModelDraft = monitor.settings.preferredModelLabel
+            fallbackPolicyDraft = monitor.settings.fallbackPolicy
+            nvidiaBaseURLDraft  = monitor.settings.nvidiaBaseURL
+            nvidiaFeatureDraft  = monitor.settings.nvidiaFeatureEnabled
         }
     }
 
@@ -184,6 +248,11 @@ struct OnboardingView: View {
         monitor.settings.launchAtLogin = launchAtLoginDraft
         monitor.settings.haURL         = haURLDraft.trimmingCharacters(in: .whitespaces)
         monitor.settings.haToken       = haTokenDraft.trimmingCharacters(in: .whitespaces)
+        monitor.settings.nvidiaFeatureEnabled = nvidiaFeatureDraft
+        monitor.settings.llmProvider   = llmProviderDraft
+        monitor.settings.preferredModelLabel = preferredModelDraft.trimmingCharacters(in: .whitespaces)
+        monitor.settings.fallbackPolicy = fallbackPolicyDraft
+        monitor.settings.nvidiaBaseURL = nvidiaBaseURLDraft.trimmingCharacters(in: .whitespaces)
 
         let modeChanged = deploymentModeDraft != monitor.settings.deploymentMode
         if modeChanged {

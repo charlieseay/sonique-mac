@@ -98,6 +98,10 @@ struct StatusPopover: View {
 
                 Divider().padding(.horizontal, 8).padding(.vertical, 2)
 
+                aiRoutingRow
+
+                Divider().padding(.horizontal, 8).padding(.vertical, 2)
+
                 popoverButton("Chat with \(monitor.profile?.name ?? "Cael")", icon: "bubble.left.and.bubble.right") {
                     openWindow(id: "chat")
                     NSApp.activate(ignoringOtherApps: true)
@@ -134,6 +138,21 @@ struct StatusPopover: View {
             .padding(.vertical, 6)
         }
         .frame(width: 240)
+    }
+
+    private static func truncateMiddle(_ s: String, limit: Int) -> String {
+        guard s.count > limit else { return s }
+        let keep = max(8, limit / 2 - 2)
+        let start = s.prefix(keep)
+        let end = s.suffix(keep)
+        return "\(start)…\(end)"
+    }
+
+    private static func nimBaseURLLine(featureOn: Bool, baseURL: String) -> String? {
+        guard featureOn else { return nil }
+        let url = baseURL.trimmingCharacters(in: .whitespaces)
+        guard !url.isEmpty else { return nil }
+        return "NIM base: \(truncateMiddle(url, limit: 36))"
     }
 
     // MARK: - Quick voice preset row
@@ -180,6 +199,44 @@ struct StatusPopover: View {
         }
         req.httpBody = body
         _ = try? await URLSession.shared.data(for: req)
+    }
+
+    private var aiRoutingRow: some View {
+        HStack(alignment: .top, spacing: 8) {
+            Image(systemName: "cpu")
+                .frame(width: 16)
+                .foregroundStyle(.secondary)
+                .font(.system(size: 12))
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Provider: \(monitor.settings.llmProvider.label)")
+                    .font(.system(size: 12))
+                Text("Model: \(monitor.settings.preferredModelLabel)")
+                    .font(.system(size: 11))
+                    .foregroundStyle(.secondary)
+                Text("Fallback: \(monitor.settings.fallbackPolicy.label)")
+                    .font(.system(size: 11))
+                    .foregroundStyle(.secondary)
+                Text(monitor.settings.fallbackPolicy.routingHint)
+                    .font(.system(size: 10))
+                    .foregroundStyle(.tertiary)
+                    .lineLimit(3)
+                Text("NIM UI: \(monitor.settings.nvidiaFeatureEnabled ? "on" : "off")")
+                    .font(.system(size: 10))
+                    .foregroundStyle(.tertiary)
+                if let nimLine = Self.nimBaseURLLine(
+                    featureOn: monitor.settings.nvidiaFeatureEnabled,
+                    baseURL: monitor.settings.nvidiaBaseURL
+                ) {
+                    Text(nimLine)
+                        .font(.system(size: 10, design: .monospaced))
+                        .foregroundStyle(.tertiary)
+                        .lineLimit(1)
+                }
+            }
+            Spacer()
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 7)
     }
 
     // MARK: - Status helpers

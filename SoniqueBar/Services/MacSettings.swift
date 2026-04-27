@@ -4,6 +4,15 @@ import os.log
 
 private let lalLog = Logger(subsystem: "com.seayniclabs.soniquebar", category: "LaunchAtLogin")
 
+/// `UserDefaults` keys shared with Sonique iOS for LLM routing UI (CAAL wiring — task #284).
+enum LLMRoutingStorageKeys {
+    static let llmProvider = "llmProvider"
+    static let preferredModelLabel = "preferredModelLabel"
+    static let fallbackPolicy = "fallbackPolicy"
+    static let nvidiaFeatureEnabled = "nvidiaFeatureEnabled"
+    static let nvidiaBaseURL = "nvidiaBaseURL"
+}
+
 enum LaunchAtLoginManager {
     static var isEnabled: Bool { SMAppService.mainApp.status == .enabled }
 
@@ -55,6 +64,47 @@ extension PiperVoice {
     }
 }
 
+enum SoniqueBarLLMProvider: String, CaseIterable, Identifiable {
+    case ollama
+    case nvidia
+
+    var id: String { rawValue }
+
+    var label: String {
+        switch self {
+        case .ollama: return "Ollama (Local)"
+        case .nvidia: return "NVIDIA NIM (preview)"
+        }
+    }
+}
+
+enum SoniqueBarFallbackPolicy: String, CaseIterable, Identifiable {
+    case localOnly = "local_only"
+    case providerThenLocal = "provider_then_local"
+    case localThenProvider = "local_then_provider"
+
+    var id: String { rawValue }
+
+    var label: String {
+        switch self {
+        case .localOnly: return "Local only"
+        case .providerThenLocal: return "Provider then local"
+        case .localThenProvider: return "Local then provider"
+        }
+    }
+
+    var routingHint: String {
+        switch self {
+        case .localOnly:
+            return "When wired: use only the local stack (e.g. Ollama)."
+        case .providerThenLocal:
+            return "When wired: try NVIDIA NIM first when enabled, then local."
+        case .localThenProvider:
+            return "When wired: try local first, then NVIDIA NIM if needed."
+        }
+    }
+}
+
 class MacSettings: ObservableObject {
     @Published var apiKey: String {
         didSet { UserDefaults.standard.set(apiKey, forKey: "apiKey") }
@@ -73,6 +123,21 @@ class MacSettings: ObservableObject {
     }
     @Published var haToken: String {
         didSet { UserDefaults.standard.set(haToken, forKey: "haToken") }
+    }
+    @Published var llmProviderRaw: String {
+        didSet { UserDefaults.standard.set(llmProviderRaw, forKey: LLMRoutingStorageKeys.llmProvider) }
+    }
+    @Published var preferredModelLabel: String {
+        didSet { UserDefaults.standard.set(preferredModelLabel, forKey: LLMRoutingStorageKeys.preferredModelLabel) }
+    }
+    @Published var fallbackPolicyRaw: String {
+        didSet { UserDefaults.standard.set(fallbackPolicyRaw, forKey: LLMRoutingStorageKeys.fallbackPolicy) }
+    }
+    @Published var nvidiaFeatureEnabled: Bool {
+        didSet { UserDefaults.standard.set(nvidiaFeatureEnabled, forKey: LLMRoutingStorageKeys.nvidiaFeatureEnabled) }
+    }
+    @Published var nvidiaBaseURL: String {
+        didSet { UserDefaults.standard.set(nvidiaBaseURL, forKey: LLMRoutingStorageKeys.nvidiaBaseURL) }
     }
     /// Which supervisor drives CAAL: the legacy networked Docker stack
     /// (`ContainerManager`) or the bundled embedded runtime (`SidecarManager`).
@@ -98,6 +163,11 @@ class MacSettings: ObservableObject {
         self.ttsVoiceId    = UserDefaults.standard.string(forKey: "ttsVoiceId")    ?? PiperVoice.defaultVoice.id
         self.haURL         = UserDefaults.standard.string(forKey: "haURL")         ?? ""
         self.haToken       = UserDefaults.standard.string(forKey: "haToken")       ?? ""
+        self.llmProviderRaw = UserDefaults.standard.string(forKey: LLMRoutingStorageKeys.llmProvider) ?? SoniqueBarLLMProvider.ollama.rawValue
+        self.preferredModelLabel = UserDefaults.standard.string(forKey: LLMRoutingStorageKeys.preferredModelLabel) ?? "gemma4"
+        self.fallbackPolicyRaw = UserDefaults.standard.string(forKey: LLMRoutingStorageKeys.fallbackPolicy) ?? SoniqueBarFallbackPolicy.localOnly.rawValue
+        self.nvidiaFeatureEnabled = UserDefaults.standard.bool(forKey: LLMRoutingStorageKeys.nvidiaFeatureEnabled)
+        self.nvidiaBaseURL = UserDefaults.standard.string(forKey: LLMRoutingStorageKeys.nvidiaBaseURL) ?? ""
         self.showInDock    = UserDefaults.standard.bool(forKey: "showInDock")
         self.launchAtLogin = UserDefaults.standard.object(forKey: "launchAtLogin") as? Bool ?? true
 
@@ -123,5 +193,23 @@ class MacSettings: ObservableObject {
 
     var normalizedExternalURL: String {
         externalURL.hasSuffix("/") ? String(externalURL.dropLast()) : externalURL
+    }
+
+    var llmProvider: SoniqueBarLLMProvider {
+        get {
+            let decoded = SoniqueBarLLMProvider(rawValue: llmProviderRaw) ?? .ollama
+            if !nvidiaFeatureEnabled, decoded == .nvidia { return .ollama }
+            return decoded
+        }
+        set { llmProviderRaw = newValue.rawValue }
+    }
+
+    var fallbackPolicy: SoniqueBarFallbackPolicy {
+        get { SoniqueBarFallbackPolicy(rawValue: fallbackPolicyRaw) ?? .localOnly }
+        set { fallbackPolicyRaw = newValue.rawValue }
+    }
+
+    var availableProviders: [SoniqueBarLLMProvider] {
+        nvidiaFeatureEnabled ? SoniqueBarLLMProvider.allCases : [.ollama]
     }
 }
