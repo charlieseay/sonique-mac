@@ -25,6 +25,15 @@ enum LLMRoutingCAALKeys {
     static let cloudInferenceBaseURL = "nvidia_base_url"
 }
 
+/// CAAL Docker `.env` keys (task #284). Keep identical to iOS `SoniqueSettings.swift`; never commit real secrets.
+enum LLMRoutingEnvVarNames {
+    static let llmProvider = "LLM_PROVIDER"
+    static let nvidiaFeatureEnabled = "NVIDIA_FEATURE_ENABLED"
+    static let nvidiaBaseURL = "NVIDIA_BASE_URL"
+    static let nvidiaModel = "NVIDIA_MODEL"
+    static let nvidiaAPIKey = "NVIDIA_API_KEY"
+}
+
 enum LaunchAtLoginManager {
     static var isEnabled: Bool { SMAppService.mainApp.status == .enabled }
 

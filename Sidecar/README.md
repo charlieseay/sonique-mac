@@ -19,7 +19,7 @@ NVIDIA provider fields are present for upcoming integration but remain disabled 
 ```bash
 NVIDIA_FEATURE_ENABLED=false
 NVIDIA_BASE_URL=<nvidia-base-url>
-NVIDIA_MODEL=<nvidia-model-id>
+NVIDIA_MODEL=<nvidia-model-placeholder>
 # NVIDIA_API_KEY=<nvidia-api-key>
 ```
 

@@ -14,7 +14,7 @@ Point Settings at the cloned CAAL repo. SoniqueBar can start/stop the compose st
 
 SoniqueBar stores routing preferences in `UserDefaults` (keys in `LLMRoutingStorageKeys` in `SoniqueBar/Services/MacSettings.swift`). CAAL consumes snake_case fields (`LLMRoutingCAALKeys`) via `settings.json` and optional `.env` — see vault note `Projects/Sonique/NVIDIA Provider UI — Task 284 Handoff.md`.
 
-Placeholder **server** `.env` lines (no real secrets in repo or docs):
+Placeholder **server** `.env` lines (no real secrets in repo or docs). Swift names for these keys live in `LLMRoutingEnvVarNames` next to `LLMRoutingCAALKeys` in `SoniqueBar/Services/MacSettings.swift`.
 
 ```bash
 NVIDIA_FEATURE_ENABLED=false
