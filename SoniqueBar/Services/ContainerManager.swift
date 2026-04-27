@@ -152,7 +152,7 @@ defaults = {
     'tts_provider': 'piper',
     'tts_voice_piper': 'speaches-ai/piper-en_US-ryan-high',
     'ollama_host': 'http://host.docker.internal:11434',
-    'ollama_model': 'mistral:7b',
+    'ollama_model': 'gemma4',
 }
 try:
     with open(path) as f:
@@ -187,7 +187,7 @@ else:
             LIVEKIT_API_SECRET=secret
             LLM_PROVIDER=ollama
             OLLAMA_HOST=http://host.docker.internal:11434
-            OLLAMA_MODEL=mistral:7b
+            OLLAMA_MODEL=gemma4
             OLLAMA_THINK=false
             TTS_PROVIDER=piper
             TTS_VOICE=speaches-ai/piper-en_US-ryan-high
