@@ -126,6 +126,8 @@ class ServerMonitor: ObservableObject {
     }
 
     /// Posts the macOS system timezone to CAAL so the agent uses the correct local time.
+    /// Task #284: merge `llm_provider`, `llm_model_label`, `llm_fallback_policy`, `nvidia_*` into this
+    /// POST body once the frontend API accepts them (same pattern as timezone keys).
     private func syncTimezone() async {
         guard let url = URL(string: "\(settings.effectiveURL)/api/settings") else { return }
         let (tzId, tzDisplay) = ContainerManager.systemTimezone()

@@ -5,6 +5,7 @@ import os.log
 private let lalLog = Logger(subsystem: "com.seayniclabs.soniquebar", category: "LaunchAtLogin")
 
 /// `UserDefaults` keys shared with Sonique iOS for LLM routing UI (CAAL wiring — task #284).
+/// NVIDIA fields stay inert until CAAL reads them; expose in UI only when `nvidiaFeatureEnabled` is true.
 enum LLMRoutingStorageKeys {
     static let llmProvider = "llmProvider"
     static let preferredModelLabel = "preferredModelLabel"
@@ -98,9 +99,9 @@ enum SoniqueBarFallbackPolicy: String, CaseIterable, Identifiable {
         case .localOnly:
             return "When wired: use only the local stack (e.g. Ollama)."
         case .providerThenLocal:
-            return "When wired: try NVIDIA NIM first when enabled, then local."
+            return "When wired: try the configured cloud endpoint first, then local."
         case .localThenProvider:
-            return "When wired: try local first, then NVIDIA NIM if needed."
+            return "When wired: try local first, then the configured cloud endpoint if needed."
         }
     }
 }

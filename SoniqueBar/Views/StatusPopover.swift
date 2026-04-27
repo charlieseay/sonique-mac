@@ -186,6 +186,7 @@ struct StatusPopover: View {
         .padding(.vertical, 7)
     }
 
+    /// Task #284: extend POST `settings` with LLM routing keys when the API accepts them.
     private func syncVoice(_ voiceId: String) async {
         guard let url = URL(string: "\(monitor.settings.effectiveURL)/api/settings") else { return }
         guard let body = try? JSONSerialization.data(withJSONObject: [
@@ -220,7 +221,7 @@ struct StatusPopover: View {
                     .font(.system(size: 10))
                     .foregroundStyle(.tertiary)
                     .lineLimit(3)
-                Text("NIM UI: \(monitor.settings.nvidiaFeatureEnabled ? "on" : "off")")
+                Text("NVIDIA prefs (UI): \(monitor.settings.nvidiaFeatureEnabled ? "on" : "off")")
                     .font(.system(size: 10))
                     .foregroundStyle(.tertiary)
                 if let nimLine = Self.nimBaseURLLine(
