@@ -126,16 +126,13 @@ private struct BarLabel: View {
         }
     }
 
-    // Spinning arrow with a tooltip describing which phase we're in.
+    // Native macOS spinner — ProgressView uses AppKit's NSProgressIndicator
+    // which works correctly in MenuBarExtra labels; TimelineView(.animation) deadlocks there.
     private var sidecarLoadingIcon: some View {
-        TimelineView(.animation) { timeline in
-            let angle = timeline.date.timeIntervalSinceReferenceDate
-                .truncatingRemainder(dividingBy: 1.0) * 360
-            Image(systemName: "arrow.2.circlepath")
-                .rotationEffect(.degrees(angle))
-                .foregroundStyle(.secondary)
-        }
-        .help(sidecarStatusLabel)
+        ProgressView()
+            .progressViewStyle(.circular)
+            .controlSize(.small)
+            .help(sidecarStatusLabel)
     }
 
     private var sidecarStatusLabel: String {
