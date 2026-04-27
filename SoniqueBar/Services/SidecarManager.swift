@@ -142,7 +142,7 @@ final class SidecarManager: ObservableObject {
         }
 
         let shaMarker = support.appendingPathComponent(".tarball.sha256")
-        let bundledSha = try sha256(of: bundledTarball)
+        let bundledSha = try await sha256(of: bundledTarball)
 
         if FileManager.default.fileExists(atPath: shaMarker.path),
            let existing = try? String(contentsOf: shaMarker, encoding: .utf8),
@@ -163,29 +163,40 @@ final class SidecarManager: ObservableObject {
     }
 
     private func extractTarball(_ tarball: URL, into dir: URL) async throws {
-        let task = Process()
-        task.launchPath = "/usr/bin/tar"
-        task.arguments = ["-xzf", tarball.path, "-C", dir.path]
-        task.standardOutput = FileHandle.nullDevice
-        task.standardError = Pipe()
-        try task.run()
-        task.waitUntilExit()
-        guard task.terminationStatus == 0 else {
-            throw SidecarError.tarballExtractFailed(status: task.terminationStatus)
+        try await withCheckedThrowingContinuation { (cont: CheckedContinuation<Void, Error>) in
+            let task = Process()
+            task.launchPath = "/usr/bin/tar"
+            task.arguments = ["-xzf", tarball.path, "-C", dir.path]
+            task.standardOutput = FileHandle.nullDevice
+            task.standardError = FileHandle.nullDevice
+            task.terminationHandler = { proc in
+                if proc.terminationStatus == 0 {
+                    cont.resume()
+                } else {
+                    cont.resume(throwing: SidecarError.tarballExtractFailed(status: proc.terminationStatus))
+                }
+            }
+            do { try task.run() }
+            catch { cont.resume(throwing: error) }
         }
     }
 
-    private func sha256(of url: URL) throws -> String {
-        let task = Process()
-        task.launchPath = "/usr/bin/shasum"
-        task.arguments = ["-a", "256", url.path]
-        let pipe = Pipe()
-        task.standardOutput = pipe
-        try task.run()
-        task.waitUntilExit()
-        let data = pipe.fileHandleForReading.readDataToEndOfFile()
-        let line = String(data: data, encoding: .utf8) ?? ""
-        return String(line.split(separator: " ").first ?? "")
+    private func sha256(of url: URL) async throws -> String {
+        try await withCheckedThrowingContinuation { cont in
+            let task = Process()
+            task.launchPath = "/usr/bin/shasum"
+            task.arguments = ["-a", "256", url.path]
+            let pipe = Pipe()
+            task.standardOutput = pipe
+            task.standardError = FileHandle.nullDevice
+            task.terminationHandler = { _ in
+                let data = pipe.fileHandleForReading.readDataToEndOfFile()
+                let line = String(data: data, encoding: .utf8) ?? ""
+                cont.resume(returning: String(line.split(separator: " ").first ?? ""))
+            }
+            do { try task.run() }
+            catch { cont.resume(throwing: error) }
+        }
     }
 
     // MARK: - Process spawning

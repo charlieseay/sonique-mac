@@ -23,7 +23,7 @@ struct SoniqueBarApp: App {
                     .environmentObject(monitor)
             }
         } label: {
-            BarLabel(monitor: monitor)
+            BarLabel(monitor: monitor, sidecarManager: monitor.sidecarManager)
         }
         .onChange(of: appDelegate.isTerminating) { _, terminating in
             if terminating { monitor.sidecarManager.stopSync() }
@@ -74,6 +74,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
     private var hotKeyMonitor: Any?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        // Terminate any older instance of SoniqueBar so there's never more than one running.
+        let me = NSRunningApplication.current
+        NSWorkspace.shared.runningApplications
+            .filter { $0.bundleIdentifier == me.bundleIdentifier && $0.processIdentifier != me.processIdentifier }
+            .forEach { $0.terminate() }
+
         // Restore dock visibility preference (default: hidden — pure menu bar app)
         if UserDefaults.standard.bool(forKey: "showInDock") {
             NSApp.setActivationPolicy(.regular)
@@ -99,9 +105,48 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
 
 private struct BarLabel: View {
     @ObservedObject var monitor: ServerMonitor
+    @ObservedObject var sidecarManager: SidecarManager
     @Environment(\.openWindow) private var openWindow
 
     var body: some View {
+        Group {
+            switch sidecarManager.state {
+            case .unpacking, .starting:
+                sidecarLoadingIcon
+            case .failed:
+                Image(systemName: "waveform")
+                    .foregroundStyle(.orange)
+                    .help("Sonique: Voice engine failed — open menu for details")
+            default:
+                normalIcon
+            }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .openChatWindow)) { _ in
+            openWindow(id: "chat")
+        }
+    }
+
+    // Spinning arrow with a tooltip describing which phase we're in.
+    private var sidecarLoadingIcon: some View {
+        TimelineView(.animation) { timeline in
+            let angle = timeline.date.timeIntervalSinceReferenceDate
+                .truncatingRemainder(dividingBy: 1.0) * 360
+            Image(systemName: "arrow.2.circlepath")
+                .rotationEffect(.degrees(angle))
+                .foregroundStyle(.secondary)
+        }
+        .help(sidecarStatusLabel)
+    }
+
+    private var sidecarStatusLabel: String {
+        switch sidecarManager.state {
+        case .unpacking: return "Sonique — Preparing voice engine (first launch takes ~2 min)…"
+        case .starting:  return "Sonique — Starting voice services…"
+        default:         return "Sonique"
+        }
+    }
+
+    private var normalIcon: some View {
         Group {
             if let img = monitor.avatarImage {
                 Image(nsImage: circularImage(img, size: 18))
@@ -112,9 +157,6 @@ private struct BarLabel: View {
                 Image(systemName: barIcon)
                     .foregroundStyle(barColor)
             }
-        }
-        .onReceive(NotificationCenter.default.publisher(for: .openChatWindow)) { _ in
-            openWindow(id: "chat")
         }
     }
 
