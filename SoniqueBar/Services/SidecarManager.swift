@@ -85,29 +85,49 @@ final class SidecarManager: ObservableObject {
     // MARK: - Lifecycle
 
     func start() async {
+        let dbgURL = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent("sidecar-debug.log")
+        func dbg(_ msg: String) {
+            let line = "\(Date()): \(msg)\n"
+            if let data = line.data(using: .utf8) {
+                if let fh = try? FileHandle(forUpdating: dbgURL) {
+                    fh.seekToEndOfFile(); fh.write(data); try? fh.close()
+                } else { try? data.write(to: dbgURL) }
+            }
+        }
+        dbg("start() called, state=\(state)")
+        NSLog("[Sidecar] start() called, current state: \(state)")
         guard state == .stopped || isFailedState(state) else {
-            // already running/starting — no-op
+            NSLog("[Sidecar] start() no-op — state is \(state)")
+            dbg("start() no-op, state=\(state)")
             return
         }
 
         do {
             state = .unpacking
+            dbg("resolving sidecar root…")
+            NSLog("[Sidecar] resolving sidecar root…")
             let root = try await resolveSidecarRoot()
             sidecarRoot = root
+            dbg("resolveSidecarRoot returned: \(root.path)")
 
             state = .starting
+            dbg("calling spawnAll…")
             try spawnAll(root: root)
+            dbg("spawnAll complete")
 
             // 120s budget: STT loads the faster-whisper model on cold start (~60-90s)
             let ready = await waitForReady(timeout: 120.0)
             if ready {
+                NSLog("[Sidecar] all services healthy — running")
                 state = .running
                 startHealthTimer()
             } else {
+                NSLog("[Sidecar] timed out waiting for services to become healthy")
                 state = .failed("sidecar did not become healthy within 120 s")
                 stopSync()
             }
         } catch {
+            dbg("start() CAUGHT ERROR: \(error)")
             state = .failed("start failed: \(error.localizedDescription)")
             stopSync()
         }
@@ -127,28 +147,45 @@ final class SidecarManager: ObservableObject {
     /// cached directory if its marker file matches the bundled tarball's
     /// sha256 (so app updates auto-refresh).
     private func resolveSidecarRoot() async throws -> URL {
+        let dbgURL = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent("sidecar-debug.log")
+        func dbg(_ msg: String) {
+            let line = "\(Date()): [resolve] \(msg)\n"
+            if let data = line.data(using: .utf8) {
+                if let fh = try? FileHandle(forUpdating: dbgURL) {
+                    fh.seekToEndOfFile(); fh.write(data); try? fh.close()
+                } else { try? data.write(to: dbgURL) }
+            }
+        }
+        dbg("getting AppSupport URL")
         let support = try FileManager.default.url(
             for: .applicationSupportDirectory,
             in: .userDomainMask,
             appropriateFor: nil,
             create: true
         ).appendingPathComponent("SoniqueBar/sidecar", isDirectory: true)
+        dbg("support=\(support.path)")
 
         guard let bundledTarball = Bundle.main.url(
             forResource: "python-runtime",
             withExtension: "tar.gz"
         ) else {
+            dbg("ERROR: tarball not found in bundle")
             throw SidecarError.bundleResourceMissing("python-runtime.tar.gz")
         }
+        dbg("tarball=\(bundledTarball.path)")
 
         let shaMarker = support.appendingPathComponent(".tarball.sha256")
+        dbg("computing sha256 of tarball…")
         let bundledSha = try await sha256(of: bundledTarball)
+        dbg("bundledSha=\(bundledSha)")
 
         if FileManager.default.fileExists(atPath: shaMarker.path),
            let existing = try? String(contentsOf: shaMarker, encoding: .utf8),
            existing.trimmingCharacters(in: .whitespacesAndNewlines) == bundledSha {
+            dbg("SHA match — using cached sidecar")
             return support  // cached, matches
         }
+        dbg("SHA mismatch or no marker — will extract")
 
         // Need to unpack (or refresh after app update)
         if FileManager.default.fileExists(atPath: support.path) {
@@ -157,6 +194,11 @@ final class SidecarManager: ObservableObject {
         try FileManager.default.createDirectory(at: support, withIntermediateDirectories: true)
 
         try await extractTarball(bundledTarball, into: support)
+        // Re-sign all native binaries with the app's own team certificate so the
+        // sandbox allows exec. The bundled runtime ships with ad-hoc signatures
+        // (TeamIdentifier=not set), which macOS blocks when a sandboxed app tries
+        // to exec them.
+        try await signSidecarBinaries(in: support)
         try bundledSha.write(to: shaMarker, atomically: true, encoding: .utf8)
 
         return support
@@ -199,12 +241,107 @@ final class SidecarManager: ObservableObject {
         }
     }
 
+    /// Re-signs every executable and shared library in the sidecar tree so the
+    /// App Sandbox allows exec. Bundled Python ships with ad-hoc signatures
+    /// (TeamIdentifier=not set); macOS blocks exec of those from a sandboxed
+    /// parent. We re-sign with whatever Apple Development/Distribution identity
+    /// is available in the keychain.
+    private func signSidecarBinaries(in root: URL) async throws {
+        try await withCheckedThrowingContinuation { (cont: CheckedContinuation<Void, Error>) in
+            DispatchQueue.global(qos: .userInitiated).async {
+                // Discover the first usable code-signing identity SHA1 hash.
+                let findTask = Process()
+                findTask.launchPath = "/usr/bin/security"
+                findTask.arguments = ["find-identity", "-v", "-p", "codesigning"]
+                let pipe = Pipe()
+                findTask.standardOutput = pipe
+                findTask.standardError = FileHandle.nullDevice
+                try? findTask.run()
+                findTask.waitUntilExit()
+                let output = String(data: pipe.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8) ?? ""
+
+                // Lines look like:  1) HASH "Apple Development: Name (TEAM)"
+                var identity: String? = nil
+                for line in output.components(separatedBy: "\n") {
+                    if line.contains("Apple Development") || line.contains("Apple Distribution") {
+                        let parts = line.trimmingCharacters(in: .whitespaces).components(separatedBy: " ")
+                        if parts.count >= 2, parts[1].count == 40 {
+                            identity = parts[1]
+                            break
+                        }
+                    }
+                }
+                guard let identity else { cont.resume(); return }
+
+                let fm = FileManager.default
+                guard let enumerator = fm.enumerator(
+                    at: root,
+                    includingPropertiesForKeys: [.isRegularFileKey],
+                    options: [.skipsHiddenFiles]
+                ) else { cont.resume(); return }
+
+                for case let url as URL in enumerator {
+                    guard let rv = try? url.resourceValues(forKeys: [.isRegularFileKey]),
+                          rv.isRegularFile == true else { continue }
+                    let ext = url.pathExtension
+                    guard ext == "so" || ext == "dylib" || ext.isEmpty else { continue }
+                    let task = Process()
+                    task.launchPath = "/usr/bin/codesign"
+                    task.arguments = ["--force", "--sign", identity, "--timestamp=none", url.path]
+                    task.standardOutput = FileHandle.nullDevice
+                    task.standardError = FileHandle.nullDevice
+                    try? task.run()
+                    task.waitUntilExit()
+                }
+                cont.resume()
+            }
+        }
+    }
+
     // MARK: - Process spawning
 
     private func spawnAll(root: URL) throws {
-        for svc in Self.services {
-            try spawn(service: svc, root: root)
+        let dbgURL = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent("sidecar-debug.log")
+        func dbg(_ msg: String) {
+            let line = "\(Date()): [spawnAll] \(msg)\n"
+            if let data = line.data(using: .utf8) {
+                if let fh = try? FileHandle(forUpdating: dbgURL) {
+                    fh.seekToEndOfFile(); fh.write(data); try? fh.close()
+                } else { try? data.write(to: dbgURL) }
+            }
         }
+        dbg("evictStalePortHolders…")
+        evictStalePortHolders()
+        dbg("evict done")
+        for svc in Self.services {
+            dbg("spawn \(svc.name)…")
+            try spawn(service: svc, root: root)
+            dbg("spawn \(svc.name) returned")
+        }
+    }
+
+    /// Kill any process already bound to a sidecar service port so a fresh
+    /// spawn can bind. Handles the case where a previous SoniqueBar instance
+    /// was force-killed before stopSync could SIGTERM its children.
+    private func evictStalePortHolders() {
+        for svc in Self.services {
+            guard let port = svc.port else { continue }
+            let task = Process()
+            task.launchPath = "/usr/bin/lsof"
+            task.arguments = ["-ti", "TCP:\(port)", "-sTCP:LISTEN"]
+            let pipe = Pipe()
+            task.standardOutput = pipe
+            task.standardError = FileHandle.nullDevice
+            try? task.run()
+            task.waitUntilExit()
+            let output = String(data: pipe.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8) ?? ""
+            for pidStr in output.components(separatedBy: .newlines) {
+                guard let pid = Int32(pidStr.trimmingCharacters(in: .whitespaces)), pid > 0 else { continue }
+                kill(pid, SIGTERM)
+            }
+        }
+        // Give evicted processes a moment to exit before we try to bind the ports
+        Thread.sleep(forTimeInterval: 0.5)
     }
 
     private func spawn(service: ServiceEndpoint, root: URL) throws {
@@ -215,8 +352,12 @@ final class SidecarManager: ObservableObject {
             root.path,
             service.name,
         ]
-        proc.standardOutput = FileHandle.nullDevice
-        proc.standardError = FileHandle.nullDevice
+        let logURL = URL(fileURLWithPath: NSTemporaryDirectory())
+            .appendingPathComponent("sonique-sidecar-\(service.name).log")
+        FileManager.default.createFile(atPath: logURL.path, contents: nil)
+        let logHandle = try FileHandle(forWritingTo: logURL)
+        proc.standardOutput = logHandle
+        proc.standardError = logHandle
         proc.environment = sanitizedEnvironment()
 
         // On exit, trigger recovery — but only if the manager is in a
@@ -248,6 +389,8 @@ final class SidecarManager: ObservableObject {
         if let token = defaults.string(forKey: "haToken"), !token.isEmpty {
             env["HA_TOKEN"] = token
         }
+        // Task #284: inject NVIDIA / LLM cloud env from `MacSettings` + `LLMRoutingCAALKeys`
+        // parity here once `caal-agent` reads them (feature-flagged; never pass API keys from prefs).
         return env
     }
 
