@@ -14,6 +14,17 @@ enum LLMRoutingStorageKeys {
     static let nvidiaBaseURL = "nvidiaBaseURL"
 }
 
+/// Snake_case keys for CAAL `settings.json` and POST `/api/settings` merges (task #284).
+/// Client `UserDefaults` / `AppStorage` use camelCase in `LLMRoutingStorageKeys`; CAAL uses these names.
+/// `cloudInferenceBaseURL` is the first managed cloud endpoint slot (NVIDIA NIM today; alias may generalize later).
+enum LLMRoutingCAALKeys {
+    static let provider = "llm_provider"
+    static let modelLabel = "llm_model_label"
+    static let fallbackPolicy = "llm_fallback_policy"
+    static let nvidiaFeatureEnabled = "nvidia_feature_enabled"
+    static let cloudInferenceBaseURL = "nvidia_base_url"
+}
+
 enum LaunchAtLoginManager {
     static var isEnabled: Bool { SMAppService.mainApp.status == .enabled }
 
@@ -212,5 +223,10 @@ class MacSettings: ObservableObject {
 
     var availableProviders: [SoniqueBarLLMProvider] {
         nvidiaFeatureEnabled ? SoniqueBarLLMProvider.allCases : [.ollama]
+    }
+
+    /// Idle-style summary aligned with iOS `SoniqueSettings.llmRoutingSummaryLine` (prefs only until #284 ships server-side).
+    var llmRoutingSummaryLine: String {
+        "\(llmProvider.label) · \(fallbackPolicy.label) · \(preferredModelLabel)"
     }
 }

@@ -186,7 +186,7 @@ struct StatusPopover: View {
         .padding(.vertical, 7)
     }
 
-    /// Task #284: extend POST `settings` with LLM routing keys when the API accepts them.
+    /// Task #284: extend POST `settings` with `LLMRoutingCAALKeys` when the API accepts them.
     private func syncVoice(_ voiceId: String) async {
         guard let url = URL(string: "\(monitor.settings.effectiveURL)/api/settings") else { return }
         guard let body = try? JSONSerialization.data(withJSONObject: [
@@ -209,29 +209,26 @@ struct StatusPopover: View {
                 .foregroundStyle(.secondary)
                 .font(.system(size: 12))
             VStack(alignment: .leading, spacing: 2) {
-                Text("Provider: \(monitor.settings.llmProvider.label)")
+                Text(monitor.settings.llmRoutingSummaryLine)
                     .font(.system(size: 12))
-                Text("Model: \(monitor.settings.preferredModelLabel)")
-                    .font(.system(size: 11))
-                    .foregroundStyle(.secondary)
-                Text("Fallback: \(monitor.settings.fallbackPolicy.label)")
-                    .font(.system(size: 11))
-                    .foregroundStyle(.secondary)
+                    .lineLimit(2)
                 Text(monitor.settings.fallbackPolicy.routingHint)
                     .font(.system(size: 10))
                     .foregroundStyle(.tertiary)
                     .lineLimit(3)
-                Text("NVIDIA prefs (UI): \(monitor.settings.nvidiaFeatureEnabled ? "on" : "off")")
-                    .font(.system(size: 10))
-                    .foregroundStyle(.tertiary)
-                if let nimLine = Self.nimBaseURLLine(
-                    featureOn: monitor.settings.nvidiaFeatureEnabled,
-                    baseURL: monitor.settings.nvidiaBaseURL
-                ) {
-                    Text(nimLine)
-                        .font(.system(size: 10, design: .monospaced))
+                if monitor.settings.nvidiaFeatureEnabled {
+                    Text("NVIDIA route (UI): experimental")
+                        .font(.system(size: 10))
                         .foregroundStyle(.tertiary)
-                        .lineLimit(1)
+                    if let nimLine = Self.nimBaseURLLine(
+                        featureOn: true,
+                        baseURL: monitor.settings.nvidiaBaseURL
+                    ) {
+                        Text(nimLine)
+                            .font(.system(size: 10, design: .monospaced))
+                            .foregroundStyle(.tertiary)
+                            .lineLimit(1)
+                    }
                 }
             }
             Spacer()

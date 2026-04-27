@@ -12,6 +12,19 @@ When the app launches, `SidecarManager` (in `SoniqueBar/Services/`) spawns the C
 
 Swift talks to them over local HTTP. No Docker. No network egress. Fully offline after install.
 
+## Provider flags (prep only)
+
+NVIDIA provider fields are present for upcoming integration but remain disabled by default:
+
+```bash
+NVIDIA_FEATURE_ENABLED=false
+NVIDIA_BASE_URL=<nvidia-base-url>
+NVIDIA_MODEL=<nvidia-model-id>
+# NVIDIA_API_KEY=<nvidia-api-key>
+```
+
+SoniqueBar `UserDefaults` stores `nvidiaBaseURL` when the user enables the experimental toggle; sidecar `caal-agent` does not read it until task #284 injects env from `SidecarManager.sanitizedEnvironment()` (see vault handoff).
+
 ## Packaging
 
 Target toolchain: **py2app** or **pyinstaller** to produce a self-contained Python 3.12 bundle under `Sidecar/bootstrap/`. Final `.app` structure (planned):

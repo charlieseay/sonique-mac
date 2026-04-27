@@ -2,3 +2,6 @@
 # Sidecar tarball — 2.5 GB output of scripts/build-sidecar.sh, not for git
 /Sidecar/bootstrap/python-runtime.tar.gz
 /Sidecar/bootstrap/python-runtime.tar.gz.sha256
+
+# Xcode archives / local build products
+/build/

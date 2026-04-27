@@ -267,7 +267,7 @@ struct OnboardingView: View {
         dismiss()
     }
 
-    /// Task #284: extend `settings` dict with LLM routing keys when CAAL `/api/settings` accepts them.
+    /// Task #284: extend `settings` with `LLMRoutingCAALKeys` fields when CAAL `/api/settings` accepts them.
     private func syncVoice() async {
         guard let url = URL(string: "\(monitor.settings.effectiveURL)/api/settings") else { return }
         guard let body = try? JSONSerialization.data(withJSONObject: [

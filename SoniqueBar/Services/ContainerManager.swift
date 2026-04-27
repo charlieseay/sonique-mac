@@ -158,11 +158,11 @@ path = '/app/config/settings.json'
 defaults = {
     'first_launch_completed': True,
     'wake_word_enabled': False,
-    'llm_provider': '\(ProviderSeedDefaults.llmProvider)',
-    'llm_model_label': '\(ProviderSeedDefaults.preferredModelLabel)',
-    'llm_fallback_policy': '\(ProviderSeedDefaults.fallbackPolicy)',
-    'nvidia_feature_enabled': \(ProviderSeedDefaults.nvidiaFeatureEnabled ? "True" : "False"),
-    'nvidia_base_url': '\(ProviderSeedDefaults.nvidiaBaseURL)',
+    '\(LLMRoutingCAALKeys.provider)': '\(ProviderSeedDefaults.llmProvider)',
+    '\(LLMRoutingCAALKeys.modelLabel)': '\(ProviderSeedDefaults.preferredModelLabel)',
+    '\(LLMRoutingCAALKeys.fallbackPolicy)': '\(ProviderSeedDefaults.fallbackPolicy)',
+    '\(LLMRoutingCAALKeys.nvidiaFeatureEnabled)': \(ProviderSeedDefaults.nvidiaFeatureEnabled ? "True" : "False"),
+    '\(LLMRoutingCAALKeys.cloudInferenceBaseURL)': '\(ProviderSeedDefaults.nvidiaBaseURL)',
     'tts_provider': 'piper',
     'tts_voice_piper': 'speaches-ai/piper-en_US-ryan-high',
     'ollama_host': 'http://host.docker.internal:11434',
@@ -206,6 +206,7 @@ else:
             NVIDIA_FEATURE_ENABLED=false
             NVIDIA_BASE_URL=<nvidia-base-url>
             NVIDIA_MODEL=<nvidia-model-placeholder>
+            # NVIDIA_API_KEY=<nvidia-api-key>
             TTS_PROVIDER=piper
             TTS_VOICE=speaches-ai/piper-en_US-ryan-high
             TIMEZONE=\(tzId)
