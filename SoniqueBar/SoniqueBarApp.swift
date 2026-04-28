@@ -7,9 +7,11 @@ struct SoniqueBarApp: App {
     @StateObject private var monitor = ServerMonitor()
 
     init() {
-        // On first install, register for launch at login (matches the default on in Settings).
-        // Only fires once — subsequent launches respect the user's saved preference.
-        LaunchAtLoginManager.applyDefault()
+        // Defer SMAppService / keychain work so App init never blocks the main thread
+        // (menu bar must attach before first-install registration runs).
+        Task { @MainActor in
+            LaunchAtLoginManager.applyDefault()
+        }
     }
 
     var body: some Scene {

@@ -20,6 +20,8 @@ class ServerMonitor: ObservableObject {
     init() {
         Task { [weak self] in
             guard let self else { return }
+            // Let MenuBarExtra render once before embedded unpack / Docker probes.
+            await Task.yield()
             switch settings.deploymentMode {
             case .networked:
                 await containerManager.setup(caelDirectory: settings.caelDirectory)
@@ -102,18 +104,25 @@ class ServerMonitor: ObservableObject {
 
     /// Detect the local Tailscale IP (if Tailscale is installed and connected).
     func detectTailscaleIP() async -> String? {
-        let task = Process()
-        task.executableURL = URL(fileURLWithPath: "/usr/bin/env")
-        task.arguments = ["tailscale", "ip", "-4"]
-        let pipe = Pipe()
-        task.standardOutput = pipe
-        task.standardError = Pipe()
-        try? task.run()
-        task.waitUntilExit()
-        let output = String(data: pipe.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8)?
-            .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-        guard task.terminationStatus == 0, !output.isEmpty else { return nil }
-        return output
+        await withCheckedContinuation { cont in
+            DispatchQueue.global(qos: .utility).async {
+                let task = Process()
+                task.executableURL = URL(fileURLWithPath: "/usr/bin/env")
+                task.arguments = ["tailscale", "ip", "-4"]
+                let pipe = Pipe()
+                task.standardOutput = pipe
+                task.standardError = Pipe()
+                try? task.run()
+                task.waitUntilExit()
+                let output = String(data: pipe.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8)?
+                    .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+                if task.terminationStatus == 0, !output.isEmpty {
+                    cont.resume(returning: output)
+                } else {
+                    cont.resume(returning: nil)
+                }
+            }
+        }
     }
 
     private struct HealthPayload: Decodable {

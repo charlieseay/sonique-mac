@@ -189,7 +189,7 @@ final class SidecarManager: ObservableObject {
 
         // Need to unpack (or refresh after app update)
         if FileManager.default.fileExists(atPath: support.path) {
-            try FileManager.default.removeItem(at: support)
+            try await removeDirectoryOffMainThread(support)
         }
         try FileManager.default.createDirectory(at: support, withIntermediateDirectories: true)
 
@@ -202,6 +202,20 @@ final class SidecarManager: ObservableObject {
         try bundledSha.write(to: shaMarker, atomically: true, encoding: .utf8)
 
         return support
+    }
+
+    /// Large `removeItem` trees can block the main actor for tens of seconds.
+    private func removeDirectoryOffMainThread(_ url: URL) async throws {
+        try await withCheckedThrowingContinuation { (cont: CheckedContinuation<Void, Error>) in
+            DispatchQueue.global(qos: .userInitiated).async {
+                do {
+                    try FileManager.default.removeItem(at: url)
+                    cont.resume()
+                } catch {
+                    cont.resume(throwing: error)
+                }
+            }
+        }
     }
 
     private func extractTarball(_ tarball: URL, into dir: URL) async throws {
