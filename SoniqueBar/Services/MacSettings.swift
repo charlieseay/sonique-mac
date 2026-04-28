@@ -34,6 +34,14 @@ enum LLMRoutingEnvVarNames {
     static let nvidiaAPIKey = "NVIDIA_API_KEY"
 }
 
+enum CapabilityStorageKeys {
+    static let hostCalendar = "capabilityHostCalendar"
+    static let hostContacts = "capabilityHostContacts"
+    static let hostMail = "capabilityHostMail"
+    static let hostFiles = "capabilityHostFiles"
+    static let iosBridge = "capabilityIOSBridge"
+}
+
 enum LaunchAtLoginManager {
     static var isEnabled: Bool { SMAppService.mainApp.status == .enabled }
 
@@ -160,6 +168,21 @@ class MacSettings: ObservableObject {
     @Published var nvidiaBaseURL: String {
         didSet { UserDefaults.standard.set(nvidiaBaseURL, forKey: LLMRoutingStorageKeys.nvidiaBaseURL) }
     }
+    @Published var capabilityHostCalendar: Bool {
+        didSet { UserDefaults.standard.set(capabilityHostCalendar, forKey: CapabilityStorageKeys.hostCalendar) }
+    }
+    @Published var capabilityHostContacts: Bool {
+        didSet { UserDefaults.standard.set(capabilityHostContacts, forKey: CapabilityStorageKeys.hostContacts) }
+    }
+    @Published var capabilityHostMail: Bool {
+        didSet { UserDefaults.standard.set(capabilityHostMail, forKey: CapabilityStorageKeys.hostMail) }
+    }
+    @Published var capabilityHostFiles: Bool {
+        didSet { UserDefaults.standard.set(capabilityHostFiles, forKey: CapabilityStorageKeys.hostFiles) }
+    }
+    @Published var capabilityIOSBridge: Bool {
+        didSet { UserDefaults.standard.set(capabilityIOSBridge, forKey: CapabilityStorageKeys.iosBridge) }
+    }
     /// Which supervisor drives CAAL: the legacy networked Docker stack
     /// (`ContainerManager`) or the bundled embedded runtime (`SidecarManager`).
     /// Defaults to `.embedded` when the bundled tarball is present, `.networked`
@@ -189,6 +212,11 @@ class MacSettings: ObservableObject {
         self.fallbackPolicyRaw = UserDefaults.standard.string(forKey: LLMRoutingStorageKeys.fallbackPolicy) ?? SoniqueBarFallbackPolicy.localOnly.rawValue
         self.nvidiaFeatureEnabled = UserDefaults.standard.bool(forKey: LLMRoutingStorageKeys.nvidiaFeatureEnabled)
         self.nvidiaBaseURL = UserDefaults.standard.string(forKey: LLMRoutingStorageKeys.nvidiaBaseURL) ?? ""
+        self.capabilityHostCalendar = UserDefaults.standard.object(forKey: CapabilityStorageKeys.hostCalendar) as? Bool ?? true
+        self.capabilityHostContacts = UserDefaults.standard.object(forKey: CapabilityStorageKeys.hostContacts) as? Bool ?? true
+        self.capabilityHostMail = UserDefaults.standard.object(forKey: CapabilityStorageKeys.hostMail) as? Bool ?? true
+        self.capabilityHostFiles = UserDefaults.standard.object(forKey: CapabilityStorageKeys.hostFiles) as? Bool ?? true
+        self.capabilityIOSBridge = UserDefaults.standard.object(forKey: CapabilityStorageKeys.iosBridge) as? Bool ?? true
         // Missing key: bool(forKey:) is false — first installs looked like "nothing runs" (LSUIElement + no Dock).
         if UserDefaults.standard.object(forKey: "showInDock") == nil {
             UserDefaults.standard.set(true, forKey: "showInDock")

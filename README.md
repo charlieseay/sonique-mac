@@ -18,6 +18,18 @@ This is intentionally local-only and safe to run repeatedly. It does not read se
 
 Onboarding/Settings is now scrollable and resizable (`min/ideal/max` sizing) so controls remain reachable on constrained remote displays (for example Jump Desktop on iPad).
 
+## Onboarding wizard + doctor
+
+Quick Start now runs as a step-based wizard:
+
+- Mode
+- Models
+- Capabilities
+- Knowledge
+- Doctor
+
+The Capabilities step persists host/bridge access preferences (calendar, contacts, mail, files, iOS bridge fallback). The Doctor step now runs local probes for frontend/backend reachability, Docker daemon, and CLI availability/auth.
+
 ## Build
 
 Open `SoniqueBar.xcodeproj` in Xcode (or generate via XcodeGen if you add a spec). Scheme: **SoniqueBar**, destination: **My Mac**.

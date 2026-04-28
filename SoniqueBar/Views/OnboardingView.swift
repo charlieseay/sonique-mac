@@ -22,6 +22,13 @@ struct OnboardingView: View {
     @State private var isScanning = false
     @State private var quickStartStep: QuickStartStep = .mode
     @State private var lastScan: QuickStartScanResult?
+    @State private var hostCalendarDraft = true
+    @State private var hostContactsDraft = true
+    @State private var hostMailDraft = true
+    @State private var hostFilesDraft = true
+    @State private var iosBridgeDraft = true
+    @State private var isRunningDoctor = false
+    @State private var doctorResults: [DoctorCheck] = []
 
     var body: some View {
         ScrollView {
@@ -70,6 +77,11 @@ struct OnboardingView: View {
             fallbackPolicyDraft = monitor.settings.fallbackPolicy
             nvidiaBaseURLDraft  = monitor.settings.nvidiaBaseURL
             nvidiaFeatureDraft  = monitor.settings.nvidiaFeatureEnabled
+            hostCalendarDraft   = monitor.settings.capabilityHostCalendar
+            hostContactsDraft   = monitor.settings.capabilityHostContacts
+            hostMailDraft       = monitor.settings.capabilityHostMail
+            hostFilesDraft      = monitor.settings.capabilityHostFiles
+            iosBridgeDraft      = monitor.settings.capabilityIOSBridge
             if scanSummary == "Not scanned yet." {
                 scanSummary = "Run Quick Start Scan to auto-detect local tooling and paths."
             }
@@ -149,6 +161,11 @@ struct OnboardingView: View {
         monitor.settings.preferredModelLabel = preferredModelDraft.trimmingCharacters(in: .whitespaces)
         monitor.settings.fallbackPolicy = fallbackPolicyDraft
         monitor.settings.nvidiaBaseURL = nvidiaBaseURLDraft.trimmingCharacters(in: .whitespaces)
+        monitor.settings.capabilityHostCalendar = hostCalendarDraft
+        monitor.settings.capabilityHostContacts = hostContactsDraft
+        monitor.settings.capabilityHostMail = hostMailDraft
+        monitor.settings.capabilityHostFiles = hostFilesDraft
+        monitor.settings.capabilityIOSBridge = iosBridgeDraft
 
         let modeChanged = deploymentModeDraft != monitor.settings.deploymentMode
         if modeChanged {
@@ -273,6 +290,22 @@ struct OnboardingView: View {
             Toggle("Launch at login", isOn: $launchAtLoginDraft)
                 .toggleStyle(.switch)
                 .controlSize(.small)
+            Divider()
+            Toggle("Host calendar access", isOn: $hostCalendarDraft)
+                .toggleStyle(.switch)
+                .controlSize(.small)
+            Toggle("Host contacts access", isOn: $hostContactsDraft)
+                .toggleStyle(.switch)
+                .controlSize(.small)
+            Toggle("Host mail access", isOn: $hostMailDraft)
+                .toggleStyle(.switch)
+                .controlSize(.small)
+            Toggle("Host files access", isOn: $hostFilesDraft)
+                .toggleStyle(.switch)
+                .controlSize(.small)
+            Toggle("iOS bridge fallback", isOn: $iosBridgeDraft)
+                .toggleStyle(.switch)
+                .controlSize(.small)
         }
     }
 
@@ -314,16 +347,59 @@ struct OnboardingView: View {
 
     private var doctorStep: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("Doctor checks")
-                .font(.subheadline.weight(.semibold))
+            HStack {
+                Text("Doctor checks")
+                    .font(.subheadline.weight(.semibold))
+                Spacer()
+                if isRunningDoctor {
+                    ProgressView().controlSize(.small)
+                }
+                Button("Run checks") {
+                    Task { await runDoctorChecks() }
+                }
+                .buttonStyle(.borderedProminent)
+                .disabled(isRunningDoctor)
+            }
             doctorRow("CAAL configured", ok: !caelDirDraft.trimmingCharacters(in: .whitespaces).isEmpty)
             doctorRow("Backend online", ok: monitor.isOnline)
             doctorRow("Docker detected", ok: lastScan?.hasDocker == true)
             doctorRow("Ollama detected", ok: lastScan?.hasOllama == true)
             doctorRow("CLIs detected", ok: !(lastScan?.detectedCLIs.isEmpty ?? true))
-            Text("Run Quick Start Scan before using Doctor for best results.")
+            if doctorResults.isEmpty {
+                Text("Run checks for API reachability, Docker daemon status, CLI availability, and routing policy endpoint.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            } else {
+                ForEach(doctorResults) { check in
+                    doctorResultRow(check)
+                }
+            }
+            Text("These checks are local diagnostics and safe to rerun.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
+        }
+    }
+
+    private func runDoctorChecks() async {
+        isRunningDoctor = true
+        defer { isRunningDoctor = false }
+        doctorResults = await QuickStartScanner.runDoctor(
+            effectiveURL: monitor.settings.effectiveURL,
+            backendURL: monitor.settings.backendURL
+        )
+    }
+
+    private func doctorResultRow(_ check: DoctorCheck) -> some View {
+        HStack(alignment: .top, spacing: 8) {
+            Image(systemName: check.ok ? "checkmark.circle.fill" : "xmark.circle.fill")
+                .foregroundStyle(check.ok ? Color.green : Color.orange)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(check.label)
+                    .font(.caption.weight(.semibold))
+                Text(check.detail)
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            }
         }
     }
 
@@ -335,6 +411,13 @@ struct OnboardingView: View {
                 .font(.caption)
         }
     }
+}
+
+private struct DoctorCheck: Identifiable {
+    let id = UUID()
+    let label: String
+    let ok: Bool
+    let detail: String
 }
 
 private enum QuickStartStep: String, CaseIterable, Identifiable {
@@ -409,10 +492,44 @@ private enum QuickStartScanner {
         )
     }
 
-    private static func commandExists(_ command: String) -> Bool {
+    static func runDoctor(effectiveURL: String, backendURL: String) async -> [DoctorCheck] {
+        async let frontend = endpointReachable("\(effectiveURL)/health")
+        async let backend = endpointReachable("\(backendURL)/routing/policy")
+        let dockerDaemon = commandSucceeds(["docker", "info"])
+        let ghAuth = commandSucceeds(["gh", "auth", "status"])
+        let claudeAvailable = commandExists("claude")
+        let geminiAvailable = commandExists("gemini")
+        let cursorAvailable = commandExists("cursor")
+
+        return [
+            DoctorCheck(label: "Frontend API health", ok: await frontend, detail: "\(effectiveURL)/health"),
+            DoctorCheck(label: "Routing policy endpoint", ok: await backend, detail: "\(backendURL)/routing/policy"),
+            DoctorCheck(label: "Docker daemon reachable", ok: dockerDaemon, detail: "docker info"),
+            DoctorCheck(label: "GitHub CLI auth", ok: ghAuth, detail: "gh auth status"),
+            DoctorCheck(label: "Claude CLI available", ok: claudeAvailable, detail: "command: claude"),
+            DoctorCheck(label: "Gemini CLI available", ok: geminiAvailable, detail: "command: gemini"),
+            DoctorCheck(label: "Cursor CLI available", ok: cursorAvailable, detail: "command: cursor")
+        ]
+    }
+
+    private static func endpointReachable(_ rawURL: String) async -> Bool {
+        guard let url = URL(string: rawURL) else { return false }
+        var request = URLRequest(url: url, timeoutInterval: 4)
+        request.httpMethod = "GET"
+        do {
+            let (_, response) = try await URLSession.shared.data(for: request)
+            guard let http = response as? HTTPURLResponse else { return false }
+            return (200..<500).contains(http.statusCode)
+        } catch {
+            return false
+        }
+    }
+
+    private static func commandSucceeds(_ args: [String]) -> Bool {
+        guard !args.isEmpty else { return false }
         let p = Process()
         p.executableURL = URL(fileURLWithPath: "/usr/bin/env")
-        p.arguments = ["which", command]
+        p.arguments = args
         p.standardOutput = Pipe()
         p.standardError = Pipe()
         do {
@@ -422,5 +539,9 @@ private enum QuickStartScanner {
         } catch {
             return false
         }
+    }
+
+    private static func commandExists(_ command: String) -> Bool {
+        commandSucceeds(["which", command])
     }
 }
