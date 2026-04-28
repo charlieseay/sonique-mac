@@ -347,12 +347,16 @@ final class SidecarManager: ObservableObject {
                 for svc in services {
                     guard let port = svc.port else { continue }
                     let task = Process()
-                    task.launchPath = "/usr/bin/lsof"
+                    task.launchPath = "/usr/sbin/lsof"
                     task.arguments = ["-ti", "TCP:\(port)", "-sTCP:LISTEN"]
                     let pipe = Pipe()
                     task.standardOutput = pipe
                     task.standardError = FileHandle.nullDevice
-                    try? task.run()
+                    do {
+                        try task.run()
+                    } catch {
+                        continue
+                    }
                     task.waitUntilExit()
                     let output = String(data: pipe.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8) ?? ""
                     for pidStr in output.components(separatedBy: .newlines) {
