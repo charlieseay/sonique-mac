@@ -40,6 +40,8 @@ Phase 8 adds direct permission-request remediation actions for not-determined Co
 
 Phase 9 adds startup self-heal guardrails in `ServerMonitor`: if runtime is still offline shortly after launch, SoniqueBar retries the selected runtime path once automatically.
 
+Phase 10 automates contract consumer surfaces: runtime contract now republishes on Save/Preflight, and preflight telemetry is exported to `preflight-telemetry.latest.json` with check counts and failed-label summaries.
+
 ## Build
 
 Open `SoniqueBar.xcodeproj` in Xcode (or generate via XcodeGen if you add a spec). Scheme: **SoniqueBar**, destination: **My Mac**.

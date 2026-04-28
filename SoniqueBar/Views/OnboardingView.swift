@@ -33,6 +33,7 @@ struct OnboardingView: View {
     @State private var isRunningDoctor = false
     @State private var doctorResults: [DoctorCheck] = []
     @State private var isRunningPreflightRepair = false
+    @State private var lastPreflightAt: Date?
 
     var body: some View {
         ScrollView {
@@ -193,6 +194,7 @@ struct OnboardingView: View {
 
         Task { await syncVoice() }
         monitor.startPolling()
+        publishRuntimeContract()
         dismissWindow(id: "settings")
         dismiss()
     }
@@ -302,6 +304,7 @@ struct OnboardingView: View {
     private func runPreflightRepair() async {
         isRunningPreflightRepair = true
         defer { isRunningPreflightRepair = false }
+        let started = Date()
 
         await runQuickStartScan()
 
@@ -313,7 +316,10 @@ struct OnboardingView: View {
 
         monitor.startPolling()
         await runDoctorChecks()
-        scanSummary = "Preflight repair completed. Review Doctor results, then Save if configuration looks correct."
+        lastPreflightAt = Date()
+        exportPreflightTelemetry(startedAt: started, finishedAt: lastPreflightAt ?? Date())
+        publishRuntimeContract()
+        scanSummary = "Preflight repair completed. Contract + telemetry published. Review Doctor results, then Save if configuration looks correct."
     }
 
     /// Task #284: extend `settings` with `LLMRoutingCAALKeys` fields when CAAL `/api/settings` accepts them.
@@ -637,6 +643,36 @@ struct OnboardingView: View {
         }
     }
 
+    private func exportPreflightTelemetry(startedAt: Date, finishedAt: Date) {
+        let fm = FileManager.default
+        let root = ("~/Library/Application Support/SoniqueBar/contracts" as NSString).expandingTildeInPath
+        let dirURL = URL(fileURLWithPath: root, isDirectory: true)
+        try? fm.createDirectory(at: dirURL, withIntermediateDirectories: true)
+        let target = dirURL.appendingPathComponent("preflight-telemetry.latest.json")
+
+        let total = doctorResults.count
+        let passing = doctorResults.filter(\.ok).count
+        let failing = max(0, total - passing)
+        let telemetry = PreflightTelemetry(
+            generatedAtISO8601: ISO8601DateFormatter().string(from: Date()),
+            startedAtISO8601: ISO8601DateFormatter().string(from: startedAt),
+            finishedAtISO8601: ISO8601DateFormatter().string(from: finishedAt),
+            durationSeconds: finishedAt.timeIntervalSince(startedAt),
+            deploymentMode: deploymentModeDraft.rawValue,
+            llmProvider: llmProviderDraft.rawValue,
+            totalChecks: total,
+            passingChecks: passing,
+            failingChecks: failing,
+            failedCheckLabels: doctorResults.filter { !$0.ok }.map(\.label)
+        )
+
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        if let data = try? encoder.encode(telemetry) {
+            try? data.write(to: target, options: .atomic)
+        }
+    }
+
     private func doctorRow(_ label: String, ok: Bool) -> some View {
         HStack {
             Image(systemName: ok ? "checkmark.circle.fill" : "xmark.circle.fill")
@@ -710,6 +746,19 @@ private struct OnboardingRuntimeContract: Codable {
     let backendHealthURL: String
     let frontendHealthURL: String
     let expectedSimpleProvider: String
+}
+
+private struct PreflightTelemetry: Codable {
+    let generatedAtISO8601: String
+    let startedAtISO8601: String
+    let finishedAtISO8601: String
+    let durationSeconds: TimeInterval
+    let deploymentMode: String
+    let llmProvider: String
+    let totalChecks: Int
+    let passingChecks: Int
+    let failingChecks: Int
+    let failedCheckLabels: [String]
 }
 
 private enum QuickStartStep: String, CaseIterable, Identifiable {
