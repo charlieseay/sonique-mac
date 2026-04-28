@@ -112,7 +112,7 @@ final class SidecarManager: ObservableObject {
 
             state = .starting
             dbg("calling spawnAll…")
-            try spawnAll(root: root)
+            try await spawnAll(root: root)
             dbg("spawnAll complete")
 
             // 120s budget: STT loads the faster-whisper model on cold start (~60-90s)
@@ -300,7 +300,7 @@ final class SidecarManager: ObservableObject {
 
     // MARK: - Process spawning
 
-    private func spawnAll(root: URL) throws {
+    private func spawnAll(root: URL) async throws {
         let dbgURL = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent("sidecar-debug.log")
         func dbg(_ msg: String) {
             let line = "\(Date()): [spawnAll] \(msg)\n"
@@ -311,7 +311,7 @@ final class SidecarManager: ObservableObject {
             }
         }
         dbg("evictStalePortHolders…")
-        evictStalePortHolders()
+        await evictStalePortHolders()
         dbg("evict done")
         for svc in Self.services {
             dbg("spawn \(svc.name)…")
@@ -323,25 +323,33 @@ final class SidecarManager: ObservableObject {
     /// Kill any process already bound to a sidecar service port so a fresh
     /// spawn can bind. Handles the case where a previous SoniqueBar instance
     /// was force-killed before stopSync could SIGTERM its children.
-    private func evictStalePortHolders() {
-        for svc in Self.services {
-            guard let port = svc.port else { continue }
-            let task = Process()
-            task.launchPath = "/usr/bin/lsof"
-            task.arguments = ["-ti", "TCP:\(port)", "-sTCP:LISTEN"]
-            let pipe = Pipe()
-            task.standardOutput = pipe
-            task.standardError = FileHandle.nullDevice
-            try? task.run()
-            task.waitUntilExit()
-            let output = String(data: pipe.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8) ?? ""
-            for pidStr in output.components(separatedBy: .newlines) {
-                guard let pid = Int32(pidStr.trimmingCharacters(in: .whitespaces)), pid > 0 else { continue }
-                kill(pid, SIGTERM)
+    ///
+    /// Runs off the main actor — `lsof` + `waitUntilExit` + `Thread.sleep` must
+    /// not block `@MainActor` or the menu bar never appears (App Not Responding).
+    private func evictStalePortHolders() async {
+        let services = Self.services
+        await withCheckedContinuation { (cont: CheckedContinuation<Void, Never>) in
+            DispatchQueue.global(qos: .userInitiated).async {
+                for svc in services {
+                    guard let port = svc.port else { continue }
+                    let task = Process()
+                    task.launchPath = "/usr/bin/lsof"
+                    task.arguments = ["-ti", "TCP:\(port)", "-sTCP:LISTEN"]
+                    let pipe = Pipe()
+                    task.standardOutput = pipe
+                    task.standardError = FileHandle.nullDevice
+                    try? task.run()
+                    task.waitUntilExit()
+                    let output = String(data: pipe.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8) ?? ""
+                    for pidStr in output.components(separatedBy: .newlines) {
+                        guard let pid = Int32(pidStr.trimmingCharacters(in: .whitespaces)), pid > 0 else { continue }
+                        kill(pid, SIGTERM)
+                    }
+                }
+                Thread.sleep(forTimeInterval: 0.5)
+                cont.resume()
             }
         }
-        // Give evicted processes a moment to exit before we try to bind the ports
-        Thread.sleep(forTimeInterval: 0.5)
     }
 
     private func spawn(service: ServiceEndpoint, root: URL) throws {
