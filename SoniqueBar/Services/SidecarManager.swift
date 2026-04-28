@@ -109,11 +109,22 @@ final class SidecarManager: ObservableObject {
             let root = try await resolveSidecarRoot()
             sidecarRoot = root
             dbg("resolveSidecarRoot returned: \(root.path)")
+            NSLog("[Sidecar] resolveSidecarRoot returned: \(root.path)")
 
             state = .starting
             dbg("calling spawnAll…")
+            NSLog("[Sidecar] calling spawnAll…")
             try await spawnAll(root: root)
             dbg("spawnAll complete")
+            NSLog("[Sidecar] spawnAll complete")
+
+            // Fast-fail when every spawned process exits immediately (common when
+            // sandbox blocks exec). This avoids waiting the full readiness budget.
+            try? await Task.sleep(nanoseconds: 2_000_000_000)
+            let anyRunning = processes.values.contains { $0.isRunning }
+            if !anyRunning {
+                throw SidecarError.spawnedProcessesExitedImmediately
+            }
 
             // 120s budget: STT loads the faster-whisper model on cold start (~60-90s)
             let ready = await waitForReady(timeout: 120.0)
@@ -164,6 +175,25 @@ final class SidecarManager: ObservableObject {
             create: true
         ).appendingPathComponent("SoniqueBar/sidecar", isDirectory: true)
         dbg("support=\(support.path)")
+        NSLog("[Sidecar] resolve support path: \(support.path)")
+
+        // Fast path: once staged, reuse local sidecar immediately. Re-hashing a
+        // ~700MB tarball on every launch can stall startup long enough that users
+        // see "connected but no voice" while STT/TTS never spawn.
+        let shaMarker = support.appendingPathComponent(".tarball.sha256")
+        let signMarker = support.appendingPathComponent(".codesign.ok")
+        if FileManager.default.fileExists(atPath: support.path),
+           FileManager.default.fileExists(atPath: shaMarker.path) {
+            dbg("fast path: cached sidecar marker present — skipping tarball sha256")
+            NSLog("[Sidecar] fast path: cached sidecar present")
+            if !FileManager.default.fileExists(atPath: signMarker.path) {
+                dbg("fast path: sign marker missing — re-signing cached binaries")
+                NSLog("[Sidecar] re-signing cached sidecar binaries")
+                try await signSidecarBinaries(in: support)
+                try "ok".write(to: signMarker, atomically: true, encoding: .utf8)
+            }
+            return support
+        }
 
         guard let bundledTarball = Bundle.main.url(
             forResource: "python-runtime",
@@ -174,10 +204,11 @@ final class SidecarManager: ObservableObject {
         }
         dbg("tarball=\(bundledTarball.path)")
 
-        let shaMarker = support.appendingPathComponent(".tarball.sha256")
         dbg("computing sha256 of tarball…")
+        NSLog("[Sidecar] computing tarball sha256")
         let bundledSha = try await sha256(of: bundledTarball)
         dbg("bundledSha=\(bundledSha)")
+        NSLog("[Sidecar] tarball sha256 computed")
 
         if FileManager.default.fileExists(atPath: shaMarker.path),
            let existing = try? String(contentsOf: shaMarker, encoding: .utf8),
@@ -199,6 +230,7 @@ final class SidecarManager: ObservableObject {
         // (TeamIdentifier=not set), which macOS blocks when a sandboxed app tries
         // to exec them.
         try await signSidecarBinaries(in: support)
+        try "ok".write(to: signMarker, atomically: true, encoding: .utf8)
         try bundledSha.write(to: shaMarker, atomically: true, encoding: .utf8)
 
         return support
@@ -290,15 +322,16 @@ final class SidecarManager: ObservableObject {
                 let fm = FileManager.default
                 guard let enumerator = fm.enumerator(
                     at: root,
-                    includingPropertiesForKeys: [.isRegularFileKey],
+                    includingPropertiesForKeys: [.isRegularFileKey, .isExecutableKey],
                     options: [.skipsHiddenFiles]
                 ) else { cont.resume(); return }
 
                 for case let url as URL in enumerator {
-                    guard let rv = try? url.resourceValues(forKeys: [.isRegularFileKey]),
+                    guard let rv = try? url.resourceValues(forKeys: [.isRegularFileKey, .isExecutableKey]),
                           rv.isRegularFile == true else { continue }
                     let ext = url.pathExtension
-                    guard ext == "so" || ext == "dylib" || ext.isEmpty else { continue }
+                    let shouldSign = ext == "so" || ext == "dylib" || ext.isEmpty || rv.isExecutable == true
+                    guard shouldSign else { continue }
                     let task = Process()
                     task.launchPath = "/usr/bin/codesign"
                     task.arguments = ["--force", "--sign", identity, "--timestamp=none", url.path]
@@ -348,7 +381,7 @@ final class SidecarManager: ObservableObject {
                     guard let port = svc.port else { continue }
                     let task = Process()
                     task.launchPath = "/usr/sbin/lsof"
-                    task.arguments = ["-ti", "TCP:\(port)", "-sTCP:LISTEN"]
+                    task.arguments = ["-nP", "-ti", "TCP:\(port)", "-sTCP:LISTEN"]
                     let pipe = Pipe()
                     task.standardOutput = pipe
                     task.standardError = FileHandle.nullDevice
@@ -357,7 +390,18 @@ final class SidecarManager: ObservableObject {
                     } catch {
                         continue
                     }
-                    task.waitUntilExit()
+                    // lsof can occasionally hang; never block sidecar startup on eviction.
+                    let deadline = Date().addingTimeInterval(1.5)
+                    while task.isRunning && Date() < deadline {
+                        Thread.sleep(forTimeInterval: 0.05)
+                    }
+                    if task.isRunning {
+                        task.terminate()
+                        Thread.sleep(forTimeInterval: 0.1)
+                        if task.isRunning {
+                            kill(task.processIdentifier, SIGKILL)
+                        }
+                    }
                     let output = String(data: pipe.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8) ?? ""
                     for pidStr in output.components(separatedBy: .newlines) {
                         guard let pid = Int32(pidStr.trimmingCharacters(in: .whitespaces)), pid > 0 else { continue }
@@ -585,6 +629,7 @@ final class SidecarManager: ObservableObject {
 enum SidecarError: LocalizedError {
     case bundleResourceMissing(String)
     case tarballExtractFailed(status: Int32)
+    case spawnedProcessesExitedImmediately
 
     var errorDescription: String? {
         switch self {
@@ -592,6 +637,8 @@ enum SidecarError: LocalizedError {
             return "bundled resource missing: \(path)"
         case .tarballExtractFailed(let status):
             return "tar extraction failed with status \(status)"
+        case .spawnedProcessesExitedImmediately:
+            return "sidecar processes exited immediately after spawn"
         }
     }
 }

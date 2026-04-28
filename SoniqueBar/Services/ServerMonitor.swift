@@ -27,6 +27,12 @@ class ServerMonitor: ObservableObject {
                 await containerManager.setup(caelDirectory: settings.caelDirectory)
             case .embedded:
                 await sidecarManager.start()
+                if case .failed = sidecarManager.state {
+                    // Embedded runtime can fail under sandbox exec/signing constraints.
+                    // Fall back to the networked CAAL stack so voice remains available.
+                    settings.deploymentMode = .networked
+                    await containerManager.setup(caelDirectory: settings.caelDirectory)
+                }
             }
             startPolling()
         }
