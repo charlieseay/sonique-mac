@@ -2,6 +2,22 @@
 
 Menu bar controller for CAAL: Docker **networked** stack or **embedded** sidecar runtime, Home Assistant hooks, and iOS onboarding QR.
 
+## Quick Start scan (first install)
+
+The Settings/Onboarding view now includes a **Quick Start** scanner to reduce manual setup. It probes local prerequisites and pre-fills suggestions:
+
+- Docker availability
+- Ollama availability
+- CLI tools (`claude`, `gemini`, `cursor`, `gh`)
+- common CAAL repo paths
+- common Obsidian vault path
+
+This is intentionally local-only and safe to run repeatedly. It does not read secrets.
+
+## Adaptive settings layout
+
+Onboarding/Settings is now scrollable and resizable (`min/ideal/max` sizing) so controls remain reachable on constrained remote displays (for example Jump Desktop on iPad).
+
 ## Build
 
 Open `SoniqueBar.xcodeproj` in Xcode (or generate via XcodeGen if you add a spec). Scheme: **SoniqueBar**, destination: **My Mac**.

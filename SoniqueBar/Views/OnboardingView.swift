@@ -18,189 +18,27 @@ struct OnboardingView: View {
     @State private var fallbackPolicyDraft: SoniqueBarFallbackPolicy = .localOnly
     @State private var nvidiaBaseURLDraft = ""
     @State private var nvidiaFeatureDraft = false
+    @State private var scanSummary = "Not scanned yet."
+    @State private var isScanning = false
+    @State private var quickStartStep: QuickStartStep = .mode
+    @State private var lastScan: QuickStartScanResult?
 
     var body: some View {
-        VStack(spacing: 20) {
+        ScrollView {
+            VStack(spacing: 20) {
             Text(monitor.settings.isConfigured ? "Settings" : "Set up Sonique")
                 .font(.headline)
 
-            VStack(alignment: .leading, spacing: 12) {
+            quickStartSection
 
-                // CAAL directory
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("CAAL directory")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                    HStack(spacing: 6) {
-                        TextField("~/Projects/cael", text: $caelDirDraft)
-                            .textFieldStyle(.roundedBorder)
-                        Button {
-                            let panel = NSOpenPanel()
-                            panel.canChooseFiles = false
-                            panel.canChooseDirectories = true
-                            panel.allowsMultipleSelection = false
-                            if panel.runModal() == .OK, let url = panel.url {
-                                caelDirDraft = url.path
-                            }
-                        } label: {
-                            Image(systemName: "folder")
-                        }
-                        .buttonStyle(.bordered)
-                    }
-                    Text("Where you cloned the CAAL repo. SoniqueBar starts and stops it automatically.")
-                        .font(.caption)
-                        .foregroundStyle(.tertiary)
-                        .fixedSize(horizontal: false, vertical: true)
+            Picker("Step", selection: $quickStartStep) {
+                ForEach(QuickStartStep.allCases) { step in
+                    Text(step.label).tag(step)
                 }
-
-                Divider()
-
-                // Remote URL — premium feature
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("Remote URL (optional)")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                    HStack(spacing: 6) {
-                        TextField("http://100.x.x.x:3100 or tunnel URL", text: $externalDraft)
-                            .textFieldStyle(.roundedBorder)
-                        Button("Tailscale") {
-                            Task { await detectTailscale() }
-                        }
-                        .buttonStyle(.bordered)
-                        .controlSize(.small)
-                        .help("Auto-detect your Tailscale IP")
-                    }
-                    Text("Tailscale IP, Cloudflare tunnel, etc. — used by iPhone when away from home.")
-                        .font(.caption)
-                        .foregroundStyle(.tertiary)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-
-                // API Key
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("API Key (optional)")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                    SecureField("Leave empty if not set", text: $keyDraft)
-                        .textFieldStyle(.roundedBorder)
-                }
-
-                Divider()
-
-                // Voice selection
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("Voice")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                    Picker("", selection: $ttsVoiceDraft) {
-                        ForEach(PiperVoice.all) { voice in
-                            Text(voice.label).tag(voice.id)
-                        }
-                    }
-                    .pickerStyle(.menu)
-                    .labelsHidden()
-                }
-
-                Divider()
-
-                // LLM provider (UI scaffold only)
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("LLM provider")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-
-                    Toggle("NVIDIA NIM options (experimental)", isOn: $nvidiaFeatureDraft)
-                        .toggleStyle(.switch)
-                        .controlSize(.small)
-                        .onChange(of: nvidiaFeatureDraft) { _, enabled in
-                            if !enabled, llmProviderDraft == .nvidia {
-                                llmProviderDraft = .ollama
-                            }
-                        }
-                    Text("Off by default. UI + prefs only until CAAL task #284.")
-                        .font(.caption)
-                        .foregroundStyle(.tertiary)
-                        .fixedSize(horizontal: false, vertical: true)
-
-                    Picker("", selection: $llmProviderDraft) {
-                        ForEach(nvidiaFeatureDraft ? SoniqueBarLLMProvider.allCases : [.ollama]) { provider in
-                            Text(provider.label).tag(provider)
-                        }
-                    }
-                    .pickerStyle(.menu)
-                    .labelsHidden()
-
-                    TextField("Model label (display only)", text: $preferredModelDraft)
-                        .textFieldStyle(.roundedBorder)
-
-                    Picker("Fallback", selection: $fallbackPolicyDraft) {
-                        ForEach(SoniqueBarFallbackPolicy.allCases) { policy in
-                            Text(policy.label).tag(policy)
-                        }
-                    }
-                    .pickerStyle(.menu)
-
-                    Text(fallbackPolicyDraft.routingHint)
-                        .font(.caption)
-                        .foregroundStyle(.tertiary)
-                        .fixedSize(horizontal: false, vertical: true)
-
-                    if nvidiaFeatureDraft {
-                        TextField("NVIDIA endpoint base URL", text: $nvidiaBaseURLDraft)
-                            .textFieldStyle(.roundedBorder)
-                        Text("Use a placeholder-friendly URL; API keys are never stored here.")
-                            .font(.caption)
-                            .foregroundStyle(.tertiary)
-                            .fixedSize(horizontal: false, vertical: true)
-                    }
-                }
-
-                Divider()
-
-                // Deployment mode
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("Deployment mode")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                    Picker("", selection: $deploymentModeDraft) {
-                        ForEach(SidecarManager.DeploymentMode.allCases) { mode in
-                            Text(mode.label).tag(mode)
-                        }
-                    }
-                    .pickerStyle(.menu)
-                    .labelsHidden()
-                    Text(deploymentModeDraft == .embedded
-                        ? "Embedded — bundled Python runtime with STT, TTS, and voice agent. Requires Ollama installed separately for local LLM."
-                        : "Networked — uses the Docker-based CAAL stack in the directory above. Keep if you already run CAAL for other tools.")
-                        .font(.caption)
-                        .foregroundStyle(.tertiary)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-
-                Divider()
-
-                // Home Assistant
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("Home Assistant (optional)")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                    TextField("http://192.168.0.x:8123", text: $haURLDraft)
-                        .textFieldStyle(.roundedBorder)
-                    SecureField("Long-lived access token", text: $haTokenDraft)
-                        .textFieldStyle(.roundedBorder)
-                    Text("Enables voice control of lights, switches, covers, and more.")
-                        .font(.caption)
-                        .foregroundStyle(.tertiary)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-
-                Divider()
-
-                // Launch at login
-                Toggle("Launch at login", isOn: $launchAtLoginDraft)
-                    .toggleStyle(.switch)
-                    .controlSize(.small)
             }
+            .pickerStyle(.segmented)
+
+            wizardStepContent
 
             HStack {
                 if monitor.settings.isConfigured {
@@ -215,8 +53,9 @@ struct OnboardingView: View {
                     .disabled(caelDirDraft.trimmingCharacters(in: .whitespaces).isEmpty)
             }
         }
+        }
         .padding(24)
-        .frame(width: 340)
+        .frame(minWidth: 360, idealWidth: 480, maxWidth: 720, minHeight: 560, idealHeight: 760)
         .onAppear {
             caelDirDraft        = monitor.settings.caelDirectory
             externalDraft       = monitor.settings.externalURL
@@ -231,13 +70,70 @@ struct OnboardingView: View {
             fallbackPolicyDraft = monitor.settings.fallbackPolicy
             nvidiaBaseURLDraft  = monitor.settings.nvidiaBaseURL
             nvidiaFeatureDraft  = monitor.settings.nvidiaFeatureEnabled
+            if scanSummary == "Not scanned yet." {
+                scanSummary = "Run Quick Start Scan to auto-detect local tooling and paths."
+            }
         }
+    }
+
+    private var quickStartSection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Text("Quick Start")
+                    .font(.subheadline.weight(.semibold))
+                Spacer()
+                if isScanning {
+                    ProgressView()
+                        .controlSize(.small)
+                }
+                Button("Scan") {
+                    Task { await runQuickStartScan() }
+                }
+                .buttonStyle(.borderedProminent)
+                .disabled(isScanning)
+            }
+            Text(scanSummary)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(10)
+        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
     }
 
     private func detectTailscale() async {
         if let ip = await monitor.detectTailscaleIP() {
             externalDraft = "http://\(ip):3100"
         }
+    }
+
+    private func runQuickStartScan() async {
+        isScanning = true
+        defer { isScanning = false }
+
+        let scan = await Task.detached(priority: .userInitiated) {
+            QuickStartScanner.scan()
+        }.value
+
+        if !scan.detectedCaelPath.isEmpty {
+            caelDirDraft = scan.detectedCaelPath
+        }
+        if deploymentModeDraft == .networked, scan.hasBundledRuntime {
+            deploymentModeDraft = .embedded
+        }
+        if scan.hasNvidiaHints, nvidiaBaseURLDraft.isEmpty {
+            nvidiaFeatureDraft = true
+            nvidiaBaseURLDraft = "https://integrate.api.nvidia.com/v1"
+        }
+
+        let cliLine = scan.detectedCLIs.isEmpty ? "none" : scan.detectedCLIs.joined(separator: ", ")
+        let modelLine = scan.detectedModelRuntime
+        let vaultLine = scan.detectedVaultPath.isEmpty ? "none" : scan.detectedVaultPath
+        scanSummary = """
+        Found: Docker \(scan.hasDocker ? "yes" : "no"), model runtime \(modelLine), CLIs \(cliLine), vault \(vaultLine).
+        Suggested mode: \(scan.recommendedModeLabel). CAAL path auto-filled when detected.
+        """
+        lastScan = scan
     }
 
     private func save() {
@@ -281,5 +177,250 @@ struct OnboardingView: View {
         }
         req.httpBody = body
         _ = try? await URLSession.shared.data(for: req)
+    }
+
+    @ViewBuilder
+    private var wizardStepContent: some View {
+        switch quickStartStep {
+        case .mode:
+            modeStep
+        case .models:
+            modelStep
+        case .capabilities:
+            capabilitiesStep
+        case .knowledge:
+            knowledgeStep
+        case .doctor:
+            doctorStep
+        }
+    }
+
+    private var modeStep: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("Mode selection")
+                .font(.subheadline.weight(.semibold))
+            Picker("Deployment mode", selection: $deploymentModeDraft) {
+                ForEach(SidecarManager.DeploymentMode.allCases) { mode in
+                    Text(mode.label).tag(mode)
+                }
+            }
+            .pickerStyle(.menu)
+            Text(deploymentModeDraft == .embedded
+                 ? "Embedded is recommended for local-first installs with bundled runtime."
+                 : "Networked keeps Docker-based CAAL stack compatibility with lab workflows.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    private var modelStep: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("Model + provider setup")
+                .font(.subheadline.weight(.semibold))
+            Toggle("NVIDIA NIM options (experimental)", isOn: $nvidiaFeatureDraft)
+                .toggleStyle(.switch)
+                .controlSize(.small)
+                .onChange(of: nvidiaFeatureDraft) { _, enabled in
+                    if !enabled, llmProviderDraft == .nvidia { llmProviderDraft = .ollama }
+                }
+            Picker("Provider", selection: $llmProviderDraft) {
+                ForEach(nvidiaFeatureDraft ? SoniqueBarLLMProvider.allCases : [.ollama]) { provider in
+                    Text(provider.label).tag(provider)
+                }
+            }
+            .pickerStyle(.menu)
+            TextField("Model label (display only)", text: $preferredModelDraft)
+                .textFieldStyle(.roundedBorder)
+            Picker("Fallback", selection: $fallbackPolicyDraft) {
+                ForEach(SoniqueBarFallbackPolicy.allCases) { policy in
+                    Text(policy.label).tag(policy)
+                }
+            }
+            .pickerStyle(.menu)
+            if nvidiaFeatureDraft {
+                TextField("NVIDIA endpoint base URL", text: $nvidiaBaseURLDraft)
+                    .textFieldStyle(.roundedBorder)
+            }
+            Text(fallbackPolicyDraft.routingHint)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    private var capabilitiesStep: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("Capabilities setup")
+                .font(.subheadline.weight(.semibold))
+            Text("Voice")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            Picker("", selection: $ttsVoiceDraft) {
+                ForEach(PiperVoice.all) { voice in
+                    Text(voice.label).tag(voice.id)
+                }
+            }
+            .pickerStyle(.menu)
+            .labelsHidden()
+            Text("Home Assistant (optional)")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            TextField("http://192.168.0.x:8123", text: $haURLDraft)
+                .textFieldStyle(.roundedBorder)
+            SecureField("Long-lived access token", text: $haTokenDraft)
+                .textFieldStyle(.roundedBorder)
+            Toggle("Launch at login", isOn: $launchAtLoginDraft)
+                .toggleStyle(.switch)
+                .controlSize(.small)
+        }
+    }
+
+    private var knowledgeStep: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("Knowledge + memory setup")
+                .font(.subheadline.weight(.semibold))
+            Text("CAAL directory")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            HStack(spacing: 6) {
+                TextField("~/Projects/cael", text: $caelDirDraft)
+                    .textFieldStyle(.roundedBorder)
+                Button {
+                    let panel = NSOpenPanel()
+                    panel.canChooseFiles = false
+                    panel.canChooseDirectories = true
+                    panel.allowsMultipleSelection = false
+                    if panel.runModal() == .OK, let url = panel.url { caelDirDraft = url.path }
+                } label: {
+                    Image(systemName: "folder")
+                }
+                .buttonStyle(.bordered)
+            }
+            Text("Remote URL (optional)")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            HStack(spacing: 6) {
+                TextField("http://100.x.x.x:3100 or tunnel URL", text: $externalDraft)
+                    .textFieldStyle(.roundedBorder)
+                Button("Tailscale") { Task { await detectTailscale() } }
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
+            }
+            SecureField("API Key (optional)", text: $keyDraft)
+                .textFieldStyle(.roundedBorder)
+        }
+    }
+
+    private var doctorStep: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Doctor checks")
+                .font(.subheadline.weight(.semibold))
+            doctorRow("CAAL configured", ok: !caelDirDraft.trimmingCharacters(in: .whitespaces).isEmpty)
+            doctorRow("Backend online", ok: monitor.isOnline)
+            doctorRow("Docker detected", ok: lastScan?.hasDocker == true)
+            doctorRow("Ollama detected", ok: lastScan?.hasOllama == true)
+            doctorRow("CLIs detected", ok: !(lastScan?.detectedCLIs.isEmpty ?? true))
+            Text("Run Quick Start Scan before using Doctor for best results.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+    }
+
+    private func doctorRow(_ label: String, ok: Bool) -> some View {
+        HStack {
+            Image(systemName: ok ? "checkmark.circle.fill" : "xmark.circle.fill")
+                .foregroundStyle(ok ? Color.green : Color.orange)
+            Text(label)
+                .font(.caption)
+        }
+    }
+}
+
+private enum QuickStartStep: String, CaseIterable, Identifiable {
+    case mode, models, capabilities, knowledge, doctor
+
+    var id: String { rawValue }
+    var label: String {
+        switch self {
+        case .mode: return "Mode"
+        case .models: return "Models"
+        case .capabilities: return "Capabilities"
+        case .knowledge: return "Knowledge"
+        case .doctor: return "Doctor"
+        }
+    }
+}
+
+private struct QuickStartScanResult {
+    let hasDocker: Bool
+    let hasOllama: Bool
+    let hasBundledRuntime: Bool
+    let detectedCLIs: [String]
+    let detectedVaultPath: String
+    let detectedCaelPath: String
+    let hasNvidiaHints: Bool
+
+    var detectedModelRuntime: String { hasOllama ? "ollama" : "none" }
+    var recommendedModeLabel: String {
+        if hasBundledRuntime { return "Embedded" }
+        if hasDocker { return "Networked" }
+        return "Embedded (after local runtime install)"
+    }
+}
+
+private enum QuickStartScanner {
+    static func scan() -> QuickStartScanResult {
+        let hasDocker = commandExists("docker")
+        let hasOllama = commandExists("ollama")
+        let hasBundledRuntime = Bundle.main.url(forResource: "python-runtime", withExtension: "tar.gz") != nil
+
+        let cliCandidates = [
+            ("claude", "Claude CLI"),
+            ("gemini", "Gemini CLI"),
+            ("cursor", "Cursor CLI"),
+            ("gh", "GitHub CLI")
+        ]
+        let detectedCLIs = cliCandidates
+            .filter { commandExists($0.0) }
+            .map(\.1)
+
+        let home = NSHomeDirectory()
+        let vaultPath = "\(home)/Library/Mobile Documents/iCloud~md~obsidian/Documents/SeaynicNet"
+        let detectedVaultPath = FileManager.default.fileExists(atPath: vaultPath) ? vaultPath : ""
+
+        let caelCandidates = [
+            "\(home)/Projects/cael",
+            "\(home)/Projects/CAEL",
+            "\(home)/Code/cael"
+        ]
+        let detectedCaelPath = caelCandidates.first(where: { FileManager.default.fileExists(atPath: $0) }) ?? ""
+
+        let nvidiaHints = hasOllama || commandExists("nvidia-smi")
+
+        return QuickStartScanResult(
+            hasDocker: hasDocker,
+            hasOllama: hasOllama,
+            hasBundledRuntime: hasBundledRuntime,
+            detectedCLIs: detectedCLIs,
+            detectedVaultPath: detectedVaultPath,
+            detectedCaelPath: detectedCaelPath,
+            hasNvidiaHints: nvidiaHints
+        )
+    }
+
+    private static func commandExists(_ command: String) -> Bool {
+        let p = Process()
+        p.executableURL = URL(fileURLWithPath: "/usr/bin/env")
+        p.arguments = ["which", command]
+        p.standardOutput = Pipe()
+        p.standardError = Pipe()
+        do {
+            try p.run()
+            p.waitUntilExit()
+            return p.terminationStatus == 0
+        } catch {
+            return false
+        }
     }
 }
