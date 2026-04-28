@@ -156,6 +156,18 @@ log "installing service deps into standalone Python (no venv)"
   anthropic==0.42.0 \
   httpx==0.27.2
 
+# livekit-agents 1.3.x telemetry conflicts with OpenTelemetry SDK 1.39+ API
+# churn. Pin the full OTLP stack to 1.38 — api+sdk alone leave proto 1.41
+# exporters that still break imports.
+"$PYBIN" -m pip install --quiet \
+  "opentelemetry-api==1.38.0" \
+  "opentelemetry-sdk==1.38.0" \
+  "opentelemetry-proto==1.38.0" \
+  "opentelemetry-exporter-otlp-proto-common==1.38.0" \
+  "opentelemetry-exporter-otlp-proto-http==1.38.0" \
+  "opentelemetry-exporter-otlp-proto-grpc==1.38.0" \
+  "opentelemetry-exporter-otlp==1.38.0"
+
 # ---------------------------------------------------------------------------
 # 3. Copy cael services + agent sources
 # ---------------------------------------------------------------------------
