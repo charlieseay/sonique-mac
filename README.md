@@ -46,6 +46,8 @@ Phase 11 adds long-horizon consumer stability: runtime contract embeds `contract
 
 Phase 12 completes consumer pull + observability: SoniqueBar runs a local loopback-only contract endpoint on `127.0.0.1:8894` with token-gated reads (`x-sonique-contract-token` or `?token=`), exposes runtime/trend pull URLs in the contract payload, and shows an in-app preflight trend summary in Doctor.
 
+Connected installs are now first-class: onboarding includes a **Connection profile** selector. `Standard` keeps setup minimal, while `Connected Lab` applies lab-oriented defaults (host-first capabilities on, NVIDIA base URL seed, local-then-provider fallback) and syncs CAAL routing/integration preferences on save for HA/NVIDIA/CLI-heavy environments.
+
 ## Build
 
 Open `SoniqueBar.xcodeproj` in Xcode (or generate via XcodeGen if you add a spec). Scheme: **SoniqueBar**, destination: **My Mac**.

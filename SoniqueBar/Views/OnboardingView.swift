@@ -24,6 +24,7 @@ struct OnboardingView: View {
     @State private var scanSummary = "Not scanned yet."
     @State private var isScanning = false
     @State private var quickStartStep: QuickStartStep = .mode
+    @State private var connectionProfileDraft: ConnectionProfile = .standard
     @State private var lastScan: QuickStartScanResult?
     @State private var hostCalendarDraft = true
     @State private var hostContactsDraft = true
@@ -88,6 +89,7 @@ struct OnboardingView: View {
             hostMailDraft       = monitor.settings.capabilityHostMail
             hostFilesDraft      = monitor.settings.capabilityHostFiles
             iosBridgeDraft      = monitor.settings.capabilityIOSBridge
+            connectionProfileDraft = inferConnectionProfile()
             if scanSummary == "Not scanned yet." {
                 scanSummary = "Run Quick Start Scan to auto-detect local tooling and paths."
             }
@@ -194,10 +196,18 @@ struct OnboardingView: View {
         }
 
         Task { await syncVoice() }
+        Task { await syncConnectedProfileIfNeeded() }
         monitor.startPolling()
         publishRuntimeContract()
         dismissWindow(id: "settings")
         dismiss()
+    }
+
+    private func inferConnectionProfile() -> ConnectionProfile {
+        if nvidiaFeatureDraft || !haURLDraft.trimmingCharacters(in: .whitespaces).isEmpty {
+            return .connectedLab
+        }
+        return .standard
     }
 
     private func exportProfile() {
@@ -362,6 +372,15 @@ struct OnboardingView: View {
         VStack(alignment: .leading, spacing: 10) {
             Text("Mode selection")
                 .font(.subheadline.weight(.semibold))
+            Picker("Connection profile", selection: $connectionProfileDraft) {
+                ForEach(ConnectionProfile.allCases) { profile in
+                    Text(profile.label).tag(profile)
+                }
+            }
+            .pickerStyle(.menu)
+            .onChange(of: connectionProfileDraft) { _, profile in
+                applyConnectionProfileDefaults(profile)
+            }
             Picker("Deployment mode", selection: $deploymentModeDraft) {
                 ForEach(SidecarManager.DeploymentMode.allCases) { mode in
                     Text(mode.label).tag(mode)
@@ -375,6 +394,63 @@ struct OnboardingView: View {
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
         }
+    }
+
+    private func applyConnectionProfileDefaults(_ profile: ConnectionProfile) {
+        switch profile {
+        case .standard:
+            if llmProviderDraft == .nvidia { llmProviderDraft = .ollama }
+            if fallbackPolicyDraft == .providerThenLocal {
+                fallbackPolicyDraft = .localOnly
+            }
+        case .connectedLab:
+            nvidiaFeatureDraft = true
+            if nvidiaBaseURLDraft.trimmingCharacters(in: .whitespaces).isEmpty {
+                nvidiaBaseURLDraft = "https://integrate.api.nvidia.com/v1"
+            }
+            fallbackPolicyDraft = .localThenProvider
+            hostCalendarDraft = true
+            hostContactsDraft = true
+            hostMailDraft = true
+            hostFilesDraft = true
+            iosBridgeDraft = true
+        }
+    }
+
+    private func syncConnectedProfileIfNeeded() async {
+        guard connectionProfileDraft == .connectedLab else { return }
+        guard let url = URL(string: "\(monitor.settings.backendURL)/settings") else { return }
+
+        let hassHost = haURLDraft.trimmingCharacters(in: .whitespaces)
+        let hassToken = haTokenDraft.trimmingCharacters(in: .whitespaces)
+        let hasHass = !hassHost.isEmpty && !hassToken.isEmpty
+        let openAIBase = nvidiaBaseURLDraft.trimmingCharacters(in: .whitespaces)
+
+        var settingsPayload: [String: Any] = [
+            "llm_provider": "ollama",
+            "router_simple_provider": "ollama",
+            "router_medium_provider": "openai_compatible",
+            "router_complex_provider": "claude_cli",
+            "n8n_enabled": true
+        ]
+        if !openAIBase.isEmpty {
+            settingsPayload["openai_base_url"] = openAIBase
+        }
+        settingsPayload["hass_enabled"] = hasHass
+        if hasHass {
+            settingsPayload["hass_host"] = hassHost
+            settingsPayload["hass_token"] = hassToken
+        }
+
+        guard let body = try? JSONSerialization.data(withJSONObject: ["settings": settingsPayload]) else { return }
+        var req = URLRequest(url: url, timeoutInterval: 6)
+        req.httpMethod = "POST"
+        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        if !monitor.settings.apiKey.isEmpty {
+            req.setValue(monitor.settings.apiKey, forHTTPHeaderField: "x-api-key")
+        }
+        req.httpBody = body
+        _ = try? await URLSession.shared.data(for: req)
     }
 
     private var modelStep: some View {
@@ -873,6 +949,19 @@ private enum QuickStartStep: String, CaseIterable, Identifiable {
         case .capabilities: return "Capabilities"
         case .knowledge: return "Knowledge"
         case .doctor: return "Doctor"
+        }
+    }
+}
+
+private enum ConnectionProfile: String, CaseIterable, Identifiable {
+    case standard
+    case connectedLab
+
+    var id: String { rawValue }
+    var label: String {
+        switch self {
+        case .standard: return "Standard (Easy Install)"
+        case .connectedLab: return "Connected Lab (HA + NVIDIA + CLI)"
         }
     }
 }
