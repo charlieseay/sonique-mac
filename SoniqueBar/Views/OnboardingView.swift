@@ -112,6 +112,8 @@ struct OnboardingView: View {
                     .buttonStyle(.bordered)
                 Button("Export profile") { exportProfile() }
                     .buttonStyle(.bordered)
+                Button("Export runtime contract") { exportRuntimeContract() }
+                    .buttonStyle(.bordered)
             }
             Text(scanSummary)
                 .font(.caption)
@@ -255,6 +257,37 @@ struct OnboardingView: View {
         hostFilesDraft = profile.capabilityHostFiles
         iosBridgeDraft = profile.capabilityIOSBridge
         scanSummary = "Imported profile from \(url.lastPathComponent). Review and Save to apply."
+    }
+
+    private func exportRuntimeContract() {
+        let panel = NSSavePanel()
+        panel.allowedContentTypes = [UTType.json]
+        panel.nameFieldStringValue = "sonique-runtime-contract.json"
+        panel.canCreateDirectories = true
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+
+        let contract = OnboardingRuntimeContract(
+            generatedAtISO8601: ISO8601DateFormatter().string(from: Date()),
+            deploymentMode: deploymentModeDraft.rawValue,
+            llmProvider: llmProviderDraft.rawValue,
+            fallbackPolicy: fallbackPolicyDraft.rawValue,
+            preferredModelLabel: preferredModelDraft,
+            capabilityHostCalendar: hostCalendarDraft,
+            capabilityHostContacts: hostContactsDraft,
+            capabilityHostMail: hostMailDraft,
+            capabilityHostFiles: hostFilesDraft,
+            capabilityIOSBridge: iosBridgeDraft,
+            dockerDetected: lastScan?.hasDocker ?? false,
+            ollamaDetected: lastScan?.hasOllama ?? false,
+            detectedCLIs: lastScan?.detectedCLIs ?? [],
+            routingPolicyURL: "\(monitor.settings.backendURL)/routing/policy"
+        )
+
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        if let data = try? encoder.encode(contract) {
+            try? data.write(to: url, options: .atomic)
+        }
     }
 
     /// Task #284: extend `settings` with `LLMRoutingCAALKeys` fields when CAAL `/api/settings` accepts them.
@@ -477,6 +510,45 @@ struct OnboardingView: View {
                     .font(.caption2)
                     .foregroundStyle(.secondary)
             }
+            Spacer(minLength: 8)
+            if !check.ok, let remediation = check.remediation {
+                Button("Fix") {
+                    applyRemediation(remediation)
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.small)
+            }
+        }
+    }
+
+    private func applyRemediation(_ remediation: DoctorRemediation) {
+        switch remediation {
+        case .openDockerApp:
+            NSWorkspace.shared.openApplication(at: URL(fileURLWithPath: "/Applications/Docker.app"), configuration: NSWorkspace.OpenConfiguration())
+        case .openContactsPrivacy:
+            if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Contacts") {
+                NSWorkspace.shared.open(url)
+            }
+        case .openCalendarPrivacy:
+            if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Calendars") {
+                NSWorkspace.shared.open(url)
+            }
+        case .openGitHubCLIAuthDocs:
+            if let url = URL(string: "https://cli.github.com/manual/gh_auth_login") {
+                NSWorkspace.shared.open(url)
+            }
+        case .openClaudeCLIInstallDocs:
+            if let url = URL(string: "https://docs.anthropic.com/en/docs/claude-code") {
+                NSWorkspace.shared.open(url)
+            }
+        case .openGeminiCLIInstallDocs:
+            if let url = URL(string: "https://github.com/google-gemini/gemini-cli") {
+                NSWorkspace.shared.open(url)
+            }
+        case .openCursorCLIInstallDocs:
+            if let url = URL(string: "https://docs.cursor.com/en/cli/overview") {
+                NSWorkspace.shared.open(url)
+            }
         }
     }
 
@@ -495,6 +567,17 @@ private struct DoctorCheck: Identifiable {
     let label: String
     let ok: Bool
     let detail: String
+    let remediation: DoctorRemediation?
+}
+
+private enum DoctorRemediation {
+    case openDockerApp
+    case openContactsPrivacy
+    case openCalendarPrivacy
+    case openGitHubCLIAuthDocs
+    case openClaudeCLIInstallDocs
+    case openGeminiCLIInstallDocs
+    case openCursorCLIInstallDocs
 }
 
 private struct OnboardingProfile: Codable {
@@ -516,6 +599,23 @@ private struct OnboardingProfile: Codable {
     let capabilityHostMail: Bool
     let capabilityHostFiles: Bool
     let capabilityIOSBridge: Bool
+}
+
+private struct OnboardingRuntimeContract: Codable {
+    let generatedAtISO8601: String
+    let deploymentMode: String
+    let llmProvider: String
+    let fallbackPolicy: String
+    let preferredModelLabel: String
+    let capabilityHostCalendar: Bool
+    let capabilityHostContacts: Bool
+    let capabilityHostMail: Bool
+    let capabilityHostFiles: Bool
+    let capabilityIOSBridge: Bool
+    let dockerDetected: Bool
+    let ollamaDetected: Bool
+    let detectedCLIs: [String]
+    let routingPolicyURL: String
 }
 
 private enum QuickStartStep: String, CaseIterable, Identifiable {
@@ -604,16 +704,16 @@ private enum QuickStartScanner {
         let localFilesReadable = FileManager.default.isReadableFile(atPath: NSHomeDirectory())
 
         return [
-            DoctorCheck(label: "Frontend API health", ok: await frontend, detail: "\(effectiveURL)/health"),
-            DoctorCheck(label: "Routing policy endpoint", ok: await backend, detail: "\(backendURL)/routing/policy"),
-            DoctorCheck(label: "Docker daemon reachable", ok: dockerDaemon, detail: "docker info"),
-            DoctorCheck(label: "GitHub CLI auth", ok: ghAuth, detail: "gh auth status"),
-            DoctorCheck(label: "Claude CLI available", ok: claudeAvailable, detail: "command: claude"),
-            DoctorCheck(label: "Gemini CLI available", ok: geminiAvailable, detail: "command: gemini"),
-            DoctorCheck(label: "Cursor CLI available", ok: cursorAvailable, detail: "command: cursor"),
-            DoctorCheck(label: "Contacts permission", ok: contactsStatus == "authorized", detail: contactsStatus),
-            DoctorCheck(label: "Calendar permission", ok: calendarStatus == "full_access" || calendarStatus == "write_only" || calendarStatus == "authorized", detail: calendarStatus),
-            DoctorCheck(label: "Local files readable", ok: localFilesReadable, detail: NSHomeDirectory())
+            DoctorCheck(label: "Frontend API health", ok: await frontend, detail: "\(effectiveURL)/health", remediation: nil),
+            DoctorCheck(label: "Routing policy endpoint", ok: await backend, detail: "\(backendURL)/routing/policy", remediation: nil),
+            DoctorCheck(label: "Docker daemon reachable", ok: dockerDaemon, detail: "docker info", remediation: dockerDaemon ? nil : .openDockerApp),
+            DoctorCheck(label: "GitHub CLI auth", ok: ghAuth, detail: "gh auth status", remediation: ghAuth ? nil : .openGitHubCLIAuthDocs),
+            DoctorCheck(label: "Claude CLI available", ok: claudeAvailable, detail: "command: claude", remediation: claudeAvailable ? nil : .openClaudeCLIInstallDocs),
+            DoctorCheck(label: "Gemini CLI available", ok: geminiAvailable, detail: "command: gemini", remediation: geminiAvailable ? nil : .openGeminiCLIInstallDocs),
+            DoctorCheck(label: "Cursor CLI available", ok: cursorAvailable, detail: "command: cursor", remediation: cursorAvailable ? nil : .openCursorCLIInstallDocs),
+            DoctorCheck(label: "Contacts permission", ok: contactsStatus == "authorized", detail: contactsStatus, remediation: contactsStatus == "authorized" ? nil : .openContactsPrivacy),
+            DoctorCheck(label: "Calendar permission", ok: calendarStatus == "full_access" || calendarStatus == "write_only" || calendarStatus == "authorized", detail: calendarStatus, remediation: (calendarStatus == "full_access" || calendarStatus == "write_only" || calendarStatus == "authorized") ? nil : .openCalendarPrivacy),
+            DoctorCheck(label: "Local files readable", ok: localFilesReadable, detail: NSHomeDirectory(), remediation: nil)
         ]
     }
 

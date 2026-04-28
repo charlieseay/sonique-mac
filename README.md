@@ -32,6 +32,8 @@ The Capabilities step persists host/bridge access preferences (calendar, contact
 
 Profiles can also be exported/imported as JSON from the Quick Start panel to move setup between devices or restore known-good local configs quickly.
 
+Doctor rows now include context-aware **Fix** actions for common local blockers (privacy panes, Docker app launch, CLI auth/install docs). Quick Start can also export a runtime contract JSON snapshot for Helmsman/team tooling alignment.
+
 ## Build
 
 Open `SoniqueBar.xcodeproj` in Xcode (or generate via XcodeGen if you add a spec). Scheme: **SoniqueBar**, destination: **My Mac**.
