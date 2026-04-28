@@ -32,6 +32,7 @@ struct OnboardingView: View {
     @State private var iosBridgeDraft = true
     @State private var isRunningDoctor = false
     @State private var doctorResults: [DoctorCheck] = []
+    @State private var isRunningPreflightRepair = false
 
     var body: some View {
         ScrollView {
@@ -114,6 +115,11 @@ struct OnboardingView: View {
                     .buttonStyle(.bordered)
                 Button("Export runtime contract") { exportRuntimeContract() }
                     .buttonStyle(.bordered)
+                Button("Preflight repair") {
+                    Task { await runPreflightRepair() }
+                }
+                .buttonStyle(.borderedProminent)
+                .disabled(isRunningPreflightRepair)
             }
             Text(scanSummary)
                 .font(.caption)
@@ -280,7 +286,10 @@ struct OnboardingView: View {
             dockerDetected: lastScan?.hasDocker ?? false,
             ollamaDetected: lastScan?.hasOllama ?? false,
             detectedCLIs: lastScan?.detectedCLIs ?? [],
-            routingPolicyURL: "\(monitor.settings.backendURL)/routing/policy"
+            routingPolicyURL: "\(monitor.settings.backendURL)/routing/policy",
+            backendHealthURL: "\(monitor.settings.backendURL)/health",
+            frontendHealthURL: "\(monitor.settings.effectiveURL)/health",
+            expectedSimpleProvider: llmProviderDraft == .ollama ? "ollama" : "openai_compatible"
         )
 
         let encoder = JSONEncoder()
@@ -288,6 +297,23 @@ struct OnboardingView: View {
         if let data = try? encoder.encode(contract) {
             try? data.write(to: url, options: .atomic)
         }
+    }
+
+    private func runPreflightRepair() async {
+        isRunningPreflightRepair = true
+        defer { isRunningPreflightRepair = false }
+
+        await runQuickStartScan()
+
+        if deploymentModeDraft == .embedded {
+            await monitor.sidecarManager.start()
+        } else {
+            await monitor.containerManager.setup(caelDirectory: caelDirDraft.trimmingCharacters(in: .whitespaces))
+        }
+
+        monitor.startPolling()
+        await runDoctorChecks()
+        scanSummary = "Preflight repair completed. Review Doctor results, then Save if configuration looks correct."
     }
 
     /// Task #284: extend `settings` with `LLMRoutingCAALKeys` fields when CAAL `/api/settings` accepts them.
@@ -631,6 +657,9 @@ private struct OnboardingRuntimeContract: Codable {
     let ollamaDetected: Bool
     let detectedCLIs: [String]
     let routingPolicyURL: String
+    let backendHealthURL: String
+    let frontendHealthURL: String
+    let expectedSimpleProvider: String
 }
 
 private enum QuickStartStep: String, CaseIterable, Identifiable {

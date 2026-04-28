@@ -32,7 +32,9 @@ The Capabilities step persists host/bridge access preferences (calendar, contact
 
 Profiles can also be exported/imported as JSON from the Quick Start panel to move setup between devices or restore known-good local configs quickly.
 
-Doctor rows now include context-aware **Fix** actions for common local blockers (privacy panes, Docker app launch, CLI auth/install docs). Quick Start can also export a runtime contract JSON snapshot for Helmsman/team tooling alignment. Phase 6 also adds deeper live probes for sidecar STT/TTS health, backend `/health`, and routing policy parity against the selected local provider.
+Doctor rows now include context-aware **Fix** actions for common local blockers (privacy panes, Docker app launch, CLI auth/install docs). Quick Start can also export a runtime contract JSON snapshot for Helmsman/team tooling alignment. Phase 6 adds deeper live probes for sidecar STT/TTS health, backend `/health`, and routing policy parity against the selected local provider.
+
+Phase 7 adds an opt-in **Preflight repair** action that re-scans local prerequisites, re-starts the selected runtime path (embedded sidecar or networked CAAL), and reruns Doctor checks to confirm readiness before save/deploy.
 
 ## Build
 
