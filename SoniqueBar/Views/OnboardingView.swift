@@ -1,4 +1,7 @@
 import SwiftUI
+import Contacts
+import EventKit
+import UniformTypeIdentifiers
 
 struct OnboardingView: View {
     @EnvironmentObject var monitor: ServerMonitor
@@ -104,6 +107,12 @@ struct OnboardingView: View {
                 .buttonStyle(.borderedProminent)
                 .disabled(isScanning)
             }
+            HStack {
+                Button("Import profile") { importProfile() }
+                    .buttonStyle(.bordered)
+                Button("Export profile") { exportProfile() }
+                    .buttonStyle(.bordered)
+            }
             Text(scanSummary)
                 .font(.caption)
                 .foregroundStyle(.secondary)
@@ -178,6 +187,74 @@ struct OnboardingView: View {
         monitor.startPolling()
         dismissWindow(id: "settings")
         dismiss()
+    }
+
+    private func exportProfile() {
+        let panel = NSSavePanel()
+        panel.allowedContentTypes = [UTType.json]
+        panel.nameFieldStringValue = "sonique-onboarding-profile.json"
+        panel.canCreateDirectories = true
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+
+        let profile = OnboardingProfile(
+            caelDirectory: caelDirDraft,
+            externalURL: externalDraft,
+            apiKey: keyDraft,
+            ttsVoiceId: ttsVoiceDraft,
+            deploymentMode: deploymentModeDraft.rawValue,
+            launchAtLogin: launchAtLoginDraft,
+            haURL: haURLDraft,
+            haToken: haTokenDraft,
+            llmProvider: llmProviderDraft.rawValue,
+            preferredModelLabel: preferredModelDraft,
+            fallbackPolicy: fallbackPolicyDraft.rawValue,
+            nvidiaBaseURL: nvidiaBaseURLDraft,
+            nvidiaFeatureEnabled: nvidiaFeatureDraft,
+            capabilityHostCalendar: hostCalendarDraft,
+            capabilityHostContacts: hostContactsDraft,
+            capabilityHostMail: hostMailDraft,
+            capabilityHostFiles: hostFilesDraft,
+            capabilityIOSBridge: iosBridgeDraft
+        )
+
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        if let data = try? encoder.encode(profile) {
+            try? data.write(to: url, options: .atomic)
+        }
+    }
+
+    private func importProfile() {
+        let panel = NSOpenPanel()
+        panel.allowedContentTypes = [UTType.json]
+        panel.canChooseFiles = true
+        panel.canChooseDirectories = false
+        panel.allowsMultipleSelection = false
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+        guard let data = try? Data(contentsOf: url),
+              let profile = try? JSONDecoder().decode(OnboardingProfile.self, from: data) else {
+            return
+        }
+
+        caelDirDraft = profile.caelDirectory
+        externalDraft = profile.externalURL
+        keyDraft = profile.apiKey
+        ttsVoiceDraft = profile.ttsVoiceId
+        deploymentModeDraft = SidecarManager.DeploymentMode(rawValue: profile.deploymentMode) ?? deploymentModeDraft
+        launchAtLoginDraft = profile.launchAtLogin
+        haURLDraft = profile.haURL
+        haTokenDraft = profile.haToken
+        llmProviderDraft = SoniqueBarLLMProvider(rawValue: profile.llmProvider) ?? llmProviderDraft
+        preferredModelDraft = profile.preferredModelLabel
+        fallbackPolicyDraft = SoniqueBarFallbackPolicy(rawValue: profile.fallbackPolicy) ?? fallbackPolicyDraft
+        nvidiaBaseURLDraft = profile.nvidiaBaseURL
+        nvidiaFeatureDraft = profile.nvidiaFeatureEnabled
+        hostCalendarDraft = profile.capabilityHostCalendar
+        hostContactsDraft = profile.capabilityHostContacts
+        hostMailDraft = profile.capabilityHostMail
+        hostFilesDraft = profile.capabilityHostFiles
+        iosBridgeDraft = profile.capabilityIOSBridge
+        scanSummary = "Imported profile from \(url.lastPathComponent). Review and Save to apply."
     }
 
     /// Task #284: extend `settings` with `LLMRoutingCAALKeys` fields when CAAL `/api/settings` accepts them.
@@ -420,6 +497,27 @@ private struct DoctorCheck: Identifiable {
     let detail: String
 }
 
+private struct OnboardingProfile: Codable {
+    let caelDirectory: String
+    let externalURL: String
+    let apiKey: String
+    let ttsVoiceId: String
+    let deploymentMode: String
+    let launchAtLogin: Bool
+    let haURL: String
+    let haToken: String
+    let llmProvider: String
+    let preferredModelLabel: String
+    let fallbackPolicy: String
+    let nvidiaBaseURL: String
+    let nvidiaFeatureEnabled: Bool
+    let capabilityHostCalendar: Bool
+    let capabilityHostContacts: Bool
+    let capabilityHostMail: Bool
+    let capabilityHostFiles: Bool
+    let capabilityIOSBridge: Bool
+}
+
 private enum QuickStartStep: String, CaseIterable, Identifiable {
     case mode, models, capabilities, knowledge, doctor
 
@@ -501,6 +599,10 @@ private enum QuickStartScanner {
         let geminiAvailable = commandExists("gemini")
         let cursorAvailable = commandExists("cursor")
 
+        let contactsStatus = contactsPermissionLabel()
+        let calendarStatus = calendarPermissionLabel()
+        let localFilesReadable = FileManager.default.isReadableFile(atPath: NSHomeDirectory())
+
         return [
             DoctorCheck(label: "Frontend API health", ok: await frontend, detail: "\(effectiveURL)/health"),
             DoctorCheck(label: "Routing policy endpoint", ok: await backend, detail: "\(backendURL)/routing/policy"),
@@ -508,8 +610,42 @@ private enum QuickStartScanner {
             DoctorCheck(label: "GitHub CLI auth", ok: ghAuth, detail: "gh auth status"),
             DoctorCheck(label: "Claude CLI available", ok: claudeAvailable, detail: "command: claude"),
             DoctorCheck(label: "Gemini CLI available", ok: geminiAvailable, detail: "command: gemini"),
-            DoctorCheck(label: "Cursor CLI available", ok: cursorAvailable, detail: "command: cursor")
+            DoctorCheck(label: "Cursor CLI available", ok: cursorAvailable, detail: "command: cursor"),
+            DoctorCheck(label: "Contacts permission", ok: contactsStatus == "authorized", detail: contactsStatus),
+            DoctorCheck(label: "Calendar permission", ok: calendarStatus == "full_access" || calendarStatus == "write_only" || calendarStatus == "authorized", detail: calendarStatus),
+            DoctorCheck(label: "Local files readable", ok: localFilesReadable, detail: NSHomeDirectory())
         ]
+    }
+
+    private static func contactsPermissionLabel() -> String {
+        switch CNContactStore.authorizationStatus(for: .contacts) {
+        case .authorized: return "authorized"
+        case .notDetermined: return "not_determined"
+        case .denied: return "denied"
+        case .restricted: return "restricted"
+        @unknown default: return "unknown"
+        }
+    }
+
+    private static func calendarPermissionLabel() -> String {
+        if #available(macOS 14.0, *) {
+            switch EKEventStore.authorizationStatus(for: .event) {
+            case .fullAccess: return "full_access"
+            case .writeOnly: return "write_only"
+            case .notDetermined: return "not_determined"
+            case .denied: return "denied"
+            case .restricted: return "restricted"
+            @unknown default: return "unknown"
+            }
+        } else {
+            switch EKEventStore.authorizationStatus(for: .event) {
+            case .authorized: return "authorized"
+            case .notDetermined: return "not_determined"
+            case .denied: return "denied"
+            case .restricted: return "restricted"
+            @unknown default: return "unknown"
+            }
+        }
     }
 
     private static func endpointReachable(_ rawURL: String) async -> Bool {

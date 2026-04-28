@@ -28,7 +28,9 @@ Quick Start now runs as a step-based wizard:
 - Knowledge
 - Doctor
 
-The Capabilities step persists host/bridge access preferences (calendar, contacts, mail, files, iOS bridge fallback). The Doctor step now runs local probes for frontend/backend reachability, Docker daemon, and CLI availability/auth.
+The Capabilities step persists host/bridge access preferences (calendar, contacts, mail, files, iOS bridge fallback). The Doctor step now runs local probes for frontend/backend reachability, Docker daemon, CLI readiness/auth, and current permission states for Contacts/Calendar.
+
+Profiles can also be exported/imported as JSON from the Quick Start panel to move setup between devices or restore known-good local configs quickly.
 
 ## Build
 
