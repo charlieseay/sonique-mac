@@ -189,7 +189,11 @@ class MacSettings: ObservableObject {
         self.fallbackPolicyRaw = UserDefaults.standard.string(forKey: LLMRoutingStorageKeys.fallbackPolicy) ?? SoniqueBarFallbackPolicy.localOnly.rawValue
         self.nvidiaFeatureEnabled = UserDefaults.standard.bool(forKey: LLMRoutingStorageKeys.nvidiaFeatureEnabled)
         self.nvidiaBaseURL = UserDefaults.standard.string(forKey: LLMRoutingStorageKeys.nvidiaBaseURL) ?? ""
-        self.showInDock    = UserDefaults.standard.bool(forKey: "showInDock")
+        // Missing key: bool(forKey:) is false — first installs looked like "nothing runs" (LSUIElement + no Dock).
+        if UserDefaults.standard.object(forKey: "showInDock") == nil {
+            UserDefaults.standard.set(true, forKey: "showInDock")
+        }
+        self.showInDock = UserDefaults.standard.bool(forKey: "showInDock")
         self.launchAtLogin = UserDefaults.standard.object(forKey: "launchAtLogin") as? Bool ?? true
 
         let bundledTarballExists = Bundle.main.url(
