@@ -540,7 +540,7 @@ struct OnboardingView: View {
             Spacer(minLength: 8)
             if !check.ok, let remediation = check.remediation {
                 Button("Fix") {
-                    applyRemediation(remediation)
+                    Task { await applyRemediation(remediation) }
                 }
                 .buttonStyle(.bordered)
                 .controlSize(.small)
@@ -548,10 +548,10 @@ struct OnboardingView: View {
         }
     }
 
-    private func applyRemediation(_ remediation: DoctorRemediation) {
+    private func applyRemediation(_ remediation: DoctorRemediation) async {
         switch remediation {
         case .openDockerApp:
-            NSWorkspace.shared.openApplication(at: URL(fileURLWithPath: "/Applications/Docker.app"), configuration: NSWorkspace.OpenConfiguration())
+            NSWorkspace.shared.open(URL(fileURLWithPath: "/Applications/Docker.app"))
         case .openContactsPrivacy:
             if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Contacts") {
                 NSWorkspace.shared.open(url)
@@ -587,6 +587,53 @@ struct OnboardingView: View {
         case .openSidecarLogs:
             let path = ("~/Library/Logs/SoniqueBar" as NSString).expandingTildeInPath
             NSWorkspace.shared.selectFile(nil, inFileViewerRootedAtPath: path)
+        case .requestContactsPermission:
+            let store = CNContactStore()
+            _ = try? await store.requestAccess(for: .contacts)
+            await runDoctorChecks()
+        case .requestCalendarPermission:
+            let store = EKEventStore()
+            if #available(macOS 14.0, *) {
+                _ = try? await store.requestFullAccessToEvents()
+            } else {
+                _ = try? await store.requestAccess(to: .event)
+            }
+            await runDoctorChecks()
+        case .publishRuntimeContract:
+            publishRuntimeContract()
+        }
+    }
+
+    private func publishRuntimeContract() {
+        let fm = FileManager.default
+        let root = ("~/Library/Application Support/SoniqueBar/contracts" as NSString).expandingTildeInPath
+        let dirURL = URL(fileURLWithPath: root, isDirectory: true)
+        try? fm.createDirectory(at: dirURL, withIntermediateDirectories: true)
+        let target = dirURL.appendingPathComponent("runtime-contract.latest.json")
+        let contract = OnboardingRuntimeContract(
+            generatedAtISO8601: ISO8601DateFormatter().string(from: Date()),
+            deploymentMode: deploymentModeDraft.rawValue,
+            llmProvider: llmProviderDraft.rawValue,
+            fallbackPolicy: fallbackPolicyDraft.rawValue,
+            preferredModelLabel: preferredModelDraft,
+            capabilityHostCalendar: hostCalendarDraft,
+            capabilityHostContacts: hostContactsDraft,
+            capabilityHostMail: hostMailDraft,
+            capabilityHostFiles: hostFilesDraft,
+            capabilityIOSBridge: iosBridgeDraft,
+            dockerDetected: lastScan?.hasDocker ?? false,
+            ollamaDetected: lastScan?.hasOllama ?? false,
+            detectedCLIs: lastScan?.detectedCLIs ?? [],
+            routingPolicyURL: "\(monitor.settings.backendURL)/routing/policy",
+            backendHealthURL: "\(monitor.settings.backendURL)/health",
+            frontendHealthURL: "\(monitor.settings.effectiveURL)/health",
+            expectedSimpleProvider: llmProviderDraft == .ollama ? "ollama" : "openai_compatible"
+        )
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        if let data = try? encoder.encode(contract) {
+            try? data.write(to: target, options: .atomic)
+            scanSummary = "Published runtime contract to \(target.path)"
         }
     }
 
@@ -619,6 +666,9 @@ private enum DoctorRemediation {
     case openFrontendURL(String)
     case openBackendURL(String)
     case openSidecarLogs
+    case requestContactsPermission
+    case requestCalendarPermission
+    case publishRuntimeContract
 }
 
 private struct OnboardingProfile: Codable {
@@ -758,6 +808,8 @@ private enum QuickStartScanner {
         let calendarStatus = calendarPermissionLabel()
         let localFilesReadable = FileManager.default.isReadableFile(atPath: NSHomeDirectory())
         let parity = await policyParity
+        let publishedContractPath = ("~/Library/Application Support/SoniqueBar/contracts/runtime-contract.latest.json" as NSString).expandingTildeInPath
+        let contractPublished = FileManager.default.fileExists(atPath: publishedContractPath)
 
         return [
             DoctorCheck(label: "Frontend API health", ok: await frontend, detail: "\(effectiveURL)/health", remediation: .openFrontendURL("\(effectiveURL)/health")),
@@ -770,11 +822,24 @@ private enum QuickStartScanner {
             DoctorCheck(label: "Claude CLI available", ok: claudeAvailable, detail: "command: claude", remediation: claudeAvailable ? nil : .openClaudeCLIInstallDocs),
             DoctorCheck(label: "Gemini CLI available", ok: geminiAvailable, detail: "command: gemini", remediation: geminiAvailable ? nil : .openGeminiCLIInstallDocs),
             DoctorCheck(label: "Cursor CLI available", ok: cursorAvailable, detail: "command: cursor", remediation: cursorAvailable ? nil : .openCursorCLIInstallDocs),
-            DoctorCheck(label: "Contacts permission", ok: contactsStatus == "authorized", detail: contactsStatus, remediation: contactsStatus == "authorized" ? nil : .openContactsPrivacy),
-            DoctorCheck(label: "Calendar permission", ok: calendarStatus == "full_access" || calendarStatus == "write_only" || calendarStatus == "authorized", detail: calendarStatus, remediation: (calendarStatus == "full_access" || calendarStatus == "write_only" || calendarStatus == "authorized") ? nil : .openCalendarPrivacy),
+            DoctorCheck(label: "Contacts permission", ok: contactsStatus == "authorized", detail: contactsStatus, remediation: contactsRemediation(status: contactsStatus)),
+            DoctorCheck(label: "Calendar permission", ok: calendarStatus == "full_access" || calendarStatus == "write_only" || calendarStatus == "authorized", detail: calendarStatus, remediation: calendarRemediation(status: calendarStatus)),
             DoctorCheck(label: "Local files readable", ok: localFilesReadable, detail: NSHomeDirectory(), remediation: nil),
-            DoctorCheck(label: "Routing policy parity", ok: parity.ok, detail: parity.detail, remediation: parity.ok ? nil : .openBackendURL("\(backendURL)/routing/policy"))
+            DoctorCheck(label: "Routing policy parity", ok: parity.ok, detail: parity.detail, remediation: parity.ok ? nil : .openBackendURL("\(backendURL)/routing/policy")),
+            DoctorCheck(label: "Runtime contract published", ok: contractPublished, detail: publishedContractPath, remediation: contractPublished ? nil : .publishRuntimeContract)
         ]
+    }
+
+    private static func contactsRemediation(status: String) -> DoctorRemediation? {
+        if status == "authorized" { return nil }
+        if status == "not_determined" { return .requestContactsPermission }
+        return .openContactsPrivacy
+    }
+
+    private static func calendarRemediation(status: String) -> DoctorRemediation? {
+        if status == "full_access" || status == "write_only" || status == "authorized" { return nil }
+        if status == "not_determined" { return .requestCalendarPermission }
+        return .openCalendarPrivacy
     }
 
     private static func routingPolicyParityCheck(
@@ -830,6 +895,8 @@ private enum QuickStartScanner {
         } else {
             switch EKEventStore.authorizationStatus(for: .event) {
             case .authorized: return "authorized"
+            case .fullAccess: return "full_access"
+            case .writeOnly: return "write_only"
             case .notDetermined: return "not_determined"
             case .denied: return "denied"
             case .restricted: return "restricted"

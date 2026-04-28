@@ -36,6 +36,8 @@ Doctor rows now include context-aware **Fix** actions for common local blockers 
 
 Phase 7 adds an opt-in **Preflight repair** action that re-scans local prerequisites, re-starts the selected runtime path (embedded sidecar or networked CAAL), and reruns Doctor checks to confirm readiness before save/deploy.
 
+Phase 8 adds direct permission-request remediation actions for not-determined Contacts/Calendar states and a Doctor check that verifies the published runtime contract path exists for consumer tooling.
+
 ## Build
 
 Open `SoniqueBar.xcodeproj` in Xcode (or generate via XcodeGen if you add a spec). Scheme: **SoniqueBar**, destination: **My Mac**.
