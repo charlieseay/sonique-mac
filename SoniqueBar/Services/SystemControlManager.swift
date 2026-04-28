@@ -12,7 +12,7 @@ class SystemControlManager: ObservableObject {
     @Published var lastActionDescription: String = ""
 
     private var pollTask: Task<Void, Never>?
-    private var backendURL: String = "http://localhost:8889"
+    private var backendURL: String = "http://localhost:8891"
     private var apiKey: String = ""
 
     func start(backendURL: String, apiKey: String) {

@@ -7,12 +7,13 @@ struct OnboardingView: View {
     @EnvironmentObject var monitor: ServerMonitor
     @Environment(\.dismiss) private var dismiss
     @Environment(\.dismissWindow) private var dismissWindow
+    @Environment(\.openWindow) private var openWindow
 
     @State private var caelDirDraft = "~/Projects/cael"
     @State private var externalDraft = ""
     @State private var keyDraft = ""
     @State private var ttsVoiceDraft = PiperVoice.defaultVoice.id
-    @State private var deploymentModeDraft: SidecarManager.DeploymentMode = .networked
+    @State private var deploymentModeDraft: SidecarManager.DeploymentMode = .embedded
     @State private var launchAtLoginDraft = true
     @State private var haURLDraft = ""
     @State private var haTokenDraft = ""
@@ -36,6 +37,19 @@ struct OnboardingView: View {
     @State private var isRunningPreflightRepair = false
     @State private var lastPreflightAt: Date?
     @State private var preflightTrend = PreflightTrendSummary.empty
+    @State private var memoryHealth = MemoryHealthSnapshot.empty
+    @State private var autoRemediationEnabled = true
+    @State private var attemptedAutoRemediations: Set<String> = []
+    @State private var showBulkPermissionPrompt = false
+    @State private var pendingPermissionNeeds: [BulkPermissionNeed] = []
+    @State private var suppressAutoPermissionPrompt = false
+    @State private var doctorAutoFixStatus = "Idle"
+    @AppStorage("soniquebar.doctor.requireHostCLIs") private var requireHostCLIs = false
+    @State private var stagedCredentialImport: StagedCredentialImport?
+    @State private var didSendCredentialIntakePrompt = false
+    @State private var showAdvancedFallbacks = false
+    @State private var isAutoSetupRunning = false
+    @State private var autoSetupStatus = "Not started"
 
     var body: some View {
         ScrollView {
@@ -44,15 +58,18 @@ struct OnboardingView: View {
                 .font(.headline)
 
             quickStartSection
+            setupProgressSection
 
-            Picker("Step", selection: $quickStartStep) {
-                ForEach(QuickStartStep.allCases) { step in
-                    Text(step.label).tag(step)
+            if showAdvancedFallbacks {
+                Picker("Step", selection: $quickStartStep) {
+                    ForEach(QuickStartStep.allCases) { step in
+                        Text(step.label).tag(step)
+                    }
                 }
-            }
-            .pickerStyle(.segmented)
+                .pickerStyle(.segmented)
 
-            wizardStepContent
+                wizardStepContent
+            }
 
             HStack {
                 if monitor.settings.isConfigured {
@@ -89,10 +106,37 @@ struct OnboardingView: View {
             hostMailDraft       = monitor.settings.capabilityHostMail
             hostFilesDraft      = monitor.settings.capabilityHostFiles
             iosBridgeDraft      = monitor.settings.capabilityIOSBridge
+            hostCalendarDraft   = false
+            hostContactsDraft   = false
             connectionProfileDraft = inferConnectionProfile()
             if scanSummary == "Not scanned yet." {
                 scanSummary = "Run Quick Start Scan to auto-detect local tooling and paths."
             }
+            refreshMemoryHealth()
+            Task { await runDoctorChecks(autoRemediate: autoRemediationEnabled) }
+        }
+        .alert(
+            "Allow SoniqueBar access for setup?",
+            isPresented: $showBulkPermissionPrompt
+        ) {
+            Button("Reset and re-request permissions") {
+                suppressAutoPermissionPrompt = true
+                Task { await resetAndRerequestPermissions() }
+            }
+            Button("Allow selected permissions") {
+                suppressAutoPermissionPrompt = true
+                Task { await applyBulkPermissionDecision(allow: true) }
+            }
+            Button("Reject and disable related tools", role: .destructive) {
+                suppressAutoPermissionPrompt = true
+                Task { await applyBulkPermissionDecision(allow: false) }
+            }
+            Button("Cancel", role: .cancel) {
+                suppressAutoPermissionPrompt = true
+                doctorAutoFixStatus = "Permission prompt dismissed"
+            }
+        } message: {
+            Text(bulkPermissionPromptMessage())
         }
     }
 
@@ -102,6 +146,15 @@ struct OnboardingView: View {
                 Text("Quick Start")
                     .font(.subheadline.weight(.semibold))
                 Spacer()
+                if isAutoSetupRunning {
+                    ProgressView()
+                        .controlSize(.small)
+                }
+                Button("Auto setup (recommended)") {
+                    Task { await runAutoSetup() }
+                }
+                .buttonStyle(.borderedProminent)
+                .disabled(isAutoSetupRunning || isScanning || isRunningDoctor)
                 if isScanning {
                     ProgressView()
                         .controlSize(.small)
@@ -129,9 +182,66 @@ struct OnboardingView: View {
                 .font(.caption)
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
+            Text("Auto setup: \(autoSetupStatus)")
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
         }
         .padding(10)
         .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+    }
+
+    private var setupProgressSection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Setup progress")
+                .font(.subheadline.weight(.semibold))
+            checklistRow("Runtime started", ok: monitor.isOnline)
+            checklistRow("Voice services healthy", ok: voiceServicesHealthy)
+            checklistRow("Learning memory active", ok: memoryHealth.janitorMode != "unknown")
+            checklistRow("Assistant profile loaded", ok: monitor.profile != nil)
+            if isReadyToTalk {
+                HStack(spacing: 8) {
+                    Image(systemName: "checkmark.seal.fill")
+                        .foregroundStyle(Color.green)
+                    Text("Ready to talk. Sonique is live and learning.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    Spacer()
+                    Button("Open Chat") {
+                        openWindow(id: "chat")
+                        NSApp.activate(ignoringOtherApps: true)
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .controlSize(.small)
+                }
+            } else {
+                Text("Tip: Click Auto setup (recommended), wait until complete, then Open Chat.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .padding(10)
+        .background(Color(nsColor: .controlBackgroundColor), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+    }
+
+    private var voiceServicesHealthy: Bool {
+        let labels = doctorResults.filter { $0.ok }.map(\.label)
+        return labels.contains("Sidecar STT health") && labels.contains("Sidecar TTS health")
+    }
+
+    private var isReadyToTalk: Bool {
+        monitor.isOnline && voiceServicesHealthy && memoryHealth.janitorMode != "unknown" && monitor.profile != nil
+    }
+
+    private func checklistRow(_ label: String, ok: Bool) -> some View {
+        HStack(spacing: 8) {
+            Image(systemName: ok ? "checkmark.circle.fill" : "circle.dotted")
+                .foregroundStyle(ok ? Color.green : Color.secondary)
+            Text(label)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            Spacer()
+        }
     }
 
     private func detectTailscale() async {
@@ -151,9 +261,6 @@ struct OnboardingView: View {
         if !scan.detectedCaelPath.isEmpty {
             caelDirDraft = scan.detectedCaelPath
         }
-        if deploymentModeDraft == .networked, scan.hasBundledRuntime {
-            deploymentModeDraft = .embedded
-        }
         if scan.hasNvidiaHints, nvidiaBaseURLDraft.isEmpty {
             nvidiaFeatureDraft = true
             nvidiaBaseURLDraft = "https://integrate.api.nvidia.com/v1"
@@ -163,10 +270,37 @@ struct OnboardingView: View {
         let modelLine = scan.detectedModelRuntime
         let vaultLine = scan.detectedVaultPath.isEmpty ? "none" : scan.detectedVaultPath
         scanSummary = """
-        Found: Docker \(scan.hasDocker ? "yes" : "no"), model runtime \(modelLine), CLIs \(cliLine), vault \(vaultLine).
-        Suggested mode: \(scan.recommendedModeLabel). CAAL path auto-filled when detected.
+        Found: model runtime \(modelLine), CLIs \(cliLine), vault \(vaultLine).
+        Runtime: embedded sidecar. CAAL path auto-filled when detected.
         """
         lastScan = scan
+    }
+
+    private func runAutoSetup() async {
+        isAutoSetupRunning = true
+        defer { isAutoSetupRunning = false }
+
+        autoSetupStatus = "Scanning your environment..."
+        await runQuickStartScan()
+
+        autoSetupStatus = "Starting embedded runtime..."
+        await monitor.sidecarManager.start()
+        monitor.startPolling()
+
+        autoSetupStatus = "Running doctor checks and applying safe fixes..."
+        await runDoctorChecks(autoRemediate: true)
+
+        autoSetupStatus = "Applying recommended defaults..."
+        if llmProviderDraft != .ollama { llmProviderDraft = .ollama }
+        if fallbackPolicyDraft == .providerThenLocal { fallbackPolicyDraft = .localOnly }
+        monitor.settings.capabilityHostCalendar = false
+        monitor.settings.capabilityHostContacts = false
+        hostCalendarDraft = false
+        hostContactsDraft = false
+
+        refreshMemoryHealth()
+        publishRuntimeContract()
+        autoSetupStatus = "Ready. Sonique is running and learning from this device."
     }
 
     private func save() {
@@ -182,18 +316,13 @@ struct OnboardingView: View {
         monitor.settings.preferredModelLabel = preferredModelDraft.trimmingCharacters(in: .whitespaces)
         monitor.settings.fallbackPolicy = fallbackPolicyDraft
         monitor.settings.nvidiaBaseURL = nvidiaBaseURLDraft.trimmingCharacters(in: .whitespaces)
-        monitor.settings.capabilityHostCalendar = hostCalendarDraft
-        monitor.settings.capabilityHostContacts = hostContactsDraft
+        monitor.settings.capabilityHostCalendar = false
+        monitor.settings.capabilityHostContacts = false
         monitor.settings.capabilityHostMail = hostMailDraft
         monitor.settings.capabilityHostFiles = hostFilesDraft
         monitor.settings.capabilityIOSBridge = iosBridgeDraft
 
-        let modeChanged = deploymentModeDraft != monitor.settings.deploymentMode
-        if modeChanged {
-            Task { await monitor.applyDeploymentMode(deploymentModeDraft) }
-        } else if deploymentModeDraft == .networked {
-            Task { await monitor.containerManager.setup(caelDirectory: monitor.settings.caelDirectory) }
-        }
+        Task { await monitor.sidecarManager.start() }
 
         Task { await syncVoice() }
         Task { await syncConnectedProfileIfNeeded() }
@@ -278,6 +407,213 @@ struct OnboardingView: View {
         scanSummary = "Imported profile from \(url.lastPathComponent). Review and Save to apply."
     }
 
+    private func startCredentialIntakeWithCael() {
+        doctorAutoFixStatus = "Credential intake started"
+        Task {
+            let suggestedDirectory = await suggestedCredentialDirectoryFromChat()
+            if suggestedDirectory == nil, !didSendCredentialIntakePrompt {
+                await openChatIntake(reason: "Ask where credentials are stored, what file types to read, and confirm explicit permission before ingesting")
+                didSendCredentialIntakePrompt = true
+            }
+            await MainActor.run {
+                importCredentialsFromSelection(startingDirectory: suggestedDirectory, autoApply: true)
+            }
+        }
+    }
+
+    private func importCredentialsFromSelection(startingDirectory: URL?, autoApply: Bool) {
+        let panel = NSOpenPanel()
+        panel.allowedContentTypes = [UTType.data]
+        panel.canChooseFiles = true
+        panel.canChooseDirectories = true
+        panel.allowsMultipleSelection = true
+        panel.directoryURL = startingDirectory ?? FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first
+        panel.prompt = "Stage credentials"
+        panel.message = "Select approved credential files or folders. SoniqueBar reads only selected items and stages detected fields for your review."
+        guard panel.runModal() == .OK else {
+            doctorAutoFixStatus = "Credential import cancelled"
+            return
+        }
+        let urls = collectCredentialCandidateFiles(from: panel.urls)
+        guard !urls.isEmpty else {
+            doctorAutoFixStatus = "No readable credential files found in selection"
+            return
+        }
+
+        var imported: Set<String> = []
+        var staged = StagedCredentialImport()
+        staged.sourceFiles = urls.map(\.lastPathComponent)
+        for url in urls {
+            guard let text = try? String(contentsOf: url, encoding: .utf8) else { continue }
+            let entries = parseCredentialText(text)
+            if let value = entries["CAAL_API_KEY"] ?? entries["API_KEY"] ?? entries["SONIQUE_API_KEY"] ?? entries["OPENAI_API_KEY"] {
+                staged.apiKey = value
+                imported.insert("API Key")
+            }
+            if let value = entries["HA_TOKEN"] ?? entries["HOME_ASSISTANT_TOKEN"] {
+                staged.haToken = value
+                imported.insert("Home Assistant token")
+            }
+            if let value = entries["HA_URL"] ?? entries["HOME_ASSISTANT_URL"] {
+                staged.haURL = value
+                imported.insert("Home Assistant URL")
+            }
+            if let value = entries["NVIDIA_BASE_URL"] {
+                staged.nvidiaBaseURL = value
+                imported.insert("NVIDIA base URL")
+            }
+            if let value = entries["EXTERNAL_URL"] {
+                staged.externalURL = value
+                imported.insert("External URL")
+            }
+        }
+
+        if imported.isEmpty {
+            doctorAutoFixStatus = "No recognized credentials found in selected files"
+        } else {
+            staged.detectedFields = imported.sorted()
+            stagedCredentialImport = staged
+            if autoApply {
+                applyStagedCredentialImport()
+                doctorAutoFixStatus = "Credentials imported automatically from approved selection"
+                scanSummary = "Credentials were imported from your approved selection. You can still re-import or overwrite manually."
+            } else {
+                doctorAutoFixStatus = "Credential import staged. Review and apply."
+                scanSummary = "Credentials staged from your approved selection. Apply or discard in Credential sources."
+            }
+        }
+    }
+
+    private func collectCredentialCandidateFiles(from selection: [URL]) -> [URL] {
+        let fm = FileManager.default
+        var files: [URL] = []
+        let allowedExtensions = Set(["txt", "env", "json", "md", "yaml", "yml", "ini", "conf"])
+
+        for url in selection {
+            var isDir: ObjCBool = false
+            guard fm.fileExists(atPath: url.path, isDirectory: &isDir) else { continue }
+            if isDir.boolValue {
+                guard let enumerator = fm.enumerator(at: url, includingPropertiesForKeys: [.isRegularFileKey, .fileSizeKey], options: [.skipsHiddenFiles]) else {
+                    continue
+                }
+                for case let candidate as URL in enumerator {
+                    let ext = candidate.pathExtension.lowercased()
+                    guard allowedExtensions.contains(ext) else { continue }
+                    guard
+                        let values = try? candidate.resourceValues(forKeys: [.isRegularFileKey, .fileSizeKey]),
+                        values.isRegularFile == true,
+                        (values.fileSize ?? 0) <= 512_000
+                    else { continue }
+                    files.append(candidate)
+                }
+            } else {
+                let ext = url.pathExtension.lowercased()
+                if allowedExtensions.contains(ext) {
+                    files.append(url)
+                }
+            }
+        }
+        return files
+    }
+
+    private func applyStagedCredentialImport() {
+        guard let staged = stagedCredentialImport else { return }
+        if let value = staged.apiKey { keyDraft = value }
+        if let value = staged.haToken { haTokenDraft = value }
+        if let value = staged.haURL { haURLDraft = value }
+        if let value = staged.nvidiaBaseURL { nvidiaBaseURLDraft = value }
+        if let value = staged.externalURL { externalDraft = value }
+        stagedCredentialImport = nil
+        doctorAutoFixStatus = "Applied imported credentials to draft settings"
+    }
+
+    private func parseCredentialText(_ text: String) -> [String: String] {
+        var result: [String: String] = [:]
+        for rawLine in text.split(whereSeparator: \.isNewline) {
+            let line = rawLine.trimmingCharacters(in: .whitespacesAndNewlines)
+            if line.isEmpty || line.hasPrefix("#") { continue }
+            let separators = ["=", ":"]
+            var found: (String, String)?
+            for sep in separators {
+                if let symbol = sep.first, let idx = line.firstIndex(of: symbol) {
+                    let key = String(line[..<idx]).trimmingCharacters(in: .whitespaces).uppercased()
+                    var value = String(line[line.index(after: idx)...]).trimmingCharacters(in: .whitespaces)
+                    value = value.trimmingCharacters(in: CharacterSet(charactersIn: "\"'"))
+                    if !key.isEmpty, !value.isEmpty {
+                        found = (key, value)
+                    }
+                    break
+                }
+            }
+            if let found {
+                result[found.0] = found.1
+                continue
+            }
+
+            // Human-readable fallback labels:
+            // "API Key: xxx", "Home Assistant Token: xxx", etc.
+            let lowered = line.lowercased()
+            if let value = trailingValue(after: "api key", in: line), lowered.contains("api key") {
+                result["API_KEY"] = value
+            } else if let value = trailingValue(after: "home assistant token", in: line), lowered.contains("home assistant token") {
+                result["HOME_ASSISTANT_TOKEN"] = value
+            } else if let value = trailingValue(after: "ha token", in: line), lowered.contains("ha token") {
+                result["HA_TOKEN"] = value
+            } else if let value = trailingValue(after: "home assistant url", in: line), lowered.contains("home assistant url") {
+                result["HOME_ASSISTANT_URL"] = value
+            } else if let value = trailingValue(after: "ha url", in: line), lowered.contains("ha url") {
+                result["HA_URL"] = value
+            } else if let value = trailingValue(after: "external url", in: line), lowered.contains("external url") {
+                result["EXTERNAL_URL"] = value
+            } else if let value = trailingValue(after: "nvidia base url", in: line), lowered.contains("nvidia base url") {
+                result["NVIDIA_BASE_URL"] = value
+            }
+        }
+        return result
+    }
+
+    private func trailingValue(after label: String, in line: String) -> String? {
+        guard let range = line.range(of: label, options: [.caseInsensitive]) else { return nil }
+        var tail = String(line[range.upperBound...]).trimmingCharacters(in: .whitespaces)
+        if tail.hasPrefix(":") || tail.hasPrefix("=") {
+            tail.removeFirst()
+            tail = tail.trimmingCharacters(in: .whitespaces)
+        }
+        tail = tail.trimmingCharacters(in: CharacterSet(charactersIn: "\"'"))
+        return tail.isEmpty ? nil : tail
+    }
+
+    private func suggestedCredentialDirectoryFromChat() async -> URL? {
+        guard let url = URL(string: "\(monitor.settings.backendURL)/api/chat/history?session_id=sonique-main") else {
+            return nil
+        }
+        var req = URLRequest(url: url, timeoutInterval: 6)
+        if !monitor.settings.apiKey.isEmpty {
+            req.setValue(monitor.settings.apiKey, forHTTPHeaderField: "x-api-key")
+        }
+        guard
+            let (data, _) = try? await URLSession.shared.data(for: req),
+            let payload = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+            let rawMessages = payload["messages"] as? [[String: String]]
+        else { return nil }
+
+        let userMessages = rawMessages.reversed().filter { ($0["role"] ?? "") == "user" }
+        let regex = try? NSRegularExpression(pattern: "/Users/[^\\n]+", options: [])
+        for message in userMessages {
+            guard let content = message["content"], let regex else { continue }
+            let range = NSRange(location: 0, length: content.utf16.count)
+            guard let match = regex.firstMatch(in: content, options: [], range: range),
+                  let r = Range(match.range, in: content) else { continue }
+            let rawPath = String(content[r]).trimmingCharacters(in: .whitespacesAndNewlines)
+            let candidateURL = URL(fileURLWithPath: rawPath)
+            var isDir: ObjCBool = false
+            if FileManager.default.fileExists(atPath: candidateURL.path, isDirectory: &isDir) {
+                return isDir.boolValue ? candidateURL : candidateURL.deletingLastPathComponent()
+            }
+        }
+        return nil
+    }
+
     private func exportRuntimeContract() {
         let panel = NSSavePanel()
         panel.allowedContentTypes = [UTType.json]
@@ -296,7 +632,7 @@ struct OnboardingView: View {
             capabilityHostMail: hostMailDraft,
             capabilityHostFiles: hostFilesDraft,
             capabilityIOSBridge: iosBridgeDraft,
-            dockerDetected: lastScan?.hasDocker ?? false,
+            dockerDetected: false,
             ollamaDetected: lastScan?.hasOllama ?? false,
             detectedCLIs: lastScan?.detectedCLIs ?? [],
             routingPolicyURL: "\(monitor.settings.backendURL)/routing/policy",
@@ -322,11 +658,7 @@ struct OnboardingView: View {
 
         await runQuickStartScan()
 
-        if deploymentModeDraft == .embedded {
-            await monitor.sidecarManager.start()
-        } else {
-            await monitor.containerManager.setup(caelDirectory: caelDirDraft.trimmingCharacters(in: .whitespaces))
-        }
+        await monitor.sidecarManager.start()
 
         monitor.startPolling()
         await runDoctorChecks()
@@ -338,7 +670,7 @@ struct OnboardingView: View {
 
     /// Task #284: extend `settings` with `LLMRoutingCAALKeys` fields when CAAL `/api/settings` accepts them.
     private func syncVoice() async {
-        guard let url = URL(string: "\(monitor.settings.effectiveURL)/api/settings") else { return }
+        guard let url = URL(string: "\(monitor.settings.backendURL)/settings") else { return }
         guard let body = try? JSONSerialization.data(withJSONObject: [
             "settings": ["tts_voice_piper": ttsVoiceDraft]
         ]) else { return }
@@ -381,15 +713,10 @@ struct OnboardingView: View {
             .onChange(of: connectionProfileDraft) { _, profile in
                 applyConnectionProfileDefaults(profile)
             }
-            Picker("Deployment mode", selection: $deploymentModeDraft) {
-                ForEach(SidecarManager.DeploymentMode.allCases) { mode in
-                    Text(mode.label).tag(mode)
-                }
-            }
-            .pickerStyle(.menu)
-            Text(deploymentModeDraft == .embedded
-                 ? "Embedded is recommended for local-first installs with bundled runtime."
-                 : "Networked keeps Docker-based CAAL stack compatibility with lab workflows.")
+            Text("Deployment mode: Embedded (bundled sidecar)")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            Text("Sonique runs locally and starts itself. You do not need to manage infrastructure.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
@@ -409,8 +736,8 @@ struct OnboardingView: View {
                 nvidiaBaseURLDraft = "https://integrate.api.nvidia.com/v1"
             }
             fallbackPolicyDraft = .localThenProvider
-            hostCalendarDraft = true
-            hostContactsDraft = true
+            hostCalendarDraft = false
+            hostContactsDraft = false
             hostMailDraft = true
             hostFilesDraft = true
             iosBridgeDraft = true
@@ -513,12 +840,17 @@ struct OnboardingView: View {
                 .toggleStyle(.switch)
                 .controlSize(.small)
             Divider()
-            Toggle("Host calendar access", isOn: $hostCalendarDraft)
+            Toggle("Host calendar access (temporarily disabled)", isOn: .constant(false))
                 .toggleStyle(.switch)
                 .controlSize(.small)
-            Toggle("Host contacts access", isOn: $hostContactsDraft)
+                .disabled(true)
+            Toggle("Host contacts access (temporarily disabled)", isOn: .constant(false))
                 .toggleStyle(.switch)
                 .controlSize(.small)
+                .disabled(true)
+            Text("Calendar/Contacts integration is temporarily disabled until we replace the permission path.")
+                .font(.caption2)
+                .foregroundStyle(.secondary)
             Toggle("Host mail access", isOn: $hostMailDraft)
                 .toggleStyle(.switch)
                 .controlSize(.small)
@@ -564,31 +896,102 @@ struct OnboardingView: View {
             }
             SecureField("API Key (optional)", text: $keyDraft)
                 .textFieldStyle(.roundedBorder)
+            Divider()
+            memoryHealthSection
         }
+    }
+
+    private var memoryHealthSection: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack {
+                Text("Memory health")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                Spacer()
+                Button("Refresh") { refreshMemoryHealth() }
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
+            }
+            Text("Raw turns: \(memoryHealth.rawTurnCount) • Episodes: \(memoryHealth.episodeCount)")
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+            Text("Janitor mode: \(memoryHealth.janitorMode)")
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+            if let lastRun = memoryHealth.lastRunAtISO8601 {
+                Text("Last run: \(lastRun)")
+                    .font(.caption2.monospaced())
+                    .foregroundStyle(.secondary)
+            }
+            if let compact = memoryHealth.lastCompactAtISO8601 {
+                Text("Last compact: \(compact)")
+                    .font(.caption2.monospaced())
+                    .foregroundStyle(.secondary)
+            }
+            Text(memoryHealth.personaSummary)
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(8)
+        .background(Color(nsColor: .controlBackgroundColor), in: RoundedRectangle(cornerRadius: 8))
+    }
+
+    private func refreshMemoryHealth() {
+        memoryHealth = monitor.loadMemoryHealthSnapshot()
     }
 
     private var doctorStep: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
-                Text("Doctor checks")
+                Text("Health checks")
                     .font(.subheadline.weight(.semibold))
                 Spacer()
                 if isRunningDoctor {
                     ProgressView().controlSize(.small)
                 }
+                if showAdvancedFallbacks {
+                    Button("Import credentials") {
+                        startCredentialIntakeWithCael()
+                    }
+                    .buttonStyle(.bordered)
+                    .disabled(isRunningDoctor)
+                }
+                Button("Auto-fix now") {
+                    Task { await runDoctorChecks(autoRemediate: true) }
+                }
+                .buttonStyle(.bordered)
+                .disabled(isRunningDoctor)
                 Button("Run checks") {
-                    Task { await runDoctorChecks() }
+                    Task { await runDoctorChecks(autoRemediate: autoRemediationEnabled) }
                 }
                 .buttonStyle(.borderedProminent)
                 .disabled(isRunningDoctor)
             }
+            HStack(spacing: 6) {
+                Image(systemName: showBulkPermissionPrompt ? "exclamationmark.triangle.fill" : "wrench.and.screwdriver.fill")
+                    .foregroundStyle(showBulkPermissionPrompt ? Color.orange : Color.blue)
+                Text(showBulkPermissionPrompt ? "Needs approval: \(doctorAutoFixStatus)" : "Auto-fix status: \(doctorAutoFixStatus)")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            Text("CLI mode: \(requireHostCLIs ? "Host CLI required" : "MCP-only")")
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+            Button(showAdvancedFallbacks ? "Hide advanced fallbacks" : "Show advanced fallbacks") {
+                showAdvancedFallbacks.toggle()
+            }
+            .buttonStyle(.bordered)
+            .controlSize(.small)
+            if let staged = stagedCredentialImport {
+                stagedCredentialImportPanel(staged)
+            }
             doctorRow("CAAL configured", ok: !caelDirDraft.trimmingCharacters(in: .whitespaces).isEmpty)
             doctorRow("Backend online", ok: monitor.isOnline)
-            doctorRow("Docker detected", ok: lastScan?.hasDocker == true)
             doctorRow("Ollama detected", ok: lastScan?.hasOllama == true)
             doctorRow("CLIs detected", ok: !(lastScan?.detectedCLIs.isEmpty ?? true))
             if doctorResults.isEmpty {
-                Text("Run checks for API reachability, Docker daemon status, CLI availability, and routing policy endpoint.")
+                Text("Run checks for runtime health and setup readiness.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             } else {
@@ -597,21 +1000,209 @@ struct OnboardingView: View {
                 }
                 preflightTrendView
             }
-            Text("These checks are local diagnostics and safe to rerun.")
+            Text("These checks are local and safe to run again.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
         }
     }
 
-    private func runDoctorChecks() async {
+    private func stagedCredentialImportPanel(_ staged: StagedCredentialImport) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text("Credential sources")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.secondary)
+            Text("Staged from: \(staged.sourceFiles.joined(separator: ", "))")
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+            Text("Detected fields: \(staged.detectedFields.joined(separator: ", "))")
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+            HStack(spacing: 8) {
+                Button("Apply imported credentials") {
+                    applyStagedCredentialImport()
+                }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.small)
+                Button("Discard") {
+                    stagedCredentialImport = nil
+                    doctorAutoFixStatus = "Discarded staged credential import"
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.small)
+            }
+        }
+        .padding(8)
+        .background(Color(nsColor: .controlBackgroundColor), in: RoundedRectangle(cornerRadius: 8))
+    }
+
+    private func runDoctorChecks(autoRemediate: Bool = false) async {
         isRunningDoctor = true
+        if autoRemediate {
+            attemptedAutoRemediations = []
+            doctorAutoFixStatus = "Scanning and applying fixes..."
+        } else {
+            doctorAutoFixStatus = "Scan complete"
+        }
         defer { isRunningDoctor = false }
         doctorResults = await QuickStartScanner.runDoctor(
             effectiveURL: monitor.settings.effectiveURL,
             backendURL: monitor.settings.backendURL,
-            expectedSimpleProvider: llmProviderDraft == .ollama ? "ollama" : "openai_compatible"
+            expectedSimpleProvider: llmProviderDraft == .ollama ? "ollama" : "openai_compatible",
+            requireHostCLIs: requireHostCLIs
         )
         preflightTrend = loadPreflightTrendSummary()
+        if autoRemediate {
+            await autoRemediateDoctorFailures()
+            discoverBulkPermissionNeeds()
+            if showBulkPermissionPrompt {
+                doctorAutoFixStatus = "Permission decision required"
+            } else {
+                let remaining = doctorResults.filter { !$0.ok }.count
+                doctorAutoFixStatus = remaining == 0 ? "All checks passing" : "Auto-fix complete, \(remaining) checks still failing"
+            }
+        }
+    }
+
+    private func autoRemediateDoctorFailures() async {
+        var applied = 0
+        for _ in 0..<4 {
+            guard let candidate = doctorResults.first(where: { check in
+                guard !check.ok, let remediation = check.remediation else { return false }
+                return isAutoRemediable(remediation) && !attemptedAutoRemediations.contains(check.label)
+            }), let remediation = candidate.remediation else {
+                return
+            }
+            attemptedAutoRemediations.insert(candidate.label)
+            await applyRemediation(remediation)
+            applied += 1
+        }
+        if applied > 0 {
+            doctorAutoFixStatus = "Applied \(applied) automatic remediation(s)"
+        }
+    }
+
+    private func isAutoRemediable(_ remediation: DoctorRemediation) -> Bool {
+        switch remediation {
+        case .openGitHubCLIAuthDocs,
+             .openClaudeCLIInstallDocs,
+             .openGeminiCLIInstallDocs,
+             .openCursorCLIInstallDocs,
+             .openSidecarLogs,
+             .publishRuntimeContract,
+             .reconcileRoutingParity,
+             .openChatIntake:
+            return true
+        case .openContactsPrivacy,
+             .openCalendarPrivacy,
+             .openFrontendURL,
+             .openBackendURL,
+             .requestContactsPermission,
+             .requestCalendarPermission:
+            return false
+        }
+    }
+
+    private func discoverBulkPermissionNeeds() {
+        guard !suppressAutoPermissionPrompt else { return }
+        let needs = doctorResults.compactMap { check -> BulkPermissionNeed? in
+            guard !check.ok, let remediation = check.remediation else { return nil }
+            switch remediation {
+            case .requestContactsPermission, .openContactsPrivacy: return .contacts
+            case .requestCalendarPermission, .openCalendarPrivacy: return .calendar
+            default: return nil
+            }
+        }
+        let deduped = Array(Set(needs)).sorted { $0.rawValue < $1.rawValue }
+        guard !deduped.isEmpty else { return }
+        pendingPermissionNeeds = deduped
+        showBulkPermissionPrompt = true
+    }
+
+    private func bulkPermissionPromptMessage() -> String {
+        if pendingPermissionNeeds.isEmpty {
+            return "No missing permissions detected."
+        }
+        let labels = pendingPermissionNeeds.map(\.label).joined(separator: ", ")
+        return "Doctor detected missing permissions: \(labels). Approve once to request all at once."
+    }
+
+    private func applyBulkPermissionDecision(allow: Bool) async {
+        defer {
+            pendingPermissionNeeds = []
+            showBulkPermissionPrompt = false
+        }
+        if allow {
+            doctorAutoFixStatus = "Applying approved permissions..."
+            if pendingPermissionNeeds.contains(.contacts) {
+                let store = CNContactStore()
+                switch CNContactStore.authorizationStatus(for: .contacts) {
+                case .notDetermined:
+                    _ = try? await store.requestAccess(for: .contacts)
+                case .denied, .restricted:
+                    if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Contacts") {
+                        NSWorkspace.shared.open(url)
+                    }
+                default:
+                    break
+                }
+                hostContactsDraft = true
+                monitor.settings.capabilityHostContacts = true
+            }
+            if pendingPermissionNeeds.contains(.calendar) {
+                let store = EKEventStore()
+                switch EKEventStore.authorizationStatus(for: .event) {
+                case .notDetermined:
+                    if #available(macOS 14.0, *) {
+                        _ = try? await store.requestFullAccessToEvents()
+                    } else {
+                        _ = try? await store.requestAccess(to: .event)
+                    }
+                case .denied, .restricted:
+                    if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Calendars") {
+                        NSWorkspace.shared.open(url)
+                    }
+                default:
+                    break
+                }
+                hostCalendarDraft = true
+                monitor.settings.capabilityHostCalendar = true
+            }
+        } else {
+            doctorAutoFixStatus = "Permissions rejected; disabling related tools..."
+            if pendingPermissionNeeds.contains(.contacts) {
+                hostContactsDraft = false
+                monitor.settings.capabilityHostContacts = false
+            }
+            if pendingPermissionNeeds.contains(.calendar) {
+                hostCalendarDraft = false
+                monitor.settings.capabilityHostCalendar = false
+            }
+            await openChatIntake(reason: "user rejected one or more host permissions; confirm tool disablement preferences")
+        }
+        await runDoctorChecks()
+    }
+
+    private func resetAndRerequestPermissions() async {
+        doctorAutoFixStatus = "Resetting permission state..."
+        _ = localCommandSucceeds(["tccutil", "reset", "AddressBook", "com.seayniclabs.soniquebar"])
+        _ = localCommandSucceeds(["tccutil", "reset", "Calendar", "com.seayniclabs.soniquebar"])
+
+        if pendingPermissionNeeds.contains(.contacts) {
+            let store = CNContactStore()
+            _ = try? await store.requestAccess(for: .contacts)
+        }
+        if pendingPermissionNeeds.contains(.calendar) {
+            let store = EKEventStore()
+            if #available(macOS 14.0, *) {
+                _ = try? await store.requestFullAccessToEvents()
+            } else {
+                _ = try? await store.requestAccess(to: .event)
+            }
+        }
+        doctorAutoFixStatus = "Permission reset + re-request attempted"
+        await runDoctorChecks()
     }
 
     private var preflightTrendView: some View {
@@ -642,14 +1233,14 @@ struct OnboardingView: View {
             Image(systemName: check.ok ? "checkmark.circle.fill" : "xmark.circle.fill")
                 .foregroundStyle(check.ok ? Color.green : Color.orange)
             VStack(alignment: .leading, spacing: 2) {
-                Text(check.label)
+                Text(humanDoctorLabel(for: check.label))
                     .font(.caption.weight(.semibold))
-                Text(check.detail)
+                Text(humanDoctorDetail(for: check))
                     .font(.caption2)
                     .foregroundStyle(.secondary)
             }
             Spacer(minLength: 8)
-            if !check.ok, let remediation = check.remediation {
+            if !autoRemediationEnabled, !check.ok, let remediation = check.remediation {
                 Button("Fix") {
                     Task { await applyRemediation(remediation) }
                 }
@@ -659,34 +1250,59 @@ struct OnboardingView: View {
         }
     }
 
+    private func humanDoctorLabel(for label: String) -> String {
+        switch label {
+        case "Backend health endpoint": return "Core runtime online"
+        case "Routing policy endpoint": return "Routing service reachable"
+        case "Sidecar STT health": return "Speech recognition ready"
+        case "Sidecar TTS health": return "Voice output ready"
+        case "GitHub CLI auth": return "External services access"
+        case "Claude CLI available": return "Claude tools available"
+        case "Gemini CLI available": return "Gemini tools available"
+        case "Cursor CLI available": return "Cursor tools available"
+        case "Runtime contract published": return "Runtime contract saved"
+        default: return label
+        }
+    }
+
+    private func humanDoctorDetail(for check: DoctorCheck) -> String {
+        if check.ok { return "OK" }
+        switch check.label {
+        case "Sidecar STT health", "Sidecar TTS health":
+            return "Voice services need a restart."
+        case "Backend health endpoint":
+            return "Core runtime is not responding yet."
+        case "Routing policy endpoint":
+            return "Routing service is not reachable yet."
+        default:
+            return check.detail
+        }
+    }
+
     private func applyRemediation(_ remediation: DoctorRemediation) async {
         switch remediation {
-        case .openDockerApp:
-            NSWorkspace.shared.open(URL(fileURLWithPath: "/Applications/Docker.app"))
         case .openContactsPrivacy:
             if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Contacts") {
                 NSWorkspace.shared.open(url)
             }
+            doctorAutoFixStatus = "Contacts permission needs user approval in System Settings"
         case .openCalendarPrivacy:
             if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Calendars") {
                 NSWorkspace.shared.open(url)
             }
+            doctorAutoFixStatus = "Calendar permission needs user approval in System Settings"
         case .openGitHubCLIAuthDocs:
-            if let url = URL(string: "https://cli.github.com/manual/gh_auth_login") {
-                NSWorkspace.shared.open(url)
-            }
+            await runQuickStartScan()
+            doctorAutoFixStatus = requireHostCLIs ? "GitHub CLI auth still missing" : "Using MCP mode; host GitHub CLI is optional"
         case .openClaudeCLIInstallDocs:
-            if let url = URL(string: "https://docs.anthropic.com/en/docs/claude-code") {
-                NSWorkspace.shared.open(url)
-            }
+            await runQuickStartScan()
+            doctorAutoFixStatus = requireHostCLIs ? "Claude CLI still missing" : "Using MCP mode; host Claude CLI is optional"
         case .openGeminiCLIInstallDocs:
-            if let url = URL(string: "https://github.com/google-gemini/gemini-cli") {
-                NSWorkspace.shared.open(url)
-            }
+            await runQuickStartScan()
+            doctorAutoFixStatus = requireHostCLIs ? "Gemini CLI still missing" : "Using MCP mode; host Gemini CLI is optional"
         case .openCursorCLIInstallDocs:
-            if let url = URL(string: "https://docs.cursor.com/en/cli/overview") {
-                NSWorkspace.shared.open(url)
-            }
+            await runQuickStartScan()
+            doctorAutoFixStatus = requireHostCLIs ? "Cursor CLI still missing" : "Using MCP mode; host Cursor CLI is optional"
         case .openFrontendURL(let raw):
             if let url = URL(string: raw) {
                 NSWorkspace.shared.open(url)
@@ -696,8 +1312,7 @@ struct OnboardingView: View {
                 NSWorkspace.shared.open(url)
             }
         case .openSidecarLogs:
-            let path = ("~/Library/Logs/SoniqueBar" as NSString).expandingTildeInPath
-            NSWorkspace.shared.selectFile(nil, inFileViewerRootedAtPath: path)
+            await restartRuntimeServices()
         case .requestContactsPermission:
             let store = CNContactStore()
             _ = try? await store.requestAccess(for: .contacts)
@@ -712,7 +1327,131 @@ struct OnboardingView: View {
             await runDoctorChecks()
         case .publishRuntimeContract:
             publishRuntimeContract()
+        case .reconcileRoutingParity(let expectedSimpleProvider):
+            await reconcileRoutingParity(expectedSimpleProvider: expectedSimpleProvider)
+        case .openChatIntake(let reason):
+            doctorAutoFixStatus = reason
         }
+    }
+
+    private func restartRuntimeServices() async {
+        await monitor.sidecarManager.start()
+        await runDoctorChecks()
+    }
+
+    private func reconcileRoutingParity(expectedSimpleProvider: String) async {
+        guard let url = URL(string: "\(monitor.settings.backendURL)/settings") else { return }
+        var settingsPayload: [String: Any] = [:]
+        if expectedSimpleProvider == "ollama" {
+            settingsPayload["router_simple_provider"] = "ollama"
+            settingsPayload["llm_provider"] = "ollama"
+        } else {
+            settingsPayload["router_simple_provider"] = "openai_compatible"
+            settingsPayload["llm_provider"] = "openai_compatible"
+        }
+        guard let body = try? JSONSerialization.data(withJSONObject: ["settings": settingsPayload]) else { return }
+        var req = URLRequest(url: url, timeoutInterval: 6)
+        req.httpMethod = "POST"
+        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        if !monitor.settings.apiKey.isEmpty {
+            req.setValue(monitor.settings.apiKey, forHTTPHeaderField: "x-api-key")
+        }
+        req.httpBody = body
+        _ = try? await URLSession.shared.data(for: req)
+        await runDoctorChecks()
+    }
+
+    private func openChatIntake(reason: String) async {
+        openWindow(id: "chat")
+        NSApp.activate(ignoringOtherApps: true)
+        guard let url = URL(string: "\(monitor.settings.backendURL)/api/chat") else { return }
+        let prompt = intakePrompt(for: reason)
+        guard let body = try? JSONSerialization.data(withJSONObject: [
+            "text": prompt,
+            "session_id": "sonique-main",
+        ]) else { return }
+        var req = URLRequest(url: url, timeoutInterval: 12)
+        req.httpMethod = "POST"
+        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        if !monitor.settings.apiKey.isEmpty {
+            req.setValue(monitor.settings.apiKey, forHTTPHeaderField: "x-api-key")
+        }
+        req.httpBody = body
+        _ = try? await URLSession.shared.data(for: req)
+    }
+
+    private func intakePrompt(for reason: String) -> String {
+        let normalized = reason.lowercased()
+        if normalized.contains("github cli auth") {
+            return """
+Auto-setup needs a quick decision:
+1) Should I authenticate GitHub CLI on this Mac now?
+2) If yes, is browser auth okay or do you prefer device code?
+3) Should GitHub features stay enabled if auth is skipped?
+"""
+        }
+        if normalized.contains("contacts permission") {
+            return """
+Auto-setup needs a quick decision:
+1) Should SoniqueBar keep Contacts integration enabled?
+2) If yes, please allow Contacts access in System Settings when prompted.
+3) If no, should I permanently disable Contacts tools for this profile?
+"""
+        }
+        if normalized.contains("calendar permission") {
+            return """
+Auto-setup needs a quick decision:
+1) Should SoniqueBar keep Calendar integration enabled?
+2) If yes, please allow Calendar access in System Settings when prompted.
+3) If no, should I permanently disable Calendar tools for this profile?
+"""
+        }
+        return """
+Auto-setup needs a quick decision:
+1) \(reason)
+2) Do you want this capability enabled or disabled?
+3) Should I continue auto-remediation after your answer?
+"""
+    }
+
+    private func localCommandSucceeds(_ args: [String]) -> Bool {
+        guard !args.isEmpty else { return false }
+        if let resolved = localExecutablePath(args[0]) {
+            let p = Process()
+            p.executableURL = URL(fileURLWithPath: resolved)
+            p.arguments = Array(args.dropFirst())
+            p.standardOutput = Pipe()
+            p.standardError = Pipe()
+            do {
+                try p.run()
+                p.waitUntilExit()
+                return p.terminationStatus == 0
+            } catch {
+                return false
+            }
+        }
+        let p = Process()
+        p.executableURL = URL(fileURLWithPath: "/usr/bin/env")
+        p.arguments = args
+        p.standardOutput = Pipe()
+        p.standardError = Pipe()
+        do {
+            try p.run()
+            p.waitUntilExit()
+            return p.terminationStatus == 0
+        } catch {
+            return false
+        }
+    }
+
+    private func localExecutablePath(_ command: String) -> String? {
+        let candidates = [
+            "/opt/homebrew/bin/\(command)",
+            "/usr/local/bin/\(command)",
+            "/usr/bin/\(command)",
+            "/bin/\(command)",
+        ]
+        return candidates.first(where: { FileManager.default.isExecutableFile(atPath: $0) })
     }
 
     private func publishRuntimeContract() {
@@ -733,7 +1472,7 @@ struct OnboardingView: View {
             capabilityHostMail: hostMailDraft,
             capabilityHostFiles: hostFilesDraft,
             capabilityIOSBridge: iosBridgeDraft,
-            dockerDetected: lastScan?.hasDocker ?? false,
+            dockerDetected: false,
             ollamaDetected: lastScan?.hasOllama ?? false,
             detectedCLIs: lastScan?.detectedCLIs ?? [],
             routingPolicyURL: "\(monitor.settings.backendURL)/routing/policy",
@@ -853,7 +1592,6 @@ private struct DoctorCheck: Identifiable {
 }
 
 private enum DoctorRemediation {
-    case openDockerApp
     case openContactsPrivacy
     case openCalendarPrivacy
     case openGitHubCLIAuthDocs
@@ -866,6 +1604,20 @@ private enum DoctorRemediation {
     case requestContactsPermission
     case requestCalendarPermission
     case publishRuntimeContract
+    case reconcileRoutingParity(expectedSimpleProvider: String)
+    case openChatIntake(reason: String)
+}
+
+private enum BulkPermissionNeed: String, Hashable {
+    case contacts
+    case calendar
+
+    var label: String {
+        switch self {
+        case .contacts: return "Contacts"
+        case .calendar: return "Calendar"
+        }
+    }
 }
 
 private struct OnboardingProfile: Codable {
@@ -934,6 +1686,16 @@ private struct PreflightTrendSummary {
     static let empty = PreflightTrendSummary(sampleCount: 0, passRate: 0, avgDurationSeconds: 0, lastRuns: [])
 }
 
+private struct StagedCredentialImport {
+    var apiKey: String?
+    var haToken: String?
+    var haURL: String?
+    var nvidiaBaseURL: String?
+    var externalURL: String?
+    var sourceFiles: [String] = []
+    var detectedFields: [String] = []
+}
+
 extension PreflightTelemetry: Identifiable {
     var id: String { generatedAtISO8601 + ":\(failingChecks)" }
 }
@@ -967,7 +1729,6 @@ private enum ConnectionProfile: String, CaseIterable, Identifiable {
 }
 
 private struct QuickStartScanResult {
-    let hasDocker: Bool
     let hasOllama: Bool
     let hasBundledRuntime: Bool
     let detectedCLIs: [String]
@@ -976,16 +1737,11 @@ private struct QuickStartScanResult {
     let hasNvidiaHints: Bool
 
     var detectedModelRuntime: String { hasOllama ? "ollama" : "none" }
-    var recommendedModeLabel: String {
-        if hasBundledRuntime { return "Embedded" }
-        if hasDocker { return "Networked" }
-        return "Embedded (after local runtime install)"
-    }
+    var recommendedModeLabel: String { "Embedded" }
 }
 
 private enum QuickStartScanner {
     static func scan() -> QuickStartScanResult {
-        let hasDocker = commandExists("docker")
         let hasOllama = commandExists("ollama")
         let hasBundledRuntime = Bundle.main.url(forResource: "python-runtime", withExtension: "tar.gz") != nil
 
@@ -1013,7 +1769,6 @@ private enum QuickStartScanner {
         let nvidiaHints = hasOllama || commandExists("nvidia-smi")
 
         return QuickStartScanResult(
-            hasDocker: hasDocker,
             hasOllama: hasOllama,
             hasBundledRuntime: hasBundledRuntime,
             detectedCLIs: detectedCLIs,
@@ -1026,9 +1781,10 @@ private enum QuickStartScanner {
     static func runDoctor(
         effectiveURL: String,
         backendURL: String,
-        expectedSimpleProvider: String
+        expectedSimpleProvider: String,
+        requireHostCLIs: Bool
     ) async -> [DoctorCheck] {
-        async let frontend = endpointReachable("\(effectiveURL)/health")
+        _ = effectiveURL
         async let backend = endpointReachable("\(backendURL)/routing/policy")
         async let backendHealth = endpointReachable("\(backendURL)/health")
         async let sttHealth = endpointReachable("http://127.0.0.1:8081/health")
@@ -1037,36 +1793,62 @@ private enum QuickStartScanner {
             backendURL: backendURL,
             expectedSimpleProvider: expectedSimpleProvider
         )
-        let dockerDaemon = commandSucceeds(["docker", "info"])
         let ghAuth = commandSucceeds(["gh", "auth", "status"])
         let claudeAvailable = commandExists("claude")
         let geminiAvailable = commandExists("gemini")
         let cursorAvailable = commandExists("cursor")
+        let mcpAvailable = mcpToolingAvailable()
 
-        let contactsStatus = contactsPermissionLabel()
-        let calendarStatus = calendarPermissionLabel()
         let localFilesReadable = FileManager.default.isReadableFile(atPath: NSHomeDirectory())
         let parity = await policyParity
         let publishedContractPath = ("~/Library/Application Support/SoniqueBar/contracts/runtime-contract.latest.json" as NSString).expandingTildeInPath
         let contractPublished = FileManager.default.fileExists(atPath: publishedContractPath)
 
+        let effectiveGHAAuth = requireHostCLIs ? ghAuth : (ghAuth || mcpAvailable)
+        let effectiveClaude = requireHostCLIs ? claudeAvailable : (claudeAvailable || mcpAvailable)
+        let effectiveGemini = requireHostCLIs ? geminiAvailable : (geminiAvailable || mcpAvailable)
+        let effectiveCursor = requireHostCLIs ? cursorAvailable : (cursorAvailable || mcpAvailable)
+
+        let ghDetail = requireHostCLIs
+            ? "gh auth status"
+            : (ghAuth ? "host gh authenticated" : (mcpAvailable ? "MCP available (host gh optional)" : "host gh missing, MCP not detected"))
+        let claudeDetail = requireHostCLIs
+            ? "command: claude"
+            : (claudeAvailable ? "command: claude" : (mcpAvailable ? "MCP available (host claude optional)" : "command: claude"))
+        let geminiDetail = requireHostCLIs
+            ? "command: gemini"
+            : (geminiAvailable ? "command: gemini" : (mcpAvailable ? "MCP available (host gemini optional)" : "command: gemini"))
+        let cursorDetail = requireHostCLIs
+            ? "command: cursor"
+            : (cursorAvailable ? "command: cursor" : (mcpAvailable ? "MCP available (host cursor optional)" : "command: cursor"))
+
         return [
-            DoctorCheck(label: "Frontend API health", ok: await frontend, detail: "\(effectiveURL)/health", remediation: .openFrontendURL("\(effectiveURL)/health")),
             DoctorCheck(label: "Routing policy endpoint", ok: await backend, detail: "\(backendURL)/routing/policy", remediation: .openBackendURL("\(backendURL)/routing/policy")),
             DoctorCheck(label: "Backend health endpoint", ok: await backendHealth, detail: "\(backendURL)/health", remediation: .openBackendURL("\(backendURL)/health")),
             DoctorCheck(label: "Sidecar STT health", ok: await sttHealth, detail: "http://127.0.0.1:8081/health", remediation: .openSidecarLogs),
             DoctorCheck(label: "Sidecar TTS health", ok: await ttsHealth, detail: "http://127.0.0.1:8082/health", remediation: .openSidecarLogs),
-            DoctorCheck(label: "Docker daemon reachable", ok: dockerDaemon, detail: "docker info", remediation: dockerDaemon ? nil : .openDockerApp),
-            DoctorCheck(label: "GitHub CLI auth", ok: ghAuth, detail: "gh auth status", remediation: ghAuth ? nil : .openGitHubCLIAuthDocs),
-            DoctorCheck(label: "Claude CLI available", ok: claudeAvailable, detail: "command: claude", remediation: claudeAvailable ? nil : .openClaudeCLIInstallDocs),
-            DoctorCheck(label: "Gemini CLI available", ok: geminiAvailable, detail: "command: gemini", remediation: geminiAvailable ? nil : .openGeminiCLIInstallDocs),
-            DoctorCheck(label: "Cursor CLI available", ok: cursorAvailable, detail: "command: cursor", remediation: cursorAvailable ? nil : .openCursorCLIInstallDocs),
-            DoctorCheck(label: "Contacts permission", ok: contactsStatus == "authorized", detail: contactsStatus, remediation: contactsRemediation(status: contactsStatus)),
-            DoctorCheck(label: "Calendar permission", ok: calendarStatus == "full_access" || calendarStatus == "write_only" || calendarStatus == "authorized", detail: calendarStatus, remediation: calendarRemediation(status: calendarStatus)),
+            DoctorCheck(label: "GitHub CLI auth", ok: effectiveGHAAuth, detail: ghDetail, remediation: effectiveGHAAuth ? nil : .openGitHubCLIAuthDocs),
+            DoctorCheck(label: "Claude CLI available", ok: effectiveClaude, detail: claudeDetail, remediation: effectiveClaude ? nil : .openClaudeCLIInstallDocs),
+            DoctorCheck(label: "Gemini CLI available", ok: effectiveGemini, detail: geminiDetail, remediation: effectiveGemini ? nil : .openGeminiCLIInstallDocs),
+            DoctorCheck(label: "Cursor CLI available", ok: effectiveCursor, detail: cursorDetail, remediation: effectiveCursor ? nil : .openCursorCLIInstallDocs),
             DoctorCheck(label: "Local files readable", ok: localFilesReadable, detail: NSHomeDirectory(), remediation: nil),
-            DoctorCheck(label: "Routing policy parity", ok: parity.ok, detail: parity.detail, remediation: parity.ok ? nil : .openBackendURL("\(backendURL)/routing/policy")),
+            DoctorCheck(label: "Routing policy parity", ok: parity.ok, detail: parity.detail, remediation: parity.ok ? nil : .reconcileRoutingParity(expectedSimpleProvider: expectedSimpleProvider)),
             DoctorCheck(label: "Runtime contract published", ok: contractPublished, detail: publishedContractPath, remediation: contractPublished ? nil : .publishRuntimeContract)
         ]
+    }
+
+    private static func mcpToolingAvailable() -> Bool {
+        let root = ("~/Library/Mobile Documents/iCloud~md~obsidian/Documents/SeaynicNet/mcps" as NSString).expandingTildeInPath
+        let folder = URL(fileURLWithPath: root, isDirectory: true)
+        guard let enumerator = FileManager.default.enumerator(at: folder, includingPropertiesForKeys: nil) else {
+            return false
+        }
+        for case let fileURL as URL in enumerator {
+            if fileURL.pathExtension == "json" {
+                return true
+            }
+        }
+        return false
     }
 
     private static func contactsRemediation(status: String) -> DoctorRemediation? {
@@ -1159,6 +1941,20 @@ private enum QuickStartScanner {
 
     private static func commandSucceeds(_ args: [String]) -> Bool {
         guard !args.isEmpty else { return false }
+        if let resolved = executablePath(args[0]) {
+            let p = Process()
+            p.executableURL = URL(fileURLWithPath: resolved)
+            p.arguments = Array(args.dropFirst())
+            p.standardOutput = Pipe()
+            p.standardError = Pipe()
+            do {
+                try p.run()
+                p.waitUntilExit()
+                return p.terminationStatus == 0
+            } catch {
+                return false
+            }
+        }
         let p = Process()
         p.executableURL = URL(fileURLWithPath: "/usr/bin/env")
         p.arguments = args
@@ -1174,6 +1970,25 @@ private enum QuickStartScanner {
     }
 
     private static func commandExists(_ command: String) -> Bool {
-        commandSucceeds(["which", command])
+        if executablePath(command) != nil {
+            return true
+        }
+        if commandSucceeds([command, "--version"]) {
+            return true
+        }
+        if commandSucceeds(["which", command]) {
+            return true
+        }
+        return commandSucceeds(["/bin/zsh", "-lc", "command -v \(command) >/dev/null 2>&1"])
+    }
+
+    private static func executablePath(_ command: String) -> String? {
+        let candidates = [
+            "/opt/homebrew/bin/\(command)",
+            "/usr/local/bin/\(command)",
+            "/usr/bin/\(command)",
+            "/bin/\(command)",
+        ]
+        return candidates.first(where: { FileManager.default.isExecutableFile(atPath: $0) })
     }
 }

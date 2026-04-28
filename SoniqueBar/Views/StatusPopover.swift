@@ -3,7 +3,6 @@ import AppKit
 import CoreImage.CIFilterBuiltins
 
 private let donationURL = "https://seayniclabs.com/support"
-private let dockerInstallURL = "https://docs.docker.com/desktop/install/mac/"
 private let caelRepoURL = "https://github.com/CoreWorxLab/CAAL"
 
 struct StatusPopover: View {
@@ -80,10 +79,6 @@ struct StatusPopover: View {
                 .padding(.vertical, 14)
             }
 
-            // CAAL container status
-            Divider()
-            containerStatusRow
-
             // House ad — hidden for premium users
             if !monitor.premium.isPremium {
                 Divider()
@@ -106,9 +101,9 @@ struct StatusPopover: View {
                     openWindow(id: "chat")
                     NSApp.activate(ignoringOtherApps: true)
                 }
-                popoverButton("Open Dashboard", icon: "square.grid.2x2",
-                              disabled: monitor.containerManager.state != .running) {
-                    if let url = URL(string: monitor.settings.effectiveURL) {
+                popoverButton("Open Runtime Health", icon: "heart.text.square",
+                              disabled: !monitor.isOnline) {
+                    if let url = URL(string: "\(monitor.settings.backendURL)/health") {
                         NSWorkspace.shared.open(url)
                     }
                 }
@@ -188,7 +183,7 @@ struct StatusPopover: View {
 
     /// Task #284: extend POST `settings` with `LLMRoutingCAALKeys` when the API accepts them.
     private func syncVoice(_ voiceId: String) async {
-        guard let url = URL(string: "\(monitor.settings.effectiveURL)/api/settings") else { return }
+        guard let url = URL(string: "\(monitor.settings.backendURL)/settings") else { return }
         guard let body = try? JSONSerialization.data(withJSONObject: [
             "settings": ["tts_voice_piper": voiceId]
         ]) else { return }
@@ -251,69 +246,6 @@ struct StatusPopover: View {
         return "Online"
     }
 
-    // MARK: - Container status row
-
-    private var containerStatusRow: some View {
-        HStack(spacing: 10) {
-            Circle()
-                .fill(containerDotColor)
-                .frame(width: 7, height: 7)
-            VStack(alignment: .leading, spacing: 1) {
-                Text("CAAL")
-                    .font(.system(size: 12, weight: .medium))
-                Text(monitor.containerManager.state.label)
-                    .font(.system(size: 11))
-                    .foregroundStyle(.secondary)
-            }
-            Spacer()
-            containerActionView
-        }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 10)
-    }
-
-    @ViewBuilder
-    private var containerActionView: some View {
-        let s = monitor.containerManager.state
-        if s == .notInstalled {
-            Button("Install Docker") { openURL(dockerInstallURL) }
-                .buttonStyle(.bordered)
-                .controlSize(.small)
-        } else if s == .daemonDown {
-            Button("Start Docker") {
-                NSWorkspace.shared.open(URL(fileURLWithPath: "/Applications/Docker.app"))
-            }
-            .buttonStyle(.bordered)
-            .controlSize(.small)
-        } else if s.canStart {
-            Button("Start") {
-                Task { await monitor.containerManager.start(caelDirectory: monitor.settings.caelDirectory) }
-            }
-            .buttonStyle(.bordered)
-            .controlSize(.small)
-        } else if s.canStop {
-            Button("Stop") {
-                Task { await monitor.containerManager.stop(caelDirectory: monitor.settings.caelDirectory) }
-            }
-            .buttonStyle(.bordered)
-            .controlSize(.small)
-        } else if s.isBusy {
-            ProgressView()
-                .scaleEffect(0.6)
-                .frame(width: 20, height: 20)
-        }
-    }
-
-    private var containerDotColor: Color {
-        switch monitor.containerManager.state {
-        case .running:                        return .green
-        case .starting, .building, .stopping: return .orange
-        case .notInstalled, .daemonDown:      return .yellow
-        case .error:                          return .red
-        default:                              return Color(nsColor: .tertiaryLabelColor)
-        }
-    }
-
     // MARK: - House ad
 
     private var houseAdRow: some View {
@@ -344,8 +276,7 @@ struct StatusPopover: View {
     // MARK: - QR code
 
     private func localQRImage() -> NSImage? {
-        let lanIP = monitor.containerManager.lanIP.isEmpty ? "localhost" : monitor.containerManager.lanIP
-        let lanURL = "http://\(lanIP):3100"
+        let lanURL = "http://localhost:3100"
         let ext = monitor.settings.normalizedExternalURL
         let hasExternal = !ext.isEmpty && monitor.premium.isPremium
 
@@ -451,9 +382,6 @@ struct StatusPopover: View {
         .hoverEffect()
     }
 
-    private func openURL(_ string: String) {
-        if let url = URL(string: string) { NSWorkspace.shared.open(url) }
-    }
 }
 
 // MARK: - Mac upgrade sheet

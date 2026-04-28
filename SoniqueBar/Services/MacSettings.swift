@@ -183,10 +183,7 @@ class MacSettings: ObservableObject {
     @Published var capabilityIOSBridge: Bool {
         didSet { UserDefaults.standard.set(capabilityIOSBridge, forKey: CapabilityStorageKeys.iosBridge) }
     }
-    /// Which supervisor drives CAAL: the legacy networked Docker stack
-    /// (`ContainerManager`) or the bundled embedded runtime (`SidecarManager`).
-    /// Defaults to `.embedded` when the bundled tarball is present, `.networked`
-    /// otherwise — resolved in `init()` at launch.
+    /// Embedded runtime mode for SoniqueBar.
     @Published var deploymentMode: SidecarManager.DeploymentMode {
         didSet { UserDefaults.standard.set(deploymentMode.rawValue, forKey: "deploymentMode") }
     }
@@ -224,13 +221,8 @@ class MacSettings: ObservableObject {
         self.showInDock = UserDefaults.standard.bool(forKey: "showInDock")
         self.launchAtLogin = UserDefaults.standard.object(forKey: "launchAtLogin") as? Bool ?? true
 
-        let bundledTarballExists = Bundle.main.url(
-            forResource: "python-runtime",
-            withExtension: "tar.gz"
-        ) != nil
         let stored = UserDefaults.standard.string(forKey: "deploymentMode")
-        let fallback: SidecarManager.DeploymentMode = bundledTarballExists ? .embedded : .networked
-        self.deploymentMode = stored.flatMap(SidecarManager.DeploymentMode.init(rawValue:)) ?? fallback
+        self.deploymentMode = stored.flatMap(SidecarManager.DeploymentMode.init(rawValue:)) ?? .embedded
     }
 
     // Always manages local CAAL — configured as soon as the directory is set
@@ -239,10 +231,14 @@ class MacSettings: ObservableObject {
     }
 
     // Next.js frontend (health, profile, QR, settings)
-    var effectiveURL: String { "http://localhost:3100" }
+    // Prefers external URL if set, otherwise falls back to localhost
+    var effectiveURL: String {
+        let normalized = normalizedExternalURL
+        return !normalized.isEmpty ? normalized : "http://localhost:3100"
+    }
 
     // FastAPI webhook server (chat, mac-actions, memory, etc.)
-    var backendURL: String { "http://localhost:8889" }
+    var backendURL: String { "http://localhost:8891" }
 
     var normalizedExternalURL: String {
         externalURL.hasSuffix("/") ? String(externalURL.dropLast()) : externalURL

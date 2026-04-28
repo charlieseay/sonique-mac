@@ -15,8 +15,6 @@ import Combine
 ///   3. `stop()` — SIGTERM every child; after 5 s, SIGKILL any stragglers.
 ///      Called automatically on `applicationWillTerminate`.
 ///
-/// Coexistence: `ContainerManager` still drives the networked CAAL mode.
-/// `MacSettings.deploymentMode` selects which supervisor SoniqueBar uses.
 @MainActor
 final class SidecarManager: ObservableObject {
 
@@ -32,15 +30,11 @@ final class SidecarManager: ObservableObject {
     }
 
     enum DeploymentMode: String, CaseIterable, Identifiable {
-        case networked  // legacy ContainerManager flow
-        case embedded   // this class
+        case embedded
 
         var id: String { rawValue }
         var label: String {
-            switch self {
-            case .networked: return "Networked (Docker + cael repo)"
-            case .embedded:  return "Embedded (bundled sidecar)"
-            }
+            "Embedded (bundled sidecar)"
         }
     }
 
@@ -110,6 +104,7 @@ final class SidecarManager: ObservableObject {
             sidecarRoot = root
             dbg("resolveSidecarRoot returned: \(root.path)")
             NSLog("[Sidecar] resolveSidecarRoot returned: \(root.path)")
+            try applyRuntimeCompatibilityPatches(in: root)
 
             state = .starting
             dbg("calling spawnAll…")
@@ -342,6 +337,163 @@ final class SidecarManager: ObservableObject {
                 }
                 cont.resume()
             }
+        }
+    }
+
+    /// Patches third-party runtime files for known version skews in the bundled
+    /// sidecar environment. This runs on every boot and is idempotent.
+    private func applyRuntimeCompatibilityPatches(in root: URL) throws {
+        let traces = root
+            .appendingPathComponent("python/lib/python3.12/site-packages/livekit/agents/telemetry/traces.py")
+        guard FileManager.default.fileExists(atPath: traces.path),
+              var content = try? String(contentsOf: traces, encoding: .utf8) else {
+            return
+        }
+
+        let legacyImport = """
+from opentelemetry.sdk._logs import (
+    LogData,
+    LoggerProvider,
+    LoggingHandler,
+    LogRecord,
+    LogRecordProcessor,
+)
+"""
+        let patchedImport = """
+try:
+    from opentelemetry.sdk._logs import (
+        LogData,
+        LoggerProvider,
+        LoggingHandler,
+        LogRecord,
+        LogRecordProcessor,
+    )
+except ImportError:
+    from opentelemetry.sdk._logs import (
+        LoggerProvider,
+        LoggingHandler,
+        LogRecordProcessor,
+        ReadWriteLogRecord as LogData,
+    )
+    from opentelemetry._logs import LogRecord
+"""
+        guard content.contains(legacyImport), !content.contains("ReadWriteLogRecord as LogData") else {
+            return
+        }
+        content = content.replacingOccurrences(of: legacyImport, with: patchedImport)
+        try content.write(to: traces, atomically: true, encoding: .utf8)
+
+        // Ensure embedded webhook backend does not collide with legacy Docker stack on 8889.
+        let launcher = root.appendingPathComponent("launcher.sh")
+        if FileManager.default.fileExists(atPath: launcher.path),
+           var launcherContent = try? String(contentsOf: launcher, encoding: .utf8),
+           !launcherContent.contains("WEBHOOK_PORT=8891"),
+           launcherContent.contains("exec python voice_agent.py start") {
+            launcherContent = launcherContent.replacingOccurrences(
+                of: "exec python voice_agent.py start",
+                with: "export WEBHOOK_PORT=8891\n    exec python voice_agent.py start"
+            )
+            try launcherContent.write(to: launcher, atomically: true, encoding: .utf8)
+        }
+
+        // Patch optional MCP import so bundled runtime doesn't crash when the
+        // optional `mcp` extra is not installed.
+        let voiceAgent = root.appendingPathComponent("services/caal-agent/voice_agent.py")
+        if FileManager.default.fileExists(atPath: voiceAgent.path),
+           var voiceAgentContent = try? String(contentsOf: voiceAgent, encoding: .utf8),
+           voiceAgentContent.contains("from livekit.agents import Agent, AgentSession, mcp"),
+           !voiceAgentContent.contains("class _MCPNamespace") {
+            let oldImport = "from livekit.agents import Agent, AgentSession, mcp  # noqa: E402"
+            let newImport = """
+from livekit.agents import Agent, AgentSession  # noqa: E402
+try:
+    from livekit.agents import mcp  # noqa: E402
+except Exception:
+    class _MCPNamespace:
+        MCPServerHTTP = object
+    mcp = _MCPNamespace()
+"""
+            voiceAgentContent = voiceAgentContent.replacingOccurrences(of: oldImport, with: newImport)
+            try voiceAgentContent.write(to: voiceAgent, atomically: true, encoding: .utf8)
+        }
+
+        // Guard optional cloud-provider dependencies so local-only embedded mode
+        // does not crash on import when extras are not installed.
+        let providersInit = root.appendingPathComponent("services/caal-agent/src/caal/llm/providers/__init__.py")
+        if FileManager.default.fileExists(atPath: providersInit.path),
+           var providersContent = try? String(contentsOf: providersInit, encoding: .utf8) {
+            let oldImports = """
+from .anthropic_provider import AnthropicProvider
+from .base import LLMProvider, LLMResponse, ToolCall
+from .claude_cli_provider import ClaudeCLIProvider
+from .gemini_cli_provider import GeminiCLIProvider
+from .google_provider import GoogleProvider
+from .groq_provider import GroqProvider
+from .ollama_provider import OllamaProvider
+from .openai_compatible_provider import OpenAICompatibleProvider
+from .openrouter_provider import OpenRouterProvider
+"""
+            let newImports = """
+from .base import LLMProvider, LLMResponse, ToolCall
+from .claude_cli_provider import ClaudeCLIProvider
+from .gemini_cli_provider import GeminiCLIProvider
+from .ollama_provider import OllamaProvider
+from .openai_compatible_provider import OpenAICompatibleProvider
+from .openrouter_provider import OpenRouterProvider
+try:
+    from .groq_provider import GroqProvider
+except Exception:
+    GroqProvider = None
+try:
+    from .anthropic_provider import AnthropicProvider
+except Exception:
+    AnthropicProvider = None
+try:
+    from .google_provider import GoogleProvider
+except Exception:
+    GoogleProvider = None
+"""
+            if providersContent.contains(oldImports) {
+                providersContent = providersContent.replacingOccurrences(of: oldImports, with: newImports)
+            }
+            providersContent = providersContent.replacingOccurrences(
+                of: "elif provider_name == \"groq\":\n        return GroqProvider(**kwargs)",
+                with: "elif provider_name == \"groq\":\n        if GroqProvider is None:\n            raise ValueError(\"Groq provider dependencies are not installed in this runtime.\")\n        return GroqProvider(**kwargs)"
+            )
+            providersContent = providersContent.replacingOccurrences(
+                of: "elif provider_name == \"anthropic\":\n        return AnthropicProvider(**kwargs)",
+                with: "elif provider_name == \"anthropic\":\n        if AnthropicProvider is None:\n            raise ValueError(\"Anthropic provider dependencies are not installed in this runtime.\")\n        return AnthropicProvider(**kwargs)"
+            )
+            providersContent = providersContent.replacingOccurrences(
+                of: "elif provider_name == \"google\":\n        return GoogleProvider(**kwargs)",
+                with: "elif provider_name == \"google\":\n        if GoogleProvider is None:\n            raise ValueError(\"Google provider dependencies are not installed in this runtime.\")\n        return GoogleProvider(**kwargs)"
+            )
+            providersContent = providersContent.replacingOccurrences(
+                of: "elif provider_name == \"groq\":\n        // API key from settings, fallback to environment variable\n        api_key = settings.get(\"groq_api_key\") or os.environ.get(\"GROQ_API_KEY\")\n        return GroqProvider(",
+                with: "elif provider_name == \"groq\":\n        if GroqProvider is None:\n            raise ValueError(\"Groq provider dependencies are not installed in this runtime.\")\n        // API key from settings, fallback to environment variable\n        api_key = settings.get(\"groq_api_key\") or os.environ.get(\"GROQ_API_KEY\")\n        return GroqProvider("
+            )
+            providersContent = providersContent.replacingOccurrences(
+                of: "elif provider_name == \"anthropic\":\n        api_key = settings.get(\"anthropic_api_key\") or os.environ.get(\"ANTHROPIC_API_KEY\")\n        return AnthropicProvider(",
+                with: "elif provider_name == \"anthropic\":\n        if AnthropicProvider is None:\n            raise ValueError(\"Anthropic provider dependencies are not installed in this runtime.\")\n        api_key = settings.get(\"anthropic_api_key\") or os.environ.get(\"ANTHROPIC_API_KEY\")\n        return AnthropicProvider("
+            )
+            providersContent = providersContent.replacingOccurrences(
+                of: "elif provider_name == \"google\":\n        api_key = settings.get(\"google_api_key\") or os.environ.get(\"GOOGLE_API_KEY\")\n        return GoogleProvider(",
+                with: "elif provider_name == \"google\":\n        if GoogleProvider is None:\n            raise ValueError(\"Google provider dependencies are not installed in this runtime.\")\n        api_key = settings.get(\"google_api_key\") or os.environ.get(\"GOOGLE_API_KEY\")\n        return GoogleProvider("
+            )
+            try providersContent.write(to: providersInit, atomically: true, encoding: .utf8)
+        }
+
+        // FastAPI compatibility: newer FastAPI rejects 204 routes that can emit
+        // a response body. Switch this endpoint to 200 to avoid startup abort.
+        let webhooks = root.appendingPathComponent("services/caal-agent/src/caal/webhooks.py")
+        if FileManager.default.fileExists(atPath: webhooks.path),
+           var webhooksContent = try? String(contentsOf: webhooks, encoding: .utf8),
+           webhooksContent.contains("@app.post(\"/api/network-state\", status_code=204)") {
+            webhooksContent = webhooksContent.replacingOccurrences(
+                of: "@app.post(\"/api/network-state\", status_code=204)",
+                with: "@app.post(\"/api/network-state\", status_code=200)"
+            )
+            try webhooksContent.write(to: webhooks, atomically: true, encoding: .utf8)
         }
     }
 

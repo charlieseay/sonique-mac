@@ -10,11 +10,11 @@ class ServerMonitor: ObservableObject {
     @Published var hasActiveVoiceSession = false
 
     let settings = MacSettings()
-    let containerManager = ContainerManager()
     let sidecarManager = SidecarManager()
     let premium = PremiumManager()
     let systemControl = SystemControlManager()
     let chatManager = ChatManager()
+    let memoryJanitor = MemoryJanitorService()
     let contractEndpoint = ContractEndpointService()
 
     private var pollTask: Task<Void, Never>?
@@ -22,21 +22,15 @@ class ServerMonitor: ObservableObject {
 
     init() {
         contractEndpoint.start()
+        memoryJanitor.start()
         Task { [weak self] in
             guard let self else { return }
-            // Let MenuBarExtra render once before embedded unpack / Docker probes.
+            // Let MenuBarExtra render once before embedded runtime unpack/probes.
             await Task.yield()
-            switch settings.deploymentMode {
-            case .networked:
-                await containerManager.setup(caelDirectory: settings.caelDirectory)
-            case .embedded:
-                await sidecarManager.start()
-                if case .failed = sidecarManager.state {
-                    // Embedded runtime can fail under sandbox exec/signing constraints.
-                    // Fall back to the networked CAAL stack so voice remains available.
-                    settings.deploymentMode = .networked
-                    await containerManager.setup(caelDirectory: settings.caelDirectory)
-                }
+            await sidecarManager.start()
+            if case .failed = sidecarManager.state {
+                // Keep polling active so Doctor can drive remediation without Docker fallback.
+                NSLog("[Sidecar] embedded runtime failed at boot")
             }
             startPolling()
             await attemptBootSelfHealIfNeeded()
@@ -44,23 +38,43 @@ class ServerMonitor: ObservableObject {
     }
 
     deinit {
+        memoryJanitor.stop()
         contractEndpoint.stop()
     }
 
-    /// Apply a deployment-mode change at runtime: tear down the supervisor
-    /// that's currently driving CAAL and bring up the other. Called from the
-    /// Settings UI when the user flips the toggle.
-    func applyDeploymentMode(_ mode: SidecarManager.DeploymentMode) async {
-        settings.deploymentMode = mode
-        switch mode {
-        case .networked:
-            sidecarManager.stop()
-            await containerManager.setup(caelDirectory: settings.caelDirectory)
-        case .embedded:
-            // Leave networked stack running — user may have other tools
-            // pointed at it. Just bring up the sidecar instead.
-            await sidecarManager.start()
-        }
+    func loadMemoryHealthSnapshot() -> MemoryHealthSnapshot {
+        let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
+        let dir = appSupport.appendingPathComponent("SoniqueBar/memory", isDirectory: true)
+        let turnsURL = dir.appendingPathComponent("conversation-turns.json")
+        let episodesURL = dir.appendingPathComponent("conversation-episodes.json")
+        let personaURL = dir.appendingPathComponent("persona-profile.json")
+        let statusURL = dir.appendingPathComponent("memory-health.json")
+
+        let turnsCount = (try? Data(contentsOf: turnsURL))
+            .flatMap { try? JSONSerialization.jsonObject(with: $0) as? [Any] }?
+            .count ?? 0
+        let episodesCount = (try? Data(contentsOf: episodesURL))
+            .flatMap { try? JSONSerialization.jsonObject(with: $0) as? [Any] }?
+            .count ?? 0
+
+        let personaSummary = (try? Data(contentsOf: personaURL))
+            .flatMap { try? JSONSerialization.jsonObject(with: $0) as? [String: Any] }?["summary"] as? String
+            ?? "No persona summary yet."
+
+        let status = (try? Data(contentsOf: statusURL))
+            .flatMap { try? JSONSerialization.jsonObject(with: $0) as? [String: Any] } ?? [:]
+        let mode = status["mode"] as? String ?? "unknown"
+        let lastRunAt = status["lastRunAt"] as? String
+        let lastCompactAt = status["lastCompactAt"] as? String
+
+        return MemoryHealthSnapshot(
+            rawTurnCount: turnsCount,
+            episodeCount: episodesCount,
+            personaSummary: personaSummary,
+            janitorMode: mode,
+            lastRunAtISO8601: lastRunAt,
+            lastCompactAtISO8601: lastCompactAt
+        )
     }
 
     func startPolling() {
@@ -84,7 +98,7 @@ class ServerMonitor: ObservableObject {
     private var timezoneSynced = false
 
     private func checkHealth() async {
-        guard let url = URL(string: "\(settings.effectiveURL)/api/settings") else {
+        guard let url = URL(string: "\(settings.backendURL)/health") else {
             isOnline = false; return
         }
         var req = URLRequest(url: url, timeoutInterval: 5)
@@ -93,7 +107,7 @@ class ServerMonitor: ObservableObject {
             let (_, response) = try await URLSession.shared.data(for: req)
             let code = (response as? HTTPURLResponse)?.statusCode ?? 0
             let wasOffline = !isOnline
-            isOnline = code == 200 || code == 401
+            isOnline = code == 200
             if isOnline && (wasOffline || !timezoneSynced) {
                 await syncTimezone()
             }
@@ -153,8 +167,13 @@ class ServerMonitor: ObservableObject {
     /// Task #284: merge `LLMRoutingCAALKeys` values from `MacSettings` into this POST body
     /// once `/api/settings` accepts them (same pattern as timezone keys).
     private func syncTimezone() async {
-        guard let url = URL(string: "\(settings.effectiveURL)/api/settings") else { return }
-        let (tzId, tzDisplay) = ContainerManager.systemTimezone()
+        guard let url = URL(string: "\(settings.backendURL)/settings") else { return }
+        let tz = TimeZone.current
+        let tzId = tz.identifier
+        let tzDisplay = (tz.localizedName(for: .standard, locale: .current) ?? "Local Time")
+            .replacingOccurrences(of: " Standard Time", with: " Time")
+            .replacingOccurrences(of: " Daylight Time", with: " Time")
+            .replacingOccurrences(of: " Daylight Saving Time", with: " Time")
         guard let body = try? JSONSerialization.data(withJSONObject: [
             "settings": ["timezone_id": tzId, "timezone_display": tzDisplay]
         ]) else { return }
@@ -168,7 +187,7 @@ class ServerMonitor: ObservableObject {
     }
 
     private func fetchProfile() async {
-        guard let url = URL(string: "\(settings.effectiveURL)/api/assistant/profile") else { return }
+        guard let url = URL(string: "\(settings.backendURL)/assistant/profile") else { return }
         var req = URLRequest(url: url, timeoutInterval: 5)
         if !settings.apiKey.isEmpty { req.setValue(settings.apiKey, forHTTPHeaderField: "x-api-key") }
         do {
@@ -199,15 +218,28 @@ class ServerMonitor: ObservableObject {
         try? await Task.sleep(for: .seconds(8))
         await checkHealth()
         guard !isOnline else { return }
-        switch settings.deploymentMode {
-        case .embedded:
-            await sidecarManager.start()
-        case .networked:
-            await containerManager.setup(caelDirectory: settings.caelDirectory)
-        }
+        await sidecarManager.start()
         try? await Task.sleep(for: .seconds(3))
         await checkHealth()
     }
+}
+
+struct MemoryHealthSnapshot {
+    let rawTurnCount: Int
+    let episodeCount: Int
+    let personaSummary: String
+    let janitorMode: String
+    let lastRunAtISO8601: String?
+    let lastCompactAtISO8601: String?
+
+    static let empty = MemoryHealthSnapshot(
+        rawTurnCount: 0,
+        episodeCount: 0,
+        personaSummary: "No persona summary yet.",
+        janitorMode: "unknown",
+        lastRunAtISO8601: nil,
+        lastCompactAtISO8601: nil
+    )
 }
 
 final class ContractEndpointService: ObservableObject {
