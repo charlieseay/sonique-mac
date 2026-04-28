@@ -495,7 +495,8 @@ struct OnboardingView: View {
         defer { isRunningDoctor = false }
         doctorResults = await QuickStartScanner.runDoctor(
             effectiveURL: monitor.settings.effectiveURL,
-            backendURL: monitor.settings.backendURL
+            backendURL: monitor.settings.backendURL,
+            expectedSimpleProvider: llmProviderDraft == .ollama ? "ollama" : "openai_compatible"
         )
     }
 
@@ -549,6 +550,17 @@ struct OnboardingView: View {
             if let url = URL(string: "https://docs.cursor.com/en/cli/overview") {
                 NSWorkspace.shared.open(url)
             }
+        case .openFrontendURL(let raw):
+            if let url = URL(string: raw) {
+                NSWorkspace.shared.open(url)
+            }
+        case .openBackendURL(let raw):
+            if let url = URL(string: raw) {
+                NSWorkspace.shared.open(url)
+            }
+        case .openSidecarLogs:
+            let path = ("~/Library/Logs/SoniqueBar" as NSString).expandingTildeInPath
+            NSWorkspace.shared.selectFile(nil, inFileViewerRootedAtPath: path)
         }
     }
 
@@ -578,6 +590,9 @@ private enum DoctorRemediation {
     case openClaudeCLIInstallDocs
     case openGeminiCLIInstallDocs
     case openCursorCLIInstallDocs
+    case openFrontendURL(String)
+    case openBackendURL(String)
+    case openSidecarLogs
 }
 
 private struct OnboardingProfile: Codable {
@@ -690,9 +705,20 @@ private enum QuickStartScanner {
         )
     }
 
-    static func runDoctor(effectiveURL: String, backendURL: String) async -> [DoctorCheck] {
+    static func runDoctor(
+        effectiveURL: String,
+        backendURL: String,
+        expectedSimpleProvider: String
+    ) async -> [DoctorCheck] {
         async let frontend = endpointReachable("\(effectiveURL)/health")
         async let backend = endpointReachable("\(backendURL)/routing/policy")
+        async let backendHealth = endpointReachable("\(backendURL)/health")
+        async let sttHealth = endpointReachable("http://127.0.0.1:8081/health")
+        async let ttsHealth = endpointReachable("http://127.0.0.1:8082/health")
+        async let policyParity = routingPolicyParityCheck(
+            backendURL: backendURL,
+            expectedSimpleProvider: expectedSimpleProvider
+        )
         let dockerDaemon = commandSucceeds(["docker", "info"])
         let ghAuth = commandSucceeds(["gh", "auth", "status"])
         let claudeAvailable = commandExists("claude")
@@ -702,10 +728,14 @@ private enum QuickStartScanner {
         let contactsStatus = contactsPermissionLabel()
         let calendarStatus = calendarPermissionLabel()
         let localFilesReadable = FileManager.default.isReadableFile(atPath: NSHomeDirectory())
+        let parity = await policyParity
 
         return [
-            DoctorCheck(label: "Frontend API health", ok: await frontend, detail: "\(effectiveURL)/health", remediation: nil),
-            DoctorCheck(label: "Routing policy endpoint", ok: await backend, detail: "\(backendURL)/routing/policy", remediation: nil),
+            DoctorCheck(label: "Frontend API health", ok: await frontend, detail: "\(effectiveURL)/health", remediation: .openFrontendURL("\(effectiveURL)/health")),
+            DoctorCheck(label: "Routing policy endpoint", ok: await backend, detail: "\(backendURL)/routing/policy", remediation: .openBackendURL("\(backendURL)/routing/policy")),
+            DoctorCheck(label: "Backend health endpoint", ok: await backendHealth, detail: "\(backendURL)/health", remediation: .openBackendURL("\(backendURL)/health")),
+            DoctorCheck(label: "Sidecar STT health", ok: await sttHealth, detail: "http://127.0.0.1:8081/health", remediation: .openSidecarLogs),
+            DoctorCheck(label: "Sidecar TTS health", ok: await ttsHealth, detail: "http://127.0.0.1:8082/health", remediation: .openSidecarLogs),
             DoctorCheck(label: "Docker daemon reachable", ok: dockerDaemon, detail: "docker info", remediation: dockerDaemon ? nil : .openDockerApp),
             DoctorCheck(label: "GitHub CLI auth", ok: ghAuth, detail: "gh auth status", remediation: ghAuth ? nil : .openGitHubCLIAuthDocs),
             DoctorCheck(label: "Claude CLI available", ok: claudeAvailable, detail: "command: claude", remediation: claudeAvailable ? nil : .openClaudeCLIInstallDocs),
@@ -713,8 +743,39 @@ private enum QuickStartScanner {
             DoctorCheck(label: "Cursor CLI available", ok: cursorAvailable, detail: "command: cursor", remediation: cursorAvailable ? nil : .openCursorCLIInstallDocs),
             DoctorCheck(label: "Contacts permission", ok: contactsStatus == "authorized", detail: contactsStatus, remediation: contactsStatus == "authorized" ? nil : .openContactsPrivacy),
             DoctorCheck(label: "Calendar permission", ok: calendarStatus == "full_access" || calendarStatus == "write_only" || calendarStatus == "authorized", detail: calendarStatus, remediation: (calendarStatus == "full_access" || calendarStatus == "write_only" || calendarStatus == "authorized") ? nil : .openCalendarPrivacy),
-            DoctorCheck(label: "Local files readable", ok: localFilesReadable, detail: NSHomeDirectory(), remediation: nil)
+            DoctorCheck(label: "Local files readable", ok: localFilesReadable, detail: NSHomeDirectory(), remediation: nil),
+            DoctorCheck(label: "Routing policy parity", ok: parity.ok, detail: parity.detail, remediation: parity.ok ? nil : .openBackendURL("\(backendURL)/routing/policy"))
         ]
+    }
+
+    private static func routingPolicyParityCheck(
+        backendURL: String,
+        expectedSimpleProvider: String
+    ) async -> (ok: Bool, detail: String) {
+        guard let url = URL(string: "\(backendURL)/routing/policy") else {
+            return (false, "invalid policy URL")
+        }
+        do {
+            let (data, response) = try await URLSession.shared.data(for: URLRequest(url: url, timeoutInterval: 4))
+            guard let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode) else {
+                return (false, "policy endpoint unavailable")
+            }
+            guard
+                let root = try JSONSerialization.jsonObject(with: data) as? [String: Any],
+                let policy = root["policy"] as? [String: Any],
+                let tiers = policy["tiers"] as? [[String: Any]],
+                let simple = tiers.first(where: { ($0["label"] as? String) == "simple" }),
+                let provider = simple["provider"] as? String
+            else {
+                return (false, "policy payload missing simple tier")
+            }
+            if provider == expectedSimpleProvider {
+                return (true, "simple tier provider = \(provider)")
+            }
+            return (false, "simple tier provider \(provider) != expected \(expectedSimpleProvider)")
+        } catch {
+            return (false, "policy fetch failed")
+        }
     }
 
     private static func contactsPermissionLabel() -> String {
