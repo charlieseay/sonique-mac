@@ -34,6 +34,7 @@ struct OnboardingView: View {
     @State private var doctorResults: [DoctorCheck] = []
     @State private var isRunningPreflightRepair = false
     @State private var lastPreflightAt: Date?
+    @State private var preflightTrend = PreflightTrendSummary.empty
 
     var body: some View {
         ScrollView {
@@ -292,7 +293,9 @@ struct OnboardingView: View {
             backendHealthURL: "\(monitor.settings.backendURL)/health",
             frontendHealthURL: "\(monitor.settings.effectiveURL)/health",
             expectedSimpleProvider: llmProviderDraft == .ollama ? "ollama" : "openai_compatible",
-            contractPullPath: url.path
+            contractPullPath: url.path,
+            contractPullURL: monitor.contractEndpoint.runtimeContractPullURL ?? "",
+            preflightTrendPullURL: monitor.contractEndpoint.preflightTrendPullURL ?? ""
         )
 
         let encoder = JSONEncoder()
@@ -516,6 +519,7 @@ struct OnboardingView: View {
                 ForEach(doctorResults) { check in
                     doctorResultRow(check)
                 }
+                preflightTrendView
             }
             Text("These checks are local diagnostics and safe to rerun.")
                 .font(.caption)
@@ -531,6 +535,30 @@ struct OnboardingView: View {
             backendURL: monitor.settings.backendURL,
             expectedSimpleProvider: llmProviderDraft == .ollama ? "ollama" : "openai_compatible"
         )
+        preflightTrend = loadPreflightTrendSummary()
+    }
+
+    private var preflightTrendView: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text("Preflight trend")
+                .font(.caption.weight(.semibold))
+            Text("Runs: \(preflightTrend.sampleCount) • Pass rate: \(Int(preflightTrend.passRate * 100))% • Avg duration: \(String(format: "%.1fs", preflightTrend.avgDurationSeconds))")
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+            ForEach(preflightTrend.lastRuns) { run in
+                HStack(spacing: 6) {
+                    Image(systemName: run.failingChecks == 0 ? "checkmark.circle.fill" : "xmark.circle.fill")
+                        .foregroundStyle(run.failingChecks == 0 ? Color.green : Color.orange)
+                    Text(run.generatedAtISO8601)
+                        .font(.caption2.monospaced())
+                        .foregroundStyle(.secondary)
+                    Text("fail: \(run.failingChecks)")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                }
+            }
+        }
+        .padding(.top, 4)
     }
 
     private func doctorResultRow(_ check: DoctorCheck) -> some View {
@@ -636,7 +664,9 @@ struct OnboardingView: View {
             backendHealthURL: "\(monitor.settings.backendURL)/health",
             frontendHealthURL: "\(monitor.settings.effectiveURL)/health",
             expectedSimpleProvider: llmProviderDraft == .ollama ? "ollama" : "openai_compatible",
-            contractPullPath: target.path
+            contractPullPath: target.path,
+            contractPullURL: monitor.contractEndpoint.runtimeContractPullURL ?? "",
+            preflightTrendPullURL: monitor.contractEndpoint.preflightTrendPullURL ?? ""
         )
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
@@ -675,6 +705,7 @@ struct OnboardingView: View {
         if let data = try? encoder.encode(telemetry) {
             try? data.write(to: target, options: Data.WritingOptions.atomic)
             appendTelemetryHistory(telemetry, in: dirURL)
+            preflightTrend = loadPreflightTrendSummary()
         }
     }
 
@@ -699,6 +730,32 @@ struct OnboardingView: View {
         if lines.count <= keepLast { return }
         lines = Array(lines.suffix(keepLast))
         try? (lines.joined(separator: "\n") + "\n").write(to: historyURL, atomically: true, encoding: .utf8)
+    }
+
+    private func loadPreflightTrendSummary() -> PreflightTrendSummary {
+        let historyPath = ("~/Library/Application Support/SoniqueBar/contracts/preflight-telemetry.history.jsonl" as NSString).expandingTildeInPath
+        guard let raw = try? String(contentsOfFile: historyPath, encoding: .utf8) else {
+            return .empty
+        }
+        let decoder = JSONDecoder()
+        let entries: [PreflightTelemetry] = raw
+            .split(separator: "\n", omittingEmptySubsequences: true)
+            .compactMap { line in
+                guard let data = line.data(using: .utf8) else { return nil }
+                return try? decoder.decode(PreflightTelemetry.self, from: data)
+            }
+        guard !entries.isEmpty else { return .empty }
+        let totalChecks = entries.reduce(0) { $0 + $1.totalChecks }
+        let totalPassing = entries.reduce(0) { $0 + $1.passingChecks }
+        let passRate = totalChecks == 0 ? 0.0 : Double(totalPassing) / Double(totalChecks)
+        let avgDuration = entries.reduce(0.0) { $0 + $1.durationSeconds } / Double(entries.count)
+        let lastRuns = Array(entries.suffix(5)).reversed()
+        return PreflightTrendSummary(
+            sampleCount: entries.count,
+            passRate: passRate,
+            avgDurationSeconds: avgDuration,
+            lastRuns: Array(lastRuns)
+        )
     }
 
     private func doctorRow(_ label: String, ok: Bool) -> some View {
@@ -775,6 +832,8 @@ private struct OnboardingRuntimeContract: Codable {
     let frontendHealthURL: String
     let expectedSimpleProvider: String
     let contractPullPath: String
+    let contractPullURL: String
+    let preflightTrendPullURL: String
 }
 
 private struct PreflightTelemetry: Codable {
@@ -788,6 +847,19 @@ private struct PreflightTelemetry: Codable {
     let passingChecks: Int
     let failingChecks: Int
     let failedCheckLabels: [String]
+}
+
+private struct PreflightTrendSummary {
+    let sampleCount: Int
+    let passRate: Double
+    let avgDurationSeconds: TimeInterval
+    let lastRuns: [PreflightTelemetry]
+
+    static let empty = PreflightTrendSummary(sampleCount: 0, passRate: 0, avgDurationSeconds: 0, lastRuns: [])
+}
+
+extension PreflightTelemetry: Identifiable {
+    var id: String { generatedAtISO8601 + ":\(failingChecks)" }
 }
 
 private enum QuickStartStep: String, CaseIterable, Identifiable {

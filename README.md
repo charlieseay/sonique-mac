@@ -44,6 +44,8 @@ Phase 10 automates contract consumer surfaces: runtime contract now republishes 
 
 Phase 11 adds long-horizon consumer stability: runtime contract embeds `contractPullPath`, and telemetry history is retained in `preflight-telemetry.history.jsonl` (rolling last 50 runs).
 
+Phase 12 completes consumer pull + observability: SoniqueBar runs a local loopback-only contract endpoint on `127.0.0.1:8894` with token-gated reads (`x-sonique-contract-token` or `?token=`), exposes runtime/trend pull URLs in the contract payload, and shows an in-app preflight trend summary in Doctor.
+
 ## Build
 
 Open `SoniqueBar.xcodeproj` in Xcode (or generate via XcodeGen if you add a spec). Scheme: **SoniqueBar**, destination: **My Mac**.

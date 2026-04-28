@@ -1,5 +1,6 @@
 import Foundation
 import AppKit
+import Network
 
 @MainActor
 class ServerMonitor: ObservableObject {
@@ -14,11 +15,13 @@ class ServerMonitor: ObservableObject {
     let premium = PremiumManager()
     let systemControl = SystemControlManager()
     let chatManager = ChatManager()
+    let contractEndpoint = ContractEndpointService()
 
     private var pollTask: Task<Void, Never>?
     private var bootSelfHealAttempted = false
 
     init() {
+        contractEndpoint.start()
         Task { [weak self] in
             guard let self else { return }
             // Let MenuBarExtra render once before embedded unpack / Docker probes.
@@ -38,6 +41,10 @@ class ServerMonitor: ObservableObject {
             startPolling()
             await attemptBootSelfHealIfNeeded()
         }
+    }
+
+    deinit {
+        contractEndpoint.stop()
     }
 
     /// Apply a deployment-mode change at runtime: tear down the supervisor
@@ -200,5 +207,227 @@ class ServerMonitor: ObservableObject {
         }
         try? await Task.sleep(for: .seconds(3))
         await checkHealth()
+    }
+}
+
+final class ContractEndpointService: ObservableObject {
+    @Published private(set) var baseURLString: String?
+
+    private var listener: NWListener?
+    private let queue = DispatchQueue(label: "com.seayniclabs.sonique.contract-endpoint")
+    private let token: String
+    private let tokenHeaderName = "x-sonique-contract-token"
+
+    init() {
+        self.token = Self.loadOrCreateToken()
+    }
+
+    func start() {
+        guard listener == nil else { return }
+        guard let port = NWEndpoint.Port(rawValue: 8894) else { return }
+        do {
+            let listener = try NWListener(using: .tcp, on: port)
+            self.listener = listener
+            self.baseURLString = "http://127.0.0.1:\(port.rawValue)"
+            listener.newConnectionHandler = { [weak self] connection in
+                self?.handle(connection: connection)
+            }
+            listener.stateUpdateHandler = { [weak self] state in
+                if case .failed = state {
+                    Task { @MainActor in
+                        self?.baseURLString = nil
+                        self?.listener = nil
+                    }
+                }
+            }
+            listener.start(queue: queue)
+        } catch {
+            baseURLString = nil
+        }
+    }
+
+    func stop() {
+        listener?.cancel()
+        listener = nil
+        baseURLString = nil
+    }
+
+    var runtimeContractPullURL: String? {
+        guard let baseURLString else { return nil }
+        return "\(baseURLString)/contracts/runtime?token=\(token)"
+    }
+
+    var preflightTrendPullURL: String? {
+        guard let baseURLString else { return nil }
+        return "\(baseURLString)/contracts/preflight/trend?token=\(token)"
+    }
+
+    private func handle(connection: NWConnection) {
+        connection.start(queue: queue)
+        connection.receive(minimumIncompleteLength: 1, maximumLength: 16_384) { [weak self] data, _, _, _ in
+            guard let self else {
+                connection.cancel()
+                return
+            }
+            guard let data, !data.isEmpty else {
+                connection.cancel()
+                return
+            }
+            let requestText = String(decoding: data, as: UTF8.self)
+            self.respond(to: requestText, connection: connection)
+        }
+    }
+
+    private func respond(to request: String, connection: NWConnection) {
+        let lines = request.components(separatedBy: "\r\n")
+        guard let first = lines.first else {
+            send(status: 400, body: #"{"error":"bad request"}"#, connection: connection)
+            return
+        }
+        let parts = first.split(separator: " ")
+        guard parts.count >= 2 else {
+            send(status: 400, body: #"{"error":"bad request"}"#, connection: connection)
+            return
+        }
+
+        let method = String(parts[0])
+        let rawTarget = String(parts[1])
+        guard method == "GET" else {
+            send(status: 405, body: #"{"error":"method not allowed"}"#, connection: connection)
+            return
+        }
+
+        guard let targetURL = URL(string: "http://localhost\(rawTarget)"),
+              isAuthorized(targetURL: targetURL, lines: lines) else {
+            send(status: 401, body: #"{"error":"unauthorized"}"#, connection: connection)
+            return
+        }
+
+        let path = targetURL.path
+        if path == "/contracts/runtime" {
+            respondWithFile(named: "runtime-contract.latest.json", connection: connection)
+            return
+        }
+        if path == "/contracts/preflight/latest" {
+            respondWithFile(named: "preflight-telemetry.latest.json", connection: connection)
+            return
+        }
+        if path == "/contracts/preflight/history" {
+            let limit = max(1, min(200, Int(targetURL.queryItem(named: "limit") ?? "") ?? 50))
+            respondWithHistory(limit: limit, connection: connection)
+            return
+        }
+        if path == "/contracts/preflight/trend" {
+            respondWithTrend(connection: connection)
+            return
+        }
+
+        send(status: 404, body: #"{"error":"not found"}"#, connection: connection)
+    }
+
+    private func isAuthorized(targetURL: URL, lines: [String]) -> Bool {
+        if targetURL.queryItem(named: "token") == token {
+            return true
+        }
+        let expected = "\(tokenHeaderName): \(token)"
+        return lines.contains(where: { $0.lowercased() == expected.lowercased() })
+    }
+
+    private func respondWithFile(named fileName: String, connection: NWConnection) {
+        let fileURL = Self.contractsDirURL.appendingPathComponent(fileName)
+        guard let data = try? Data(contentsOf: fileURL) else {
+            send(status: 404, body: #"{"error":"not published"}"#, connection: connection)
+            return
+        }
+        send(status: 200, bodyData: data, contentType: "application/json", connection: connection)
+    }
+
+    private func respondWithHistory(limit: Int, connection: NWConnection) {
+        let historyURL = Self.contractsDirURL.appendingPathComponent("preflight-telemetry.history.jsonl")
+        guard let content = try? String(contentsOf: historyURL, encoding: .utf8) else {
+            send(status: 404, body: #"{"error":"history unavailable"}"#, connection: connection)
+            return
+        }
+        let lines = content
+            .split(separator: "\n", omittingEmptySubsequences: true)
+            .map(String.init)
+        let selected = Array(lines.suffix(limit))
+        let arrayBody = "[\(selected.joined(separator: ","))]"
+        send(status: 200, body: arrayBody, connection: connection)
+    }
+
+    private func respondWithTrend(connection: NWConnection) {
+        let latestURL = Self.contractsDirURL.appendingPathComponent("preflight-telemetry.latest.json")
+        let historyURL = Self.contractsDirURL.appendingPathComponent("preflight-telemetry.history.jsonl")
+        let latest = (try? Data(contentsOf: latestURL)).flatMap { try? JSONSerialization.jsonObject(with: $0) }
+        let historyCount: Int
+        if let content = try? String(contentsOf: historyURL, encoding: .utf8) {
+            historyCount = content.split(separator: "\n", omittingEmptySubsequences: true).count
+        } else {
+            historyCount = 0
+        }
+        let payload: [String: Any] = [
+            "historyCount": historyCount,
+            "latest": latest ?? NSNull()
+        ]
+        guard let data = try? JSONSerialization.data(withJSONObject: payload, options: [.prettyPrinted, .sortedKeys]) else {
+            send(status: 500, body: #"{"error":"serialize failed"}"#, connection: connection)
+            return
+        }
+        send(status: 200, bodyData: data, contentType: "application/json", connection: connection)
+    }
+
+    private func send(status: Int, body: String, connection: NWConnection) {
+        send(status: status, bodyData: Data(body.utf8), contentType: "application/json", connection: connection)
+    }
+
+    private func send(status: Int, bodyData: Data, contentType: String, connection: NWConnection) {
+        let statusText: String
+        switch status {
+        case 200: statusText = "OK"
+        case 400: statusText = "Bad Request"
+        case 401: statusText = "Unauthorized"
+        case 404: statusText = "Not Found"
+        case 405: statusText = "Method Not Allowed"
+        default: statusText = "Error"
+        }
+        var head = "HTTP/1.1 \(status) \(statusText)\r\n"
+        head += "Content-Type: \(contentType)\r\n"
+        head += "Content-Length: \(bodyData.count)\r\n"
+        head += "Connection: close\r\n\r\n"
+        let packet = Data(head.utf8) + bodyData
+        connection.send(content: packet, completion: .contentProcessed { _ in
+            connection.cancel()
+        })
+    }
+
+    private static var contractsDirURL: URL {
+        let root = ("~/Library/Application Support/SoniqueBar/contracts" as NSString).expandingTildeInPath
+        return URL(fileURLWithPath: root, isDirectory: true)
+    }
+
+    private static func loadOrCreateToken() -> String {
+        let fm = FileManager.default
+        let dir = contractsDirURL
+        try? fm.createDirectory(at: dir, withIntermediateDirectories: true)
+        let tokenURL = dir.appendingPathComponent("contract-endpoint.token")
+        if let existing = try? String(contentsOf: tokenURL, encoding: .utf8)
+            .trimmingCharacters(in: .whitespacesAndNewlines),
+           !existing.isEmpty {
+            return existing
+        }
+        let value = UUID().uuidString.replacingOccurrences(of: "-", with: "").lowercased()
+        try? value.write(to: tokenURL, atomically: true, encoding: .utf8)
+        try? fm.setAttributes([.posixPermissions: 0o600], ofItemAtPath: tokenURL.path)
+        return value
+    }
+}
+
+private extension URL {
+    func queryItem(named name: String) -> String? {
+        URLComponents(url: self, resolvingAgainstBaseURL: false)?
+            .queryItems?
+            .first(where: { $0.name == name })?
+            .value
     }
 }
