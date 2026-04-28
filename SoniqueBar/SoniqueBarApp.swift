@@ -82,9 +82,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
             .filter { $0.bundleIdentifier == me.bundleIdentifier && $0.processIdentifier != me.processIdentifier }
             .forEach { $0.terminate() }
 
-        // Restore dock visibility preference (default: hidden — pure menu bar app)
+        // Dock vs menu bar: LSUIElement apps must set policy explicitly or the
+        // status item can fail to adopt a visible template tint.
         if UserDefaults.standard.bool(forKey: "showInDock") {
             NSApp.setActivationPolicy(.regular)
+        } else {
+            NSApp.setActivationPolicy(.accessory)
         }
 
         // Global hotkey: ⌘⌥C — opens the Chat window from anywhere
@@ -117,12 +120,16 @@ private struct BarLabel: View {
                 sidecarLoadingIcon
             case .failed:
                 Image(systemName: "waveform")
+                    .font(.system(size: 14, weight: .medium))
+                    .symbolRenderingMode(.monochrome)
                     .foregroundStyle(.orange)
                     .help("Sonique: Voice engine failed — open menu for details")
             default:
                 normalIcon
             }
         }
+        .frame(minWidth: 22, minHeight: 18)
+        .accessibilityLabel("Sonique")
         .onReceive(NotificationCenter.default.publisher(for: .openChatWindow)) { _ in
             openWindow(id: "chat")
         }
@@ -133,7 +140,8 @@ private struct BarLabel: View {
     private var sidecarLoadingIcon: some View {
         ProgressView()
             .progressViewStyle(.circular)
-            .controlSize(.small)
+            .controlSize(.regular)
+            .tint(.primary)
             .help(sidecarStatusLabel)
     }
 
@@ -151,9 +159,11 @@ private struct BarLabel: View {
                 Image(nsImage: circularImage(img, size: 18))
                     .resizable()
                     .frame(width: 18, height: 18)
-                    .opacity(monitor.isOnline ? 1.0 : 0.4)
+                    .opacity(monitor.isOnline ? 1.0 : 0.55)
             } else {
                 Image(systemName: barIcon)
+                    .font(.system(size: 14, weight: .medium))
+                    .symbolRenderingMode(.monochrome)
                     .foregroundStyle(barColor)
             }
         }
@@ -165,8 +175,10 @@ private struct BarLabel: View {
         return "waveform"
     }
 
+    /// Menu bar is often light / high-key: `tertiaryLabelColor` makes SF Symbols
+    /// nearly invisible when CAAL is offline — use full label contrast instead.
     private var barColor: Color {
-        if !monitor.isOnline { return Color(nsColor: .tertiaryLabelColor) }
+        if !monitor.isOnline { return Color(nsColor: .labelColor) }
         if monitor.hasActiveVoiceSession { return Color(red: 0.4, green: 0.3, blue: 0.9) }
         return .primary
     }
