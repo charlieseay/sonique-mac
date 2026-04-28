@@ -16,6 +16,7 @@ class ServerMonitor: ObservableObject {
     let chatManager = ChatManager()
 
     private var pollTask: Task<Void, Never>?
+    private var bootSelfHealAttempted = false
 
     init() {
         Task { [weak self] in
@@ -35,6 +36,7 @@ class ServerMonitor: ObservableObject {
                 }
             }
             startPolling()
+            await attemptBootSelfHealIfNeeded()
         }
     }
 
@@ -180,5 +182,23 @@ class ServerMonitor: ObservableObject {
             let (data, _) = try await URLSession.shared.data(for: req)
             if let img = NSImage(data: data) { avatarImage = img }
         } catch {}
+    }
+
+    /// One-shot startup guardrail: if CAAL is still offline shortly after boot,
+    /// retry the currently selected runtime path once.
+    private func attemptBootSelfHealIfNeeded() async {
+        guard !bootSelfHealAttempted else { return }
+        bootSelfHealAttempted = true
+        try? await Task.sleep(for: .seconds(8))
+        await checkHealth()
+        guard !isOnline else { return }
+        switch settings.deploymentMode {
+        case .embedded:
+            await sidecarManager.start()
+        case .networked:
+            await containerManager.setup(caelDirectory: settings.caelDirectory)
+        }
+        try? await Task.sleep(for: .seconds(3))
+        await checkHealth()
     }
 }

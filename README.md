@@ -38,6 +38,8 @@ Phase 7 adds an opt-in **Preflight repair** action that re-scans local prerequis
 
 Phase 8 adds direct permission-request remediation actions for not-determined Contacts/Calendar states and a Doctor check that verifies the published runtime contract path exists for consumer tooling.
 
+Phase 9 adds startup self-heal guardrails in `ServerMonitor`: if runtime is still offline shortly after launch, SoniqueBar retries the selected runtime path once automatically.
+
 ## Build
 
 Open `SoniqueBar.xcodeproj` in Xcode (or generate via XcodeGen if you add a spec). Scheme: **SoniqueBar**, destination: **My Mac**.
