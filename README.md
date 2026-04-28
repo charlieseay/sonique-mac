@@ -42,6 +42,8 @@ Phase 9 adds startup self-heal guardrails in `ServerMonitor`: if runtime is stil
 
 Phase 10 automates contract consumer surfaces: runtime contract now republishes on Save/Preflight, and preflight telemetry is exported to `preflight-telemetry.latest.json` with check counts and failed-label summaries.
 
+Phase 11 adds long-horizon consumer stability: runtime contract embeds `contractPullPath`, and telemetry history is retained in `preflight-telemetry.history.jsonl` (rolling last 50 runs).
+
 ## Build
 
 Open `SoniqueBar.xcodeproj` in Xcode (or generate via XcodeGen if you add a spec). Scheme: **SoniqueBar**, destination: **My Mac**.

@@ -230,7 +230,7 @@ struct OnboardingView: View {
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
         if let data = try? encoder.encode(profile) {
-            try? data.write(to: url, options: .atomic)
+            try? data.write(to: url, options: Data.WritingOptions.atomic)
         }
     }
 
@@ -291,13 +291,14 @@ struct OnboardingView: View {
             routingPolicyURL: "\(monitor.settings.backendURL)/routing/policy",
             backendHealthURL: "\(monitor.settings.backendURL)/health",
             frontendHealthURL: "\(monitor.settings.effectiveURL)/health",
-            expectedSimpleProvider: llmProviderDraft == .ollama ? "ollama" : "openai_compatible"
+            expectedSimpleProvider: llmProviderDraft == .ollama ? "ollama" : "openai_compatible",
+            contractPullPath: url.path
         )
 
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
         if let data = try? encoder.encode(contract) {
-            try? data.write(to: url, options: .atomic)
+            try? data.write(to: url, options: Data.WritingOptions.atomic)
         }
     }
 
@@ -616,6 +617,7 @@ struct OnboardingView: View {
         let dirURL = URL(fileURLWithPath: root, isDirectory: true)
         try? fm.createDirectory(at: dirURL, withIntermediateDirectories: true)
         let target = dirURL.appendingPathComponent("runtime-contract.latest.json")
+        let endpointFile = dirURL.appendingPathComponent("runtime-contract.endpoint.txt")
         let contract = OnboardingRuntimeContract(
             generatedAtISO8601: ISO8601DateFormatter().string(from: Date()),
             deploymentMode: deploymentModeDraft.rawValue,
@@ -633,12 +635,14 @@ struct OnboardingView: View {
             routingPolicyURL: "\(monitor.settings.backendURL)/routing/policy",
             backendHealthURL: "\(monitor.settings.backendURL)/health",
             frontendHealthURL: "\(monitor.settings.effectiveURL)/health",
-            expectedSimpleProvider: llmProviderDraft == .ollama ? "ollama" : "openai_compatible"
+            expectedSimpleProvider: llmProviderDraft == .ollama ? "ollama" : "openai_compatible",
+            contractPullPath: target.path
         )
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
         if let data = try? encoder.encode(contract) {
-            try? data.write(to: target, options: .atomic)
+            try? data.write(to: target, options: Data.WritingOptions.atomic)
+            try? target.path.write(to: endpointFile, atomically: true, encoding: .utf8)
             scanSummary = "Published runtime contract to \(target.path)"
         }
     }
@@ -669,8 +673,32 @@ struct OnboardingView: View {
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
         if let data = try? encoder.encode(telemetry) {
-            try? data.write(to: target, options: .atomic)
+            try? data.write(to: target, options: Data.WritingOptions.atomic)
+            appendTelemetryHistory(telemetry, in: dirURL)
         }
+    }
+
+    private func appendTelemetryHistory(_ telemetry: PreflightTelemetry, in dirURL: URL) {
+        let historyURL = dirURL.appendingPathComponent("preflight-telemetry.history.jsonl")
+        let encoder = JSONEncoder()
+        guard let lineData = try? encoder.encode(telemetry),
+              let line = String(data: lineData, encoding: .utf8) else { return }
+        if let fh = try? FileHandle(forWritingTo: historyURL) {
+            fh.seekToEndOfFile()
+            if let data = (line + "\n").data(using: .utf8) { fh.write(data) }
+            try? fh.close()
+        } else {
+            try? (line + "\n").write(to: historyURL, atomically: true, encoding: .utf8)
+        }
+        trimTelemetryHistory(historyURL: historyURL, keepLast: 50)
+    }
+
+    private func trimTelemetryHistory(historyURL: URL, keepLast: Int) {
+        guard let content = try? String(contentsOf: historyURL, encoding: .utf8) else { return }
+        var lines = content.split(separator: "\n", omittingEmptySubsequences: true).map(String.init)
+        if lines.count <= keepLast { return }
+        lines = Array(lines.suffix(keepLast))
+        try? (lines.joined(separator: "\n") + "\n").write(to: historyURL, atomically: true, encoding: .utf8)
     }
 
     private func doctorRow(_ label: String, ok: Bool) -> some View {
@@ -746,6 +774,7 @@ private struct OnboardingRuntimeContract: Codable {
     let backendHealthURL: String
     let frontendHealthURL: String
     let expectedSimpleProvider: String
+    let contractPullPath: String
 }
 
 private struct PreflightTelemetry: Codable {
