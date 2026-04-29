@@ -152,9 +152,16 @@ log "installing service deps into standalone Python (no venv)"
 
 # caal-agent deps (livekit.agents + plugins)
 "$PYBIN" -m pip install --quiet \
-  "livekit-agents[openai,silero,groq]==1.3.3" \
+  "livekit-agents[mcp,openai,silero,groq]==1.3.3" \
+  groq==1.2.0 \
+  ollama \
+  openwakeword \
+  piper-tts \
   anthropic==0.42.0 \
   httpx==0.27.2
+
+# Keep FastAPI + Starlette compatible in the bundled runtime.
+"$PYBIN" -m pip install --quiet "starlette>=0.40,<0.42"
 
 # livekit-agents 1.3.x telemetry conflicts with OpenTelemetry SDK 1.39+ API
 # churn. Pin the full OTLP stack to 1.38 — api+sdk alone leave proto 1.41
@@ -239,9 +246,10 @@ case "$SERVICE" in
     ;;
   tts)
     export HOST=127.0.0.1 PORT=8082
-    export TTS_VOICE=en_US-ryan-high
+    export TTS_VOICE=en_US-ryan-medium
     export TTS_VOICE_DIR="$ROOT/models/piper"
     export PIPER_BIN="$ROOT/piper/piper"
+    export DYLD_LIBRARY_PATH="$ROOT/piper:${DYLD_LIBRARY_PATH:-}"
     cd "$ROOT/services/caal-tts"
     exec python -m uvicorn server:app --host 127.0.0.1 --port 8082 --log-level warning
     ;;
@@ -256,6 +264,9 @@ case "$SERVICE" in
     export WHISPER_MODEL=small.en
     export OLLAMA_HOST=http://127.0.0.1:11434
     export OLLAMA_MODEL=qwen2.5:3b
+    export WEBHOOK_PORT=8891
+    export CAAL_WORKER_PORT=8892
+    export CAAL_NETWORK_STATE_PATH="$ROOT/../caal-network-state.json"
     cd "$ROOT/services/caal-agent"
     exec python voice_agent.py start
     ;;
