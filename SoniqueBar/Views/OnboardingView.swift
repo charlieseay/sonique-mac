@@ -325,6 +325,7 @@ struct OnboardingView: View {
         Task { await monitor.sidecarManager.start() }
 
         Task { await syncVoice() }
+        Task { await syncRoutingSkillAccess() }
         Task { await syncConnectedProfileIfNeeded() }
         monitor.startPolling()
         publishRuntimeContract()
@@ -675,6 +676,59 @@ struct OnboardingView: View {
             "settings": ["tts_voice_piper": ttsVoiceDraft]
         ]) else { return }
         var req = URLRequest(url: url, timeoutInterval: 5)
+        req.httpMethod = "POST"
+        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        if !monitor.settings.apiKey.isEmpty {
+            req.setValue(monitor.settings.apiKey, forHTTPHeaderField: "x-api-key")
+        }
+        req.httpBody = body
+        _ = try? await URLSession.shared.data(for: req)
+    }
+
+    private func syncRoutingSkillAccess() async {
+        guard let url = URL(string: "\(monitor.settings.backendURL)/settings") else { return }
+
+        let selectedProvider = llmProviderDraft == .ollama ? "ollama" : "openai_compatible"
+        let fallback = fallbackPolicyDraft.rawValue
+
+        var payload: [String: Any] = [
+            LLMRoutingCAALKeys.provider: selectedProvider,
+            LLMRoutingCAALKeys.modelLabel: preferredModelDraft.trimmingCharacters(in: .whitespaces),
+            LLMRoutingCAALKeys.fallbackPolicy: fallback,
+            LLMRoutingCAALKeys.nvidiaFeatureEnabled: nvidiaFeatureDraft
+        ]
+
+        let simpleProvider: String
+        let mediumProvider: String
+        let complexProvider: String
+
+        switch fallbackPolicyDraft {
+        case .localOnly:
+            simpleProvider = "ollama"
+            mediumProvider = "ollama"
+            complexProvider = "ollama"
+        case .providerThenLocal:
+            simpleProvider = selectedProvider
+            mediumProvider = selectedProvider
+            complexProvider = "ollama"
+        case .localThenProvider:
+            simpleProvider = "ollama"
+            mediumProvider = selectedProvider
+            complexProvider = "claude_cli"
+        }
+
+        payload["router_simple_provider"] = simpleProvider
+        payload["router_medium_provider"] = mediumProvider
+        payload["router_complex_provider"] = complexProvider
+
+        let trimmedNvidiaURL = nvidiaBaseURLDraft.trimmingCharacters(in: .whitespaces)
+        if selectedProvider == "openai_compatible", !trimmedNvidiaURL.isEmpty {
+            payload[LLMRoutingCAALKeys.cloudInferenceBaseURL] = trimmedNvidiaURL
+            payload["openai_base_url"] = trimmedNvidiaURL
+        }
+
+        guard let body = try? JSONSerialization.data(withJSONObject: ["settings": payload]) else { return }
+        var req = URLRequest(url: url, timeoutInterval: 6)
         req.httpMethod = "POST"
         req.setValue("application/json", forHTTPHeaderField: "Content-Type")
         if !monitor.settings.apiKey.isEmpty {

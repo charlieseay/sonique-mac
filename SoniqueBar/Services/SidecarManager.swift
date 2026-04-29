@@ -509,6 +509,8 @@ except Exception:
                 } else { try? data.write(to: dbgURL) }
             }
         }
+        dbg("evictStaleSidecarProcesses…")
+        await evictStaleSidecarProcesses(root: root)
         dbg("evictStalePortHolders…")
         await evictStalePortHolders()
         dbg("evict done")
@@ -561,6 +563,51 @@ except Exception:
                     }
                 }
                 Thread.sleep(forTimeInterval: 0.5)
+                cont.resume()
+            }
+        }
+    }
+
+    /// Kill stale sidecar child processes left behind by prior app instances.
+    /// Port eviction alone misses orphaned `voice_agent.py` workers that may
+    /// linger without binding a unique port.
+    private func evictStaleSidecarProcesses(root: URL) async {
+        let rootPath = root.path
+        let currentPid = Int32(ProcessInfo.processInfo.processIdentifier)
+        await withCheckedContinuation { (cont: CheckedContinuation<Void, Never>) in
+            DispatchQueue.global(qos: .userInitiated).async {
+                let ps = Process()
+                ps.launchPath = "/bin/ps"
+                ps.arguments = ["-axo", "pid=,command="]
+                let pipe = Pipe()
+                ps.standardOutput = pipe
+                ps.standardError = FileHandle.nullDevice
+                do {
+                    try ps.run()
+                } catch {
+                    cont.resume()
+                    return
+                }
+                ps.waitUntilExit()
+                let output = String(data: pipe.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8) ?? ""
+                var victims: [Int32] = []
+                for rawLine in output.components(separatedBy: .newlines) {
+                    let line = rawLine.trimmingCharacters(in: .whitespaces)
+                    guard !line.isEmpty else { continue }
+                    let parts = line.split(separator: " ", maxSplits: 1, omittingEmptySubsequences: true)
+                    guard parts.count == 2, let pid = Int32(parts[0]), pid > 0, pid != currentPid else { continue }
+                    let command = String(parts[1])
+                    guard command.contains(rootPath) else { continue }
+                    if command.contains("voice_agent.py") ||
+                        command.contains("uvicorn server:app") ||
+                        command.contains("multiprocessing.resource_tracker") ||
+                        command.contains("multiprocessing.spawn") {
+                        victims.append(pid)
+                    }
+                }
+                for pid in victims { kill(pid, SIGTERM) }
+                Thread.sleep(forTimeInterval: 0.6)
+                for pid in victims where kill(pid, 0) == 0 { kill(pid, SIGKILL) }
                 cont.resume()
             }
         }

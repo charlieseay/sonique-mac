@@ -1,6 +1,7 @@
 import Foundation
 import AppKit
 import Network
+import AVFoundation
 
 @MainActor
 class ServerMonitor: ObservableObject {
@@ -14,11 +15,15 @@ class ServerMonitor: ObservableObject {
     let premium = PremiumManager()
     let systemControl = SystemControlManager()
     let chatManager = ChatManager()
+    let voiceManager = VoiceManager()
     let memoryJanitor = MemoryJanitorService()
     let contractEndpoint = ContractEndpointService()
 
     private var pollTask: Task<Void, Never>?
     private var bootSelfHealAttempted = false
+    private var readyChimeWatchdogTask: Task<Void, Never>?
+    private var didPlayReadyChime = false
+    private let readyChimePlayer = ReadyChimePlayer()
 
     init() {
         contractEndpoint.start()
@@ -33,11 +38,14 @@ class ServerMonitor: ObservableObject {
                 NSLog("[Sidecar] embedded runtime failed at boot")
             }
             startPolling()
+            startReadyChimeWatchdog()
+            await playReadyChimeWhenBackendIsReady(timeout: 45)
             await attemptBootSelfHealIfNeeded()
         }
     }
 
     deinit {
+        readyChimeWatchdogTask?.cancel()
         memoryJanitor.stop()
         contractEndpoint.stop()
     }
@@ -80,6 +88,7 @@ class ServerMonitor: ObservableObject {
     func startPolling() {
         pollTask?.cancel()
         chatManager.configure(backendURL: settings.backendURL, apiKey: settings.apiKey)
+        voiceManager.configure(backendURL: settings.backendURL, apiKey: settings.apiKey)
         systemControl.start(backendURL: settings.backendURL, apiKey: settings.apiKey)
         pollTask = Task {
             while !Task.isCancelled {
@@ -111,6 +120,7 @@ class ServerMonitor: ObservableObject {
             if isOnline && (wasOffline || !timezoneSynced) {
                 await syncTimezone()
             }
+            maybePlayReadyChime()
         } catch { isOnline = false }
 
         await checkActiveSession()
@@ -221,6 +231,198 @@ class ServerMonitor: ObservableObject {
         await sidecarManager.start()
         try? await Task.sleep(for: .seconds(3))
         await checkHealth()
+        maybePlayReadyChime()
+    }
+
+    private func startReadyChimeWatchdog() {
+        readyChimeWatchdogTask?.cancel()
+        readyChimeWatchdogTask = Task { [weak self] in
+            guard let self else { return }
+            let deadline = Date().addingTimeInterval(180)
+            while !Task.isCancelled && Date() < deadline && !didPlayReadyChime {
+                await evaluateReadyChimeTrigger()
+                try? await Task.sleep(for: .seconds(1))
+            }
+        }
+    }
+
+    private func playReadyChimeWhenBackendIsReady(timeout: TimeInterval) async {
+        let deadline = Date().addingTimeInterval(timeout)
+        while Date() < deadline && !didPlayReadyChime {
+            if await isBackendReadyForChime() {
+                maybePlayReadyChime()
+                return
+            }
+            try? await Task.sleep(for: .seconds(1))
+        }
+    }
+
+    private func isBackendReadyForChime() async -> Bool {
+        if isOnline { return true }
+        guard let localURL = URL(string: "http://127.0.0.1:8891/health") else { return false }
+        var req = URLRequest(url: localURL, timeoutInterval: 1.5)
+        req.httpMethod = "GET"
+        do {
+            let (_, response) = try await URLSession.shared.data(for: req)
+            if let http = response as? HTTPURLResponse {
+                return (200..<300).contains(http.statusCode)
+            }
+            return false
+        } catch {
+            return false
+        }
+    }
+
+    private func evaluateReadyChimeTrigger() async {
+        if isOnline {
+            maybePlayReadyChime()
+            return
+        }
+        guard let localURL = URL(string: "http://127.0.0.1:8891/health") else { return }
+        var req = URLRequest(url: localURL, timeoutInterval: 1.5)
+        req.httpMethod = "GET"
+        do {
+            let (_, response) = try await URLSession.shared.data(for: req)
+            if let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode) {
+                if !didPlayReadyChime {
+                    let marker = chimeMarkerURL()
+                    let stamp = ISO8601DateFormatter().string(from: Date())
+                    try? stamp.write(to: marker, atomically: true, encoding: .utf8)
+                    NSLog("[Sonique] ready chime triggered from local health at \(stamp)")
+                    readyChimePlayer.playFaintThreeNote()
+                    didPlayReadyChime = true
+                }
+            }
+        } catch {
+            return
+        }
+    }
+
+    private func maybePlayReadyChime() {
+        guard !didPlayReadyChime else { return }
+        let marker = chimeMarkerURL()
+        let stamp = ISO8601DateFormatter().string(from: Date())
+        try? stamp.write(to: marker, atomically: true, encoding: .utf8)
+        NSLog("[Sonique] ready chime triggered at \(stamp)")
+        readyChimePlayer.playFaintThreeNote()
+        didPlayReadyChime = true
+    }
+
+    private func chimeMarkerURL() -> URL {
+        let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
+            ?? URL(fileURLWithPath: NSHomeDirectory()).appendingPathComponent("Library/Application Support", isDirectory: true)
+        let dir = appSupport.appendingPathComponent("SoniqueBar", isDirectory: true)
+        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        return dir.appendingPathComponent("ready-chime.last")
+    }
+}
+
+@MainActor
+private final class ReadyChimePlayer: NSObject, AVAudioPlayerDelegate {
+    private var player: AVAudioPlayer?
+
+    func playFaintThreeNote() {
+        guard let wav = Self.makeThreeNoteWav() else { return }
+        do {
+            let p = try AVAudioPlayer(data: wav, fileTypeHint: AVFileType.wav.rawValue)
+            p.delegate = self
+            p.volume = 0.7
+            p.prepareToPlay()
+            if !p.play() {
+                NSSound.beep()
+            }
+            player = p
+        } catch {
+            NSLog("[Sonique] ready chime playback failed: \(error.localizedDescription)")
+            NSSound.beep()
+        }
+    }
+
+    nonisolated func audioPlayerDidFinishPlaying(_ player: AVAudioPlayer, successfully flag: Bool) {
+        Task { @MainActor in
+            self.player = nil
+        }
+    }
+
+    private static func makeThreeNoteWav() -> Data? {
+        let sampleRate = 44_100
+        let channels: UInt16 = 1
+        let bitsPerSample: UInt16 = 16
+
+        let noteDuration = 0.17
+        let gapDuration = 0.055
+        let attack = 0.014
+        let release = 0.036
+        let frequencies: [Double] = [523.25, 659.25, 783.99]
+
+        var samples: [Int16] = []
+        samples.reserveCapacity(Int(Double(sampleRate) * (noteDuration * Double(frequencies.count) + gapDuration * 2)))
+
+        func appendSilence(_ duration: Double) {
+            let count = max(0, Int(Double(sampleRate) * duration))
+            samples.append(contentsOf: repeatElement(0, count: count))
+        }
+
+        func appendNote(_ freq: Double, duration: Double) {
+            let count = max(1, Int(Double(sampleRate) * duration))
+            let attackCount = Int(Double(sampleRate) * attack)
+            let releaseCount = Int(Double(sampleRate) * release)
+            let amplitude = 0.5
+
+            for i in 0..<count {
+                let t = Double(i) / Double(sampleRate)
+                var env = 1.0
+                if i < attackCount {
+                    env = Double(i) / Double(max(1, attackCount))
+                } else if i > count - releaseCount {
+                    env = Double(count - i) / Double(max(1, releaseCount))
+                }
+                let value = sin(2.0 * .pi * freq * t) * env * amplitude
+                let pcm = Int16(max(-1.0, min(1.0, value)) * Double(Int16.max))
+                samples.append(pcm)
+            }
+        }
+
+        for index in frequencies.indices {
+            appendNote(frequencies[index], duration: noteDuration)
+            if index < frequencies.count - 1 {
+                appendSilence(gapDuration)
+            }
+        }
+
+        let dataSize = UInt32(samples.count * MemoryLayout<Int16>.size)
+        let byteRate = UInt32(sampleRate) * UInt32(channels) * UInt32(bitsPerSample) / 8
+        let blockAlign = channels * (bitsPerSample / 8)
+        let riffChunkSize = 36 + dataSize
+
+        var data = Data(capacity: Int(44 + dataSize))
+        data.append("RIFF".data(using: .ascii)!)
+        data.appendLE(riffChunkSize)
+        data.append("WAVE".data(using: .ascii)!)
+        data.append("fmt ".data(using: .ascii)!)
+        data.appendLE(UInt32(16))
+        data.appendLE(UInt16(1))
+        data.appendLE(channels)
+        data.appendLE(UInt32(sampleRate))
+        data.appendLE(byteRate)
+        data.appendLE(blockAlign)
+        data.appendLE(bitsPerSample)
+        data.append("data".data(using: .ascii)!)
+        data.appendLE(dataSize)
+
+        for sample in samples {
+            data.appendLE(UInt16(bitPattern: sample))
+        }
+        return data
+    }
+}
+
+private extension Data {
+    mutating func appendLE<T: FixedWidthInteger>(_ value: T) {
+        var little = value.littleEndian
+        Swift.withUnsafeBytes(of: &little) { bytes in
+            append(bytes.bindMemory(to: UInt8.self))
+        }
     }
 }
 

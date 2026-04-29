@@ -7,6 +7,7 @@ struct ChatView: View {
     @State private var inputText = ""
     @State private var scrollID: UUID?
     @FocusState private var inputFocused: Bool
+    @State private var lastSentText = ""
 
     var body: some View {
         VStack(spacing: 0) {
@@ -24,6 +25,16 @@ struct ChatView: View {
                     ProgressView()
                         .scaleEffect(0.6)
                         .frame(width: 16, height: 16)
+                }
+                if monitor.voiceManager.isPlaying {
+                    HStack(spacing: 4) {
+                        Image(systemName: "speaker.wave.2.fill")
+                            .font(.system(size: 10))
+                            .foregroundStyle(Color(red: 0.4, green: 0.3, blue: 0.9))
+                        Text("Speaking")
+                            .font(.system(size: 10))
+                            .foregroundStyle(Color(red: 0.4, green: 0.3, blue: 0.9))
+                    }
                 }
                 Button {
                     NSApp.keyWindow?.close()
@@ -130,7 +141,12 @@ struct ChatView: View {
         let trimmed = inputText.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
         inputText = ""
+        lastSentText = trimmed
         chat.send(trimmed)
+        // Trigger voice playback in parallel with text streaming
+        Task {
+            await monitor.voiceManager.playVoice(for: trimmed)
+        }
     }
 
     private func scrollToBottom(proxy: ScrollViewProxy) {

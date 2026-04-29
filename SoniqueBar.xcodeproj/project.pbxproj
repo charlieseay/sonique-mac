@@ -19,6 +19,7 @@
 		BB00002D00000000000000D /* OnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB00002C00000000000000C /* OnboardingView.swift */; };
 		BB000039000000000000039 /* ChatMessage.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB000038000000000000038 /* ChatMessage.swift */; };
 		BB00003B00000000000003B /* ChatManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB00003A00000000000003A /* ChatManager.swift */; };
+		BB000043000000000000043 /* VoiceManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB000042000000000000042 /* VoiceManager.swift */; };
 		BB00003D00000000000003D /* SystemControlManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB00003C00000000000003C /* SystemControlManager.swift */; };
 		BB00003F00000000000003F /* ChatView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB00003E00000000000003E /* ChatView.swift */; };
 		BB000041000000000000041 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = BB000040000000000000040 /* Assets.xcassets */; };
@@ -40,6 +41,7 @@
 		BB00002C00000000000000C /* OnboardingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = OnboardingView.swift; path = SoniqueBar/Views/OnboardingView.swift; sourceTree = SOURCE_ROOT; };
 		BB000038000000000000038 /* ChatMessage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = ChatMessage.swift; path = SoniqueBar/Models/ChatMessage.swift; sourceTree = SOURCE_ROOT; };
 		BB00003A00000000000003A /* ChatManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = ChatManager.swift; path = SoniqueBar/Services/ChatManager.swift; sourceTree = SOURCE_ROOT; };
+		BB000042000000000000042 /* VoiceManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = VoiceManager.swift; path = SoniqueBar/Services/VoiceManager.swift; sourceTree = SOURCE_ROOT; };
 		BB00003C00000000000003C /* SystemControlManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = SystemControlManager.swift; path = SoniqueBar/Services/SystemControlManager.swift; sourceTree = SOURCE_ROOT; };
 		BB00003E00000000000003E /* ChatView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = ChatView.swift; path = SoniqueBar/Views/ChatView.swift; sourceTree = SOURCE_ROOT; };
 		BB000040000000000000040 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; name = Assets.xcassets; path = SoniqueBar/Resources/Assets.xcassets; sourceTree = SOURCE_ROOT; };
@@ -204,6 +206,7 @@
 				BB00002D00000000000000D /* OnboardingView.swift in Sources */,
 				BB000039000000000000039 /* ChatMessage.swift in Sources */,
 				BB00003B00000000000003B /* ChatManager.swift in Sources */,
+				BB000043000000000000043 /* VoiceManager.swift in Sources */,
 				BB00003D00000000000003D /* SystemControlManager.swift in Sources */,
 				BB00003F00000000000003F /* ChatView.swift in Sources */,
 			);
