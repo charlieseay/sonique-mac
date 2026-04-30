@@ -2,8 +2,7 @@ import Foundation
 import Combine
 
 /// Spawns and supervises the bundled sidecar processes that back SoniqueBar:
-/// Ollama + caal-stt + caal-tts + caal-agent. All four bind to 127.0.0.1 so
-/// nothing leaves the machine.
+/// livekit + caal-stt + caal-tts + caal-agent. Ollama is user-provided.
 ///
 /// Lifecycle:
 ///   1. `start()` — unpacks `python-runtime.tar.gz` from the app bundle to
@@ -55,9 +54,10 @@ final class SidecarManager: ObservableObject {
 
     // MARK: - Config
 
-    // Sidecar-owned processes: STT, TTS, and the CAAL agent.
+    // Sidecar-owned processes: LiveKit, STT, TTS, and the CAAL agent.
     // Ollama is the user's responsibility and is NOT spawned here.
     private static let services: [ServiceEndpoint] = [
+        ServiceEndpoint(name: "livekit", port: 7880, healthURL: nil),
         ServiceEndpoint(name: "stt",   port: 8081, healthURL: URL(string: "http://127.0.0.1:8081/health")),
         ServiceEndpoint(name: "tts",   port: 8082, healthURL: URL(string: "http://127.0.0.1:8082/health")),
         ServiceEndpoint(name: "agent", port: nil,  healthURL: nil),  // no HTTP health endpoint; checked by process liveness
@@ -75,6 +75,12 @@ final class SidecarManager: ObservableObject {
     private var processes: [String: Process] = [:]
     private var restartAttempts: [String: Int] = [:]
     private var healthTimer: Timer?
+    private var webhookHealthy = false
+    private var workerHealthy = false
+    private var livekitHealthy = false
+    private var consecutiveUnhealthySweeps = 0
+    private var restartInFlight = false
+    private static let maxUnhealthySweepsBeforeRestart = 3
 
     // MARK: - Lifecycle
 
@@ -395,6 +401,26 @@ except ImportError:
             )
             try launcherContent.write(to: launcher, atomically: true, encoding: .utf8)
         }
+        if FileManager.default.fileExists(atPath: launcher.path),
+           var launcherContent = try? String(contentsOf: launcher, encoding: .utf8),
+           !launcherContent.contains("CAAL_WORKER_PORT=8892"),
+           launcherContent.contains("exec python voice_agent.py start") {
+            launcherContent = launcherContent.replacingOccurrences(
+                of: "exec python voice_agent.py start",
+                with: "export CAAL_WORKER_PORT=8892\n    exec python voice_agent.py start"
+            )
+            try launcherContent.write(to: launcher, atomically: true, encoding: .utf8)
+        }
+        if FileManager.default.fileExists(atPath: launcher.path),
+           var launcherContent = try? String(contentsOf: launcher, encoding: .utf8),
+           !launcherContent.contains("DYLD_LIBRARY_PATH=\"$ROOT/piper"),
+           launcherContent.contains("export PIPER_BIN=\"$ROOT/piper/piper\"") {
+            launcherContent = launcherContent.replacingOccurrences(
+                of: "export PIPER_BIN=\"$ROOT/piper/piper\"",
+                with: "export PIPER_BIN=\"$ROOT/piper/piper\"\n    export DYLD_LIBRARY_PATH=\"$ROOT/piper:${DYLD_LIBRARY_PATH:-}\""
+            )
+            try launcherContent.write(to: launcher, atomically: true, encoding: .utf8)
+        }
 
         // Patch optional MCP import so bundled runtime doesn't crash when the
         // optional `mcp` extra is not installed.
@@ -414,6 +440,19 @@ except Exception:
     mcp = _MCPNamespace()
 """
             voiceAgentContent = voiceAgentContent.replacingOccurrences(of: oldImport, with: newImport)
+            try voiceAgentContent.write(to: voiceAgent, atomically: true, encoding: .utf8)
+        }
+        if FileManager.default.fileExists(atPath: voiceAgent.path),
+           var voiceAgentContent = try? String(contentsOf: voiceAgent, encoding: .utf8),
+           !voiceAgentContent.contains("CAAL_WORKER_PORT") {
+            voiceAgentContent = voiceAgentContent.replacingOccurrences(
+                of: "num_idle_processes=max(1, worker_idle),",
+                with: "num_idle_processes=max(1, worker_idle),\n            port=int(os.getenv(\"CAAL_WORKER_PORT\", \"8892\")),"
+            )
+            voiceAgentContent = voiceAgentContent.replacingOccurrences(
+                of: "    if num_idle_env:\n        try:\n            worker_kwargs[\"num_idle_processes\"] = max(1, int(num_idle_env))\n            logger.info(\"Worker num_idle_processes=%s\", worker_kwargs[\"num_idle_processes\"])\n        except ValueError:\n            logger.warning(\"Invalid CAAL_NUM_IDLE_PROCESSES=%r, ignoring\", num_idle_env)\n",
+                with: "    if num_idle_env:\n        try:\n            worker_kwargs[\"num_idle_processes\"] = max(1, int(num_idle_env))\n            logger.info(\"Worker num_idle_processes=%s\", worker_kwargs[\"num_idle_processes\"])\n        except ValueError:\n            logger.warning(\"Invalid CAAL_NUM_IDLE_PROCESSES=%r, ignoring\", num_idle_env)\n    worker_kwargs[\"port\"] = int(os.getenv(\"CAAL_WORKER_PORT\", \"8892\"))\n"
+            )
             try voiceAgentContent.write(to: voiceAgent, atomically: true, encoding: .utf8)
         }
 
@@ -483,6 +522,19 @@ except Exception:
             try providersContent.write(to: providersInit, atomically: true, encoding: .utf8)
         }
 
+        // Embedded sidecar runs on host macOS (not Docker), so host.docker.internal
+        // may not resolve. Default MCP proxy should target localhost.
+        let mcpHubTool = root.appendingPathComponent("services/caal-agent/src/caal/integrations/mcp_hub_tool.py")
+        if FileManager.default.fileExists(atPath: mcpHubTool.path),
+           var mcpHubContent = try? String(contentsOf: mcpHubTool, encoding: .utf8),
+           mcpHubContent.contains("http://host.docker.internal:3700") {
+            mcpHubContent = mcpHubContent.replacingOccurrences(
+                of: "http://host.docker.internal:3700",
+                with: "http://127.0.0.1:3700"
+            )
+            try mcpHubContent.write(to: mcpHubTool, atomically: true, encoding: .utf8)
+        }
+
         // FastAPI compatibility: newer FastAPI rejects 204 routes that can emit
         // a response body. Switch this endpoint to 200 to avoid startup abort.
         let webhooks = root.appendingPathComponent("services/caal-agent/src/caal/webhooks.py")
@@ -514,7 +566,9 @@ except Exception:
         dbg("evictStalePortHolders…")
         await evictStalePortHolders()
         dbg("evict done")
-        for svc in Self.services {
+        let startOrder = ["livekit", "stt", "tts", "agent"]
+        for name in startOrder {
+            guard let svc = Self.services.first(where: { $0.name == name }) else { continue }
             dbg("spawn \(svc.name)…")
             try spawn(service: svc, root: root)
             dbg("spawn \(svc.name) returned")
@@ -576,19 +630,31 @@ except Exception:
         let currentPid = Int32(ProcessInfo.processInfo.processIdentifier)
         await withCheckedContinuation { (cont: CheckedContinuation<Void, Never>) in
             DispatchQueue.global(qos: .userInitiated).async {
-                let ps = Process()
-                ps.launchPath = "/bin/ps"
-                ps.arguments = ["-axo", "pid=,command="]
+                let pgrep = Process()
+                pgrep.launchPath = "/usr/bin/pgrep"
+                pgrep.arguments = ["-fal", rootPath]
                 let pipe = Pipe()
-                ps.standardOutput = pipe
-                ps.standardError = FileHandle.nullDevice
+                pgrep.standardOutput = pipe
+                pgrep.standardError = FileHandle.nullDevice
                 do {
-                    try ps.run()
+                    try pgrep.run()
                 } catch {
                     cont.resume()
                     return
                 }
-                ps.waitUntilExit()
+                let deadline = Date().addingTimeInterval(2.0)
+                while pgrep.isRunning && Date() < deadline {
+                    Thread.sleep(forTimeInterval: 0.05)
+                }
+                if pgrep.isRunning {
+                    pgrep.terminate()
+                    Thread.sleep(forTimeInterval: 0.1)
+                    if pgrep.isRunning {
+                        kill(pgrep.processIdentifier, SIGKILL)
+                    }
+                    cont.resume()
+                    return
+                }
                 let output = String(data: pipe.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8) ?? ""
                 var victims: [Int32] = []
                 for rawLine in output.components(separatedBy: .newlines) {
@@ -597,8 +663,8 @@ except Exception:
                     let parts = line.split(separator: " ", maxSplits: 1, omittingEmptySubsequences: true)
                     guard parts.count == 2, let pid = Int32(parts[0]), pid > 0, pid != currentPid else { continue }
                     let command = String(parts[1])
-                    guard command.contains(rootPath) else { continue }
                     if command.contains("voice_agent.py") ||
+                        command.contains("launcher.sh") ||
                         command.contains("uvicorn server:app") ||
                         command.contains("multiprocessing.resource_tracker") ||
                         command.contains("multiprocessing.spawn") {
@@ -650,17 +716,48 @@ except Exception:
         env["USER"] = ProcessInfo.processInfo.environment["USER"] ?? NSUserName()
         env["LANG"] = "en_US.UTF-8"
         env["TZ"] = "America/Chicago"
+        env["TIMEZONE"] = "America/Chicago"
+        env["TIMEZONE_DISPLAY"] = "Central Time"
         // Home Assistant REST credentials — only injected when configured
         let defaults = UserDefaults.standard
+        env["LIVEKIT_URL"] = "ws://127.0.0.1:7880"
+        env["LIVEKIT_API_KEY"] = "devkey"
+        env["LIVEKIT_API_SECRET"] = "secret"
+        env["OLLAMA_MODEL"] = preferredOllamaModel(from: defaults)
         if let url = defaults.string(forKey: "haURL"), !url.isEmpty {
             env["HA_URL"] = url
         }
         if let token = defaults.string(forKey: "haToken"), !token.isEmpty {
             env["HA_TOKEN"] = token
         }
+        if let provider = defaults.string(forKey: "ttsProvider"), !provider.isEmpty {
+            env["TTS_PROVIDER"] = provider
+        }
+        if let orpheusURL = defaults.string(forKey: "orpheusApiURL"), !orpheusURL.isEmpty {
+            env["ORPHEUS_API_URL"] = orpheusURL
+        }
+        if let orpheusKey = defaults.string(forKey: "orpheusApiKey"), !orpheusKey.isEmpty {
+            env["ORPHEUS_API_KEY"] = orpheusKey
+        }
         // Task #284: inject NVIDIA / LLM cloud env from `MacSettings` + `LLMRoutingCAALKeys`
         // parity here once `caal-agent` reads them (feature-flagged; never pass API keys from prefs).
         return env
+    }
+
+    private func preferredOllamaModel(from defaults: UserDefaults) -> String {
+        let label = (defaults.string(forKey: "preferredModelLabel") ?? "gemma4")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .lowercased()
+        switch label {
+        case "gemma4", "gemma4:latest":
+            return "gemma4:latest"
+        case "qwen3:4b", "qwen3-4b":
+            return "qwen3:4b"
+        case "qwen2.5:3b", "qwen2.5-3b":
+            return "qwen2.5:3b"
+        default:
+            return "gemma4:latest"
+        }
     }
 
     // MARK: - Readiness
@@ -669,8 +766,7 @@ except Exception:
         let deadline = Date().addingTimeInterval(timeout)
         while Date() < deadline {
             await runHealthSweep()
-            let httpServices = Self.services.filter { $0.healthURL != nil }
-            let allHealthy = httpServices.allSatisfy { serviceHealth[$0.name] == true }
+            let allHealthy = strictReady()
             if allHealthy { return true }
             try? await Task.sleep(nanoseconds: 500_000_000)  // 500 ms
         }
@@ -706,6 +802,12 @@ except Exception:
                 serviceHealth[name] = ok
             }
         }
+        webhookHealthy = await probeURL(URL(string: "http://127.0.0.1:8891/health")!)
+        workerHealthy = await probeTCPPort(8892)
+        livekitHealthy = await probeTCPPort(7880)
+        serviceHealth["agent-webhook"] = webhookHealthy
+        serviceHealth["agent-worker"] = workerHealthy
+        serviceHealth["livekit-signal"] = livekitHealthy
         // Probe user's Ollama separately — does not affect sidecar state
         ollamaAvailable = await probeURL(Self.ollamaHealthURL)
     }
@@ -718,6 +820,25 @@ except Exception:
             return (response as? HTTPURLResponse).map { (200..<300).contains($0.statusCode) } ?? false
         } catch {
             return false
+        }
+    }
+
+    private nonisolated func probeTCPPort(_ port: Int) async -> Bool {
+        await withCheckedContinuation { cont in
+            DispatchQueue.global(qos: .utility).async {
+                let task = Process()
+                task.launchPath = "/usr/sbin/lsof"
+                task.arguments = ["-nP", "-iTCP:\(port)", "-sTCP:LISTEN"]
+                task.standardOutput = Pipe()
+                task.standardError = FileHandle.nullDevice
+                do {
+                    try task.run()
+                    task.waitUntilExit()
+                    cont.resume(returning: task.terminationStatus == 0)
+                } catch {
+                    cont.resume(returning: false)
+                }
+            }
         }
     }
 
@@ -744,14 +865,46 @@ except Exception:
 
     private func reconcileStateAfterSweep() {
         let unhealthy = Self.services.filter { serviceHealth[$0.name] == false }.map { $0.name }
-        switch (unhealthy.isEmpty, state) {
+        var strictUnhealthy = unhealthy
+        if !livekitHealthy { strictUnhealthy.append("livekit-signal") }
+        if !webhookHealthy { strictUnhealthy.append("agent-webhook") }
+        if !workerHealthy { strictUnhealthy.append("agent-worker") }
+
+        switch (strictUnhealthy.isEmpty, state) {
         case (true, .running), (true, .degraded):
+            consecutiveUnhealthySweeps = 0
             state = .running
-        case (false, .running):
-            state = .degraded("unhealthy: \(unhealthy.joined(separator: ", "))")
+        case (false, .running), (false, .degraded):
+            consecutiveUnhealthySweeps += 1
+            state = .degraded("unhealthy: \(strictUnhealthy.joined(separator: ", "))")
+            if consecutiveUnhealthySweeps >= Self.maxUnhealthySweepsBeforeRestart, !restartInFlight {
+                restartInFlight = true
+                Task { @MainActor in
+                    await self.restartAll(reason: "health sweep threshold exceeded")
+                    self.restartInFlight = false
+                }
+            }
         default:
             break
         }
+    }
+
+    private func strictReady() -> Bool {
+        let coreHealthy = Self.services.allSatisfy { serviceHealth[$0.name] == true }
+        return coreHealthy && livekitHealthy && webhookHealthy && workerHealthy
+    }
+
+    func restartAll(reason: String) async {
+        NSLog("[Sidecar] restartAll triggered: \(reason)")
+        stopHealthTimer()
+        stopSync()
+        serviceHealth.removeAll()
+        webhookHealthy = false
+        workerHealthy = false
+        restartAttempts.removeAll()
+        consecutiveUnhealthySweeps = 0
+        state = .stopped
+        await start()
     }
 
     // MARK: - Crash recovery

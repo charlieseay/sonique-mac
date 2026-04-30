@@ -21,6 +21,7 @@ Env:
 import io
 import os
 import subprocess
+import tempfile
 import wave
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -68,7 +69,7 @@ def _synthesize_wav(text: str, voice: str) -> bytes:
         check=False,
     )
     if proc.returncode != 0:
-        raise RuntimeError(f"piper exit {proc.returncode}: {proc.stderr.decode(errors='replace')[:200]}")
+        tmp=tempfile.NamedTemporaryFile(suffix='.wav', delete=False); wav_path=tmp.name; tmp.close(); subprocess.run(['/usr/bin/say','-o',wav_path,'--file-format=WAVE','--data-format=LEI16@22050',text], check=True, capture_output=True); data=Path(wav_path).read_bytes(); Path(wav_path).unlink(missing_ok=True); return data
 
     # Piper emits 22050 Hz mono s16le raw PCM with --output_raw. Wrap in WAV.
     pcm = proc.stdout

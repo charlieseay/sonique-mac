@@ -1,4 +1,5 @@
 import Foundation
+import Darwin
 
 /// Manages the text chat connection to the CAAL backend.
 ///
@@ -182,6 +183,12 @@ actor LocalMemoryStore {
     private let episodesURL: URL
     private let personaURL: URL
     private let statusURL: URL
+    private let memoryMarkdownURL: URL
+    private let soulMarkdownURL: URL
+    private let conversationMarkdownURL: URL
+    private let identityMarkdownURL: URL
+    private let toolsMarkdownURL: URL
+    private let rulesMarkdownURL: URL
 
     init() {
         let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
@@ -190,6 +197,13 @@ actor LocalMemoryStore {
         episodesURL = dirURL.appendingPathComponent("conversation-episodes.json")
         personaURL = dirURL.appendingPathComponent("persona-profile.json")
         statusURL = dirURL.appendingPathComponent("memory-health.json")
+        memoryMarkdownURL = dirURL.appendingPathComponent("MEMORY.md")
+        soulMarkdownURL = dirURL.appendingPathComponent("SOUL.md")
+        conversationMarkdownURL = dirURL.appendingPathComponent("CONVERSATIONS.md")
+        identityMarkdownURL = dirURL.appendingPathComponent("IDENTITY.md")
+        toolsMarkdownURL = dirURL.appendingPathComponent("TOOLS.md")
+        rulesMarkdownURL = dirURL.appendingPathComponent("RULES.md")
+        ensureSeedMarkdownFiles()
     }
 
     func bootstrapIfNeeded(from history: [ChatMessage]) async {
@@ -199,6 +213,7 @@ actor LocalMemoryStore {
         turns = history.map { StoredTurn(role: $0.role.rawValue, content: $0.content, timestamp: $0.timestamp) }
         save(turns: turns)
         await recomputePersona(from: turns)
+        updateMarkdownViews(turns: turns, episodes: loadEpisodes(), persona: loadPersona())
     }
 
     func appendTurn(role: ChatRole, content: String) async {
@@ -209,6 +224,7 @@ actor LocalMemoryStore {
             await updatePersona(fromUserText: content)
         }
         await compactIfNeeded()
+        updateMarkdownViews(turns: loadTurns(), episodes: loadEpisodes(), persona: loadPersona())
     }
 
     func compactIfNeeded() async {
@@ -236,6 +252,7 @@ actor LocalMemoryStore {
         save(episodes: episodes)
         await recomputePersona(from: turns)
         await markJanitorHeartbeat(mode: "inprocess", compacted: true)
+        updateMarkdownViews(turns: turns, episodes: episodes, persona: loadPersona())
     }
 
     func markJanitorHeartbeat(mode: String, compacted: Bool = false) async {
@@ -246,6 +263,7 @@ actor LocalMemoryStore {
             status["lastCompactAt"] = status["lastRunAt"]
         }
         save(status, to: statusURL)
+        updateMarkdownViews(turns: loadTurns(), episodes: loadEpisodes(), persona: loadPersona())
     }
 
     private func summarize(chunk: [StoredTurn]) -> String {
@@ -349,15 +367,224 @@ actor LocalMemoryStore {
         guard let data = try? encoder.encode(value) else { return }
         try? data.write(to: url, options: .atomic)
     }
+
+    private func ensureSeedMarkdownFiles() {
+        try? FileManager.default.createDirectory(at: dirURL, withIntermediateDirectories: true)
+        migrateLegacyLowercaseMarkdownIfNeeded()
+        if !FileManager.default.fileExists(atPath: memoryMarkdownURL.path) {
+            let seed = """
+            # Memory
+
+            ## Primer
+
+            This file is created at SoniqueBar birth and persists as long-term memory root state.
+            Sonique must preserve continuity, grow memory over time, and use this directory as a stable source of identity and behavior.
+            """
+            try? seed.write(to: memoryMarkdownURL, atomically: true, encoding: .utf8)
+        }
+        if !FileManager.default.fileExists(atPath: soulMarkdownURL.path) {
+            let seed = """
+            # Soul
+
+            ## Primer
+
+            This is Sonique's personality seed.
+            It should evolve gradually from repeated user signals while maintaining a stable baseline tone and values.
+            """
+            try? seed.write(to: soulMarkdownURL, atomically: true, encoding: .utf8)
+        }
+        if !FileManager.default.fileExists(atPath: conversationMarkdownURL.path) {
+            let seed = """
+            # Conversations
+
+            ## Primer
+
+            This rolling log exists so Sonique can pick up exactly where conversations left off across restarts.
+            """
+            try? seed.write(to: conversationMarkdownURL, atomically: true, encoding: .utf8)
+        }
+        if !FileManager.default.fileExists(atPath: identityMarkdownURL.path) {
+            try? "# Sonique: IDENTITY\n".write(to: identityMarkdownURL, atomically: true, encoding: .utf8)
+        }
+        if !FileManager.default.fileExists(atPath: toolsMarkdownURL.path) {
+            try? "# Sonique: TOOLS\n".write(to: toolsMarkdownURL, atomically: true, encoding: .utf8)
+        }
+        if !FileManager.default.fileExists(atPath: rulesMarkdownURL.path) {
+            try? "# Sonique: RULES\n".write(to: rulesMarkdownURL, atomically: true, encoding: .utf8)
+        }
+        updateMarkdownViews(turns: loadTurns(), episodes: loadEpisodes(), persona: loadPersona())
+    }
+
+    private func migrateLegacyLowercaseMarkdownIfNeeded() {
+        let fm = FileManager.default
+        let legacyToCanonical: [(String, URL)] = [
+            ("memory.md", memoryMarkdownURL),
+            ("soul.md", soulMarkdownURL),
+            ("conversations.md", conversationMarkdownURL),
+        ]
+        for (legacyName, canonicalURL) in legacyToCanonical {
+            let legacyURL = dirURL.appendingPathComponent(legacyName)
+            guard fm.fileExists(atPath: legacyURL.path) else { continue }
+            if !fm.fileExists(atPath: canonicalURL.path),
+               let data = try? Data(contentsOf: legacyURL) {
+                try? data.write(to: canonicalURL, options: .atomic)
+            }
+            try? fm.removeItem(at: legacyURL)
+        }
+    }
+
+    private func updateMarkdownViews(turns: [StoredTurn], episodes: [MemoryEpisode], persona: PersonaProfile) {
+        let iso = ISO8601DateFormatter()
+        let status = load([String: String].self, from: statusURL, fallback: [:])
+        let recentTurns = turns.suffix(30)
+        let recentEpisodes = episodes.suffix(5)
+
+        let memoryBody = """
+        # Memory
+
+        Updated: \(iso.string(from: Date()))
+
+        - Raw turns retained: \(turns.count)
+        - Archived episodes: \(episodes.count)
+        - Janitor mode: \(status["mode"] ?? "unknown")
+        - Last janitor run: \(status["lastRunAt"] ?? "n/a")
+        - Last compaction: \(status["lastCompactAt"] ?? "n/a")
+
+        ## Recent Episode Summaries
+        \(recentEpisodes.map { "- \($0.summary)" }.joined(separator: "\n"))
+        """
+
+        let soulBody = """
+        # Soul
+
+        Updated: \(iso.string(from: Date()))
+
+        ## Persona Summary
+        \(persona.summary)
+
+        ## Top Traits
+        \(persona.traits.sorted { $0.value > $1.value }.prefix(8).map { "- \($0.key): \(Int($0.value))" }.joined(separator: "\n"))
+
+        ## Known Preferences
+        \(persona.preferences.isEmpty ? "- none captured yet" : persona.preferences.map { "- \($0.key): \($0.value)" }.joined(separator: "\n"))
+        """
+
+        let conversationBody = """
+        # Conversations
+
+        Updated: \(iso.string(from: Date()))
+
+        ## Rolling Transcript (most recent \(recentTurns.count) turns)
+        \(recentTurns.map { turn in
+            let ts = iso.string(from: turn.timestamp)
+            return "- [\(ts)] **\(turn.role)**: \(turn.content.replacingOccurrences(of: "\n", with: " "))"
+        }.joined(separator: "\n"))
+        """
+
+        try? memoryBody.write(to: memoryMarkdownURL, atomically: true, encoding: .utf8)
+        try? soulBody.write(to: soulMarkdownURL, atomically: true, encoding: .utf8)
+        try? conversationBody.write(to: conversationMarkdownURL, atomically: true, encoding: .utf8)
+        refreshIdentityMarkdown(persona: persona)
+        refreshRulesMarkdown()
+        refreshToolsMarkdown()
+    }
+
+    private func refreshIdentityMarkdown(persona: PersonaProfile) {
+        let topTraits = persona.traits
+            .sorted { $0.value > $1.value }
+            .prefix(5)
+            .map { "- \($0.key): \(Int($0.value))" }
+            .joined(separator: "\n")
+        let body = """
+        # Sonique: IDENTITY
+
+        ## Primer
+
+        This file is a root identity contract.
+        Sonique must persist identity across restarts, grow with experience, and use this as a stable baseline for personality and behavior.
+        If uncertain, Sonique should prefer consistency with this file and the memory artifacts in this directory over improvisation.
+
+        ## Role
+
+        Conversational companion and operator for Charlie.
+        Maintains continuity, references prior conversations, and responds with clear, grounded actions.
+
+        ## Personality Baseline
+
+        - Direct, warm, concise
+        - Source-aware and honest about uncertainty
+        - Action-first and outcome-focused
+
+        ## Current Persona Signals
+        \(topTraits.isEmpty ? "- none captured yet" : topTraits)
+
+        ## Latest Persona Summary
+        \(persona.summary)
+        """
+        try? body.write(to: identityMarkdownURL, atomically: true, encoding: .utf8)
+    }
+
+    private func refreshRulesMarkdown() {
+        let body = """
+        # Sonique: RULES
+
+        ## Primer
+
+        This ruleset is persistent and mandatory.
+        Sonique should keep these rules stable over time, refining behavior through memory growth rather than discarding core constraints.
+
+        ## Core Rules
+
+        - Preserve conversation continuity across sessions using memory files in this directory.
+        - Prefer authoritative data sources over inferred guesses.
+        - If data is unavailable, say so plainly instead of fabricating.
+        - Keep responses concise, useful, and action-oriented.
+        - Treat memory compaction as archival, not deletion of user context.
+
+        ## Memory Discipline
+
+        - New turns append to rolling memory.
+        - Older turns compress into episode summaries.
+        - Persona updates should evolve gradually from repeated signals.
+        """
+        try? body.write(to: rulesMarkdownURL, atomically: true, encoding: .utf8)
+    }
+
+    private func refreshToolsMarkdown() {
+        let body = """
+        # Sonique: TOOLS
+
+        ## Primer
+
+        This file defines tool behavior expectations.
+        Sonique should use tools to produce verified outcomes, not speculative narration.
+
+        ## Tooling Expectations
+
+        - Query live endpoints for current state when available.
+        - Prefer structured responses over raw dumps.
+        - On tool failure, report what failed and suggest the next corrective action.
+
+        ## Conversation + Memory Interfaces
+
+        - `conversation-turns.json`: rolling recent turns
+        - `conversation-episodes.json`: compressed archived episodes
+        - `persona-profile.json`: evolving traits and preferences
+        - `memory-health.json`: janitor status and compaction heartbeat
+        """
+        try? body.write(to: toolsMarkdownURL, atomically: true, encoding: .utf8)
+    }
 }
 
 final class MemoryJanitorService {
     private var janitorTask: Task<Void, Never>?
     private var janitorProcess: Process?
     private let store = LocalMemoryStore.shared
+    private var shouldAutoRestart = false
 
     func start() {
         guard janitorTask == nil, janitorProcess == nil else { return }
+        shouldAutoRestart = true
         Task { await store.markJanitorHeartbeat(mode: "starting") }
         if startSubprocessJanitor() {
             return
@@ -373,6 +600,7 @@ final class MemoryJanitorService {
     }
 
     func stop() {
+        shouldAutoRestart = false
         janitorTask?.cancel()
         janitorTask = nil
         janitorProcess?.terminate()
@@ -385,6 +613,7 @@ final class MemoryJanitorService {
         let scriptURL = memoryDir.appendingPathComponent("memory_janitor.py")
         try? FileManager.default.createDirectory(at: memoryDir, withIntermediateDirectories: true)
         guard writeJanitorScript(to: scriptURL) else { return false }
+        terminateStaleJanitors(scriptPath: scriptURL.path)
 
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/usr/bin/python3")
@@ -394,7 +623,7 @@ final class MemoryJanitorService {
         process.terminationHandler = { [weak self] _ in
             Task { @MainActor in
                 self?.janitorProcess = nil
-                if self?.janitorTask == nil {
+                if self?.shouldAutoRestart == true, self?.janitorTask == nil {
                     self?.start()
                 }
             }
@@ -409,12 +638,44 @@ final class MemoryJanitorService {
         }
     }
 
+    private func terminateStaleJanitors(scriptPath _: String) {
+        let pgrep = Process()
+        pgrep.executableURL = URL(fileURLWithPath: "/usr/bin/pgrep")
+        pgrep.arguments = ["-f", "memory_janitor.py"]
+        let output = Pipe()
+        pgrep.standardOutput = output
+        pgrep.standardError = FileHandle.nullDevice
+        do {
+            try pgrep.run()
+            pgrep.waitUntilExit()
+        } catch {
+            return
+        }
+        guard pgrep.terminationStatus == 0 else { return }
+        let data = output.fileHandleForReading.readDataToEndOfFile()
+        guard let raw = String(data: data, encoding: .utf8) else { return }
+        let currentPID = getpid()
+        let victims = raw
+            .split(whereSeparator: \.isNewline)
+            .compactMap { Int32($0.trimmingCharacters(in: .whitespaces)) }
+            .filter { $0 > 0 && $0 != currentPID }
+        victims.forEach { pid in _ = kill(pid, SIGTERM) }
+        // Escalate to SIGKILL if a stale janitor ignores SIGTERM.
+        usleep(500_000)
+        victims.forEach { pid in
+            if kill(pid, 0) == 0 {
+                _ = kill(pid, SIGKILL)
+            }
+        }
+    }
+
     private func writeJanitorScript(to url: URL) -> Bool {
         let script = """
 import json
 import os
 import sys
 import time
+import fcntl
 from datetime import datetime, timezone
 
 memory_dir = sys.argv[1] if len(sys.argv) > 1 else "."
@@ -422,10 +683,18 @@ turns_path = os.path.join(memory_dir, "conversation-turns.json")
 episodes_path = os.path.join(memory_dir, "conversation-episodes.json")
 persona_path = os.path.join(memory_dir, "persona-profile.json")
 status_path = os.path.join(memory_dir, "memory-health.json")
+lock_path = os.path.join(memory_dir, "memory-janitor.lock")
 
 MAX_RAW_TURNS = 240
 COMPRESS_CHUNK_SIZE = 120
 SLEEP_SECONDS = 300
+
+try:
+    lock_fp = open(lock_path, "w", encoding="utf-8")
+    fcntl.flock(lock_fp.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+except Exception:
+    # Another janitor instance is already active for this memory directory.
+    sys.exit(0)
 
 def load_json(path, fallback):
     try:

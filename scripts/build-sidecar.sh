@@ -97,6 +97,7 @@ require() {  # require CMD MSG
 require curl "install curl"
 require tar  "install tar"
 require shasum "install shasum (comes with macOS)"
+require livekit-server "install livekit-server (brew install livekit)"
 
 [[ "$(uname -sm)" == "Darwin arm64" ]] || die "this script only supports Apple Silicon (arm64). got $(uname -sm)"
 [[ -d "$CAEL_REPO/services/caal-stt" ]] || die "cael repo missing or has no slim services at $CAEL_REPO/services/"
@@ -110,7 +111,7 @@ STAGE="$(mktemp -d /tmp/sonique-sidecar.XXXXXX)"
 trap 'rm -rf "$STAGE"' EXIT
 
 log "staging in $STAGE"
-mkdir -p "$STAGE/python" "$STAGE/services/caal-stt" "$STAGE/services/caal-tts" "$STAGE/services/caal-agent" "$STAGE/models/piper" "$STAGE/models/whisper" "$STAGE/piper"
+mkdir -p "$STAGE/python" "$STAGE/services/caal-stt" "$STAGE/services/caal-tts" "$STAGE/services/caal-agent" "$STAGE/models/piper" "$STAGE/models/whisper" "$STAGE/piper" "$STAGE/config"
 
 # ---------------------------------------------------------------------------
 # 1. Python standalone runtime
@@ -220,6 +221,26 @@ HF_HOME="$CACHE_DIR/hf" "$STAGE/python/bin/huggingface-cli" download "$WHISPER_R
   >/dev/null
 
 # ---------------------------------------------------------------------------
+# 5b. LiveKit server binary + config
+# ---------------------------------------------------------------------------
+
+log "staging LiveKit server from PATH"
+cp -L "$(command -v livekit-server)" "$STAGE/livekit-server"
+chmod +x "$STAGE/livekit-server"
+
+cat > "$STAGE/config/livekit.yaml" <<'LIVEKITCFG'
+port: 7880
+rtc:
+  tcp_port: 7881
+  use_external_ip: false
+room:
+  auto_create: true
+  enable_remote_unmute: true
+logging:
+  level: info
+LIVEKITCFG
+
+# ---------------------------------------------------------------------------
 # 6. Launcher script (what SidecarManager executes)
 # ---------------------------------------------------------------------------
 
@@ -237,6 +258,11 @@ export PATH="$ROOT/python/bin:$PATH"
 export PYTHONUNBUFFERED=1
 
 case "$SERVICE" in
+  livekit)
+    exec "$ROOT/livekit-server" \
+      --dev \
+      --config "$ROOT/config/livekit.yaml"
+    ;;
   stt)
     export HOST=127.0.0.1 PORT=8081
     export STT_MODEL=small.en STT_DEVICE=cpu STT_COMPUTE=int8
@@ -246,7 +272,7 @@ case "$SERVICE" in
     ;;
   tts)
     export HOST=127.0.0.1 PORT=8082
-    export TTS_VOICE=en_US-ryan-medium
+    export TTS_VOICE=en_US-ryan-high
     export TTS_VOICE_DIR="$ROOT/models/piper"
     export PIPER_BIN="$ROOT/piper/piper"
     export DYLD_LIBRARY_PATH="$ROOT/piper:${DYLD_LIBRARY_PATH:-}"
@@ -263,7 +289,9 @@ case "$SERVICE" in
     export TTS_MODEL=piper
     export WHISPER_MODEL=small.en
     export OLLAMA_HOST=http://127.0.0.1:11434
-    export OLLAMA_MODEL=qwen2.5:3b
+    export OLLAMA_MODEL="${OLLAMA_MODEL:-gemma4:latest}"
+    export TIMEZONE="${TIMEZONE:-America/Chicago}"
+    export TIMEZONE_DISPLAY="${TIMEZONE_DISPLAY:-Central Time}"
     export WEBHOOK_PORT=8891
     export CAAL_WORKER_PORT=8892
     export CAAL_NETWORK_STATE_PATH="$ROOT/../caal-network-state.json"
@@ -292,6 +320,7 @@ cat > "$STAGE/manifest.json" <<MANIFEST
   "ollama_required": true,
   "ollama_note": "Not bundled. User must install Ollama and load a model. Probed at 127.0.0.1:11434.",
   "services": [
+    { "name": "livekit", "port": 7880, "health": null },
     { "name": "stt",   "port": 8081, "health": "http://127.0.0.1:8081/health" },
     { "name": "tts",   "port": 8082, "health": "http://127.0.0.1:8082/health" },
     { "name": "agent", "port": null, "health": null }
