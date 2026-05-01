@@ -388,165 +388,6 @@ except ImportError:
         }
         content = content.replacingOccurrences(of: legacyImport, with: patchedImport)
         try content.write(to: traces, atomically: true, encoding: .utf8)
-
-        // Ensure embedded webhook backend does not collide with legacy Docker stack on 8889.
-        let launcher = root.appendingPathComponent("launcher.sh")
-        if FileManager.default.fileExists(atPath: launcher.path),
-           var launcherContent = try? String(contentsOf: launcher, encoding: .utf8),
-           !launcherContent.contains("WEBHOOK_PORT=8891"),
-           launcherContent.contains("exec python voice_agent.py start") {
-            launcherContent = launcherContent.replacingOccurrences(
-                of: "exec python voice_agent.py start",
-                with: "export WEBHOOK_PORT=8891\n    exec python voice_agent.py start"
-            )
-            try launcherContent.write(to: launcher, atomically: true, encoding: .utf8)
-        }
-        if FileManager.default.fileExists(atPath: launcher.path),
-           var launcherContent = try? String(contentsOf: launcher, encoding: .utf8),
-           !launcherContent.contains("CAAL_WORKER_PORT=8892"),
-           launcherContent.contains("exec python voice_agent.py start") {
-            launcherContent = launcherContent.replacingOccurrences(
-                of: "exec python voice_agent.py start",
-                with: "export CAAL_WORKER_PORT=8892\n    exec python voice_agent.py start"
-            )
-            try launcherContent.write(to: launcher, atomically: true, encoding: .utf8)
-        }
-        if FileManager.default.fileExists(atPath: launcher.path),
-           var launcherContent = try? String(contentsOf: launcher, encoding: .utf8),
-           !launcherContent.contains("DYLD_LIBRARY_PATH=\"$ROOT/piper"),
-           launcherContent.contains("export PIPER_BIN=\"$ROOT/piper/piper\"") {
-            launcherContent = launcherContent.replacingOccurrences(
-                of: "export PIPER_BIN=\"$ROOT/piper/piper\"",
-                with: "export PIPER_BIN=\"$ROOT/piper/piper\"\n    export DYLD_LIBRARY_PATH=\"$ROOT/piper:${DYLD_LIBRARY_PATH:-}\""
-            )
-            try launcherContent.write(to: launcher, atomically: true, encoding: .utf8)
-        }
-
-        // Patch optional MCP import so bundled runtime doesn't crash when the
-        // optional `mcp` extra is not installed.
-        let voiceAgent = root.appendingPathComponent("services/caal-agent/voice_agent.py")
-        if FileManager.default.fileExists(atPath: voiceAgent.path),
-           var voiceAgentContent = try? String(contentsOf: voiceAgent, encoding: .utf8),
-           voiceAgentContent.contains("from livekit.agents import Agent, AgentSession, mcp"),
-           !voiceAgentContent.contains("class _MCPNamespace") {
-            let oldImport = "from livekit.agents import Agent, AgentSession, mcp  # noqa: E402"
-            let newImport = """
-from livekit.agents import Agent, AgentSession  # noqa: E402
-try:
-    from livekit.agents import mcp  # noqa: E402
-except Exception:
-    class _MCPNamespace:
-        MCPServerHTTP = object
-    mcp = _MCPNamespace()
-"""
-            voiceAgentContent = voiceAgentContent.replacingOccurrences(of: oldImport, with: newImport)
-            try voiceAgentContent.write(to: voiceAgent, atomically: true, encoding: .utf8)
-        }
-        if FileManager.default.fileExists(atPath: voiceAgent.path),
-           var voiceAgentContent = try? String(contentsOf: voiceAgent, encoding: .utf8),
-           !voiceAgentContent.contains("CAAL_WORKER_PORT") {
-            voiceAgentContent = voiceAgentContent.replacingOccurrences(
-                of: "num_idle_processes=max(1, worker_idle),",
-                with: "num_idle_processes=max(1, worker_idle),\n            port=int(os.getenv(\"CAAL_WORKER_PORT\", \"8892\")),"
-            )
-            voiceAgentContent = voiceAgentContent.replacingOccurrences(
-                of: "    if num_idle_env:\n        try:\n            worker_kwargs[\"num_idle_processes\"] = max(1, int(num_idle_env))\n            logger.info(\"Worker num_idle_processes=%s\", worker_kwargs[\"num_idle_processes\"])\n        except ValueError:\n            logger.warning(\"Invalid CAAL_NUM_IDLE_PROCESSES=%r, ignoring\", num_idle_env)\n",
-                with: "    if num_idle_env:\n        try:\n            worker_kwargs[\"num_idle_processes\"] = max(1, int(num_idle_env))\n            logger.info(\"Worker num_idle_processes=%s\", worker_kwargs[\"num_idle_processes\"])\n        except ValueError:\n            logger.warning(\"Invalid CAAL_NUM_IDLE_PROCESSES=%r, ignoring\", num_idle_env)\n    worker_kwargs[\"port\"] = int(os.getenv(\"CAAL_WORKER_PORT\", \"8892\"))\n"
-            )
-            try voiceAgentContent.write(to: voiceAgent, atomically: true, encoding: .utf8)
-        }
-
-        // Guard optional cloud-provider dependencies so local-only embedded mode
-        // does not crash on import when extras are not installed.
-        let providersInit = root.appendingPathComponent("services/caal-agent/src/caal/llm/providers/__init__.py")
-        if FileManager.default.fileExists(atPath: providersInit.path),
-           var providersContent = try? String(contentsOf: providersInit, encoding: .utf8) {
-            let oldImports = """
-from .anthropic_provider import AnthropicProvider
-from .base import LLMProvider, LLMResponse, ToolCall
-from .claude_cli_provider import ClaudeCLIProvider
-from .gemini_cli_provider import GeminiCLIProvider
-from .google_provider import GoogleProvider
-from .groq_provider import GroqProvider
-from .ollama_provider import OllamaProvider
-from .openai_compatible_provider import OpenAICompatibleProvider
-from .openrouter_provider import OpenRouterProvider
-"""
-            let newImports = """
-from .base import LLMProvider, LLMResponse, ToolCall
-from .claude_cli_provider import ClaudeCLIProvider
-from .gemini_cli_provider import GeminiCLIProvider
-from .ollama_provider import OllamaProvider
-from .openai_compatible_provider import OpenAICompatibleProvider
-from .openrouter_provider import OpenRouterProvider
-try:
-    from .groq_provider import GroqProvider
-except Exception:
-    GroqProvider = None
-try:
-    from .anthropic_provider import AnthropicProvider
-except Exception:
-    AnthropicProvider = None
-try:
-    from .google_provider import GoogleProvider
-except Exception:
-    GoogleProvider = None
-"""
-            if providersContent.contains(oldImports) {
-                providersContent = providersContent.replacingOccurrences(of: oldImports, with: newImports)
-            }
-            providersContent = providersContent.replacingOccurrences(
-                of: "elif provider_name == \"groq\":\n        return GroqProvider(**kwargs)",
-                with: "elif provider_name == \"groq\":\n        if GroqProvider is None:\n            raise ValueError(\"Groq provider dependencies are not installed in this runtime.\")\n        return GroqProvider(**kwargs)"
-            )
-            providersContent = providersContent.replacingOccurrences(
-                of: "elif provider_name == \"anthropic\":\n        return AnthropicProvider(**kwargs)",
-                with: "elif provider_name == \"anthropic\":\n        if AnthropicProvider is None:\n            raise ValueError(\"Anthropic provider dependencies are not installed in this runtime.\")\n        return AnthropicProvider(**kwargs)"
-            )
-            providersContent = providersContent.replacingOccurrences(
-                of: "elif provider_name == \"google\":\n        return GoogleProvider(**kwargs)",
-                with: "elif provider_name == \"google\":\n        if GoogleProvider is None:\n            raise ValueError(\"Google provider dependencies are not installed in this runtime.\")\n        return GoogleProvider(**kwargs)"
-            )
-            providersContent = providersContent.replacingOccurrences(
-                of: "elif provider_name == \"groq\":\n        // API key from settings, fallback to environment variable\n        api_key = settings.get(\"groq_api_key\") or os.environ.get(\"GROQ_API_KEY\")\n        return GroqProvider(",
-                with: "elif provider_name == \"groq\":\n        if GroqProvider is None:\n            raise ValueError(\"Groq provider dependencies are not installed in this runtime.\")\n        // API key from settings, fallback to environment variable\n        api_key = settings.get(\"groq_api_key\") or os.environ.get(\"GROQ_API_KEY\")\n        return GroqProvider("
-            )
-            providersContent = providersContent.replacingOccurrences(
-                of: "elif provider_name == \"anthropic\":\n        api_key = settings.get(\"anthropic_api_key\") or os.environ.get(\"ANTHROPIC_API_KEY\")\n        return AnthropicProvider(",
-                with: "elif provider_name == \"anthropic\":\n        if AnthropicProvider is None:\n            raise ValueError(\"Anthropic provider dependencies are not installed in this runtime.\")\n        api_key = settings.get(\"anthropic_api_key\") or os.environ.get(\"ANTHROPIC_API_KEY\")\n        return AnthropicProvider("
-            )
-            providersContent = providersContent.replacingOccurrences(
-                of: "elif provider_name == \"google\":\n        api_key = settings.get(\"google_api_key\") or os.environ.get(\"GOOGLE_API_KEY\")\n        return GoogleProvider(",
-                with: "elif provider_name == \"google\":\n        if GoogleProvider is None:\n            raise ValueError(\"Google provider dependencies are not installed in this runtime.\")\n        api_key = settings.get(\"google_api_key\") or os.environ.get(\"GOOGLE_API_KEY\")\n        return GoogleProvider("
-            )
-            try providersContent.write(to: providersInit, atomically: true, encoding: .utf8)
-        }
-
-        // Embedded sidecar runs on host macOS (not Docker), so host.docker.internal
-        // may not resolve. Default MCP proxy should target localhost.
-        let mcpHubTool = root.appendingPathComponent("services/caal-agent/src/caal/integrations/mcp_hub_tool.py")
-        if FileManager.default.fileExists(atPath: mcpHubTool.path),
-           var mcpHubContent = try? String(contentsOf: mcpHubTool, encoding: .utf8),
-           mcpHubContent.contains("http://host.docker.internal:3700") {
-            mcpHubContent = mcpHubContent.replacingOccurrences(
-                of: "http://host.docker.internal:3700",
-                with: "http://127.0.0.1:3700"
-            )
-            try mcpHubContent.write(to: mcpHubTool, atomically: true, encoding: .utf8)
-        }
-
-        // FastAPI compatibility: newer FastAPI rejects 204 routes that can emit
-        // a response body. Switch this endpoint to 200 to avoid startup abort.
-        let webhooks = root.appendingPathComponent("services/caal-agent/src/caal/webhooks.py")
-        if FileManager.default.fileExists(atPath: webhooks.path),
-           var webhooksContent = try? String(contentsOf: webhooks, encoding: .utf8),
-           webhooksContent.contains("@app.post(\"/api/network-state\", status_code=204)") {
-            webhooksContent = webhooksContent.replacingOccurrences(
-                of: "@app.post(\"/api/network-state\", status_code=204)",
-                with: "@app.post(\"/api/network-state\", status_code=200)"
-            )
-            try webhooksContent.write(to: webhooks, atomically: true, encoding: .utf8)
-        }
     }
 
     // MARK: - Process spawning
@@ -718,11 +559,26 @@ except Exception:
         env["TZ"] = "America/Chicago"
         env["TIMEZONE"] = "America/Chicago"
         env["TIMEZONE_DISPLAY"] = "Central Time"
-        // Home Assistant REST credentials — only injected when configured
         let defaults = UserDefaults.standard
+        let livekitApiKeyKey = "SoniqueBar.livekitApiKey"
+        let livekitApiSecretKey = "SoniqueBar.livekitApiSecret"
+        let apiKey: String
+        if let existing = defaults.string(forKey: livekitApiKeyKey) {
+            apiKey = existing
+        } else {
+            apiKey = UUID().uuidString
+            defaults.set(apiKey, forKey: livekitApiKeyKey)
+        }
+        let apiSecret: String
+        if let existing = defaults.string(forKey: livekitApiSecretKey) {
+            apiSecret = existing
+        } else {
+            apiSecret = UUID().uuidString
+            defaults.set(apiSecret, forKey: livekitApiSecretKey)
+        }
         env["LIVEKIT_URL"] = "ws://127.0.0.1:7880"
-        env["LIVEKIT_API_KEY"] = "devkey"
-        env["LIVEKIT_API_SECRET"] = "secret"
+        env["LIVEKIT_API_KEY"] = apiKey
+        env["LIVEKIT_API_SECRET"] = apiSecret
         env["OLLAMA_MODEL"] = preferredOllamaModel(from: defaults)
         if let url = defaults.string(forKey: "haURL"), !url.isEmpty {
             env["HA_URL"] = url

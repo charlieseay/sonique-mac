@@ -46,6 +46,9 @@ PIPER_VOICE_JSON_URL="https://huggingface.co/rhasspy/piper-voices/resolve/main/e
 WHISPER_MODEL="small.en"
 WHISPER_REPO="Systran/faster-whisper-small.en"
 
+# Pinned Homebrew-core formula version (GHCR bottle path livekit/<ver>/bin/…)
+LIVEKIT_FORMULA_VERSION="1.11.0"
+
 # ---------------------------------------------------------------------------
 # Arg parsing
 # ---------------------------------------------------------------------------
@@ -86,6 +89,40 @@ fetch() {  # fetch URL DEST
   mv "$dest.partial" "$dest"
 }
 
+# Homebrew publishes macOS bottles on GHCR; anonymous token + blob URL works
+# without the Homebrew CLI. Digests are pinned to formula version 1.11.0
+# (arm64 darwin bottles from the bottle manifest).
+fetch_livekit_homebrew_bottle() {
+  local dest="$1"
+  if [[ -f "$dest" ]]; then
+    log "cached: $(basename "$dest")"
+    return 0
+  fi
+  log "downloading LiveKit server (Homebrew bottle, no brew required)"
+  local token digest
+  token="$(curl -fsSL "https://ghcr.io/token?service=ghcr.io&scope=repository:homebrew/core/livekit:pull" \
+    | python3 -c "import json,sys; print(json.load(sys.stdin)['token'])")"
+  digest="$(python3 -c "
+import subprocess
+# macOS major from sw_vers (15=Sequoia, 14=Sonoma, 26=Tahoe, …)
+ver = subprocess.check_output(['sw_vers', '-productVersion'], text=True).strip()
+major = int(ver.split('.')[0])
+# sha256 from homebrew/core livekit 1.11.0 bottle manifest (arm64 darwin)
+m = {
+    26: '709910643d206898713186728826850efc17b36892e5b4ae988e036da63d60c2',
+    16: '4071b8fd9a5855f64804cccb9f526e94cdb155fa68cbc6b392085e5a040754e2',
+    15: '4071b8fd9a5855f64804cccb9f526e94cdb155fa68cbc6b392085e5a040754e2',
+    14: '86a6fd26b72661316dae9cab756b5d439faf4d47eb44cf9bfa59f22addc9c813',
+}
+print(m.get(major, m[15]))
+")"
+  curl -fsSL --retry 3 \
+    -H "Authorization: Bearer ${token}" \
+    -o "${dest}.partial" \
+    "https://ghcr.io/v2/homebrew/core/livekit/blobs/sha256:${digest}"
+  mv "${dest}.partial" "$dest"
+}
+
 require() {  # require CMD MSG
   command -v "$1" >/dev/null 2>&1 || die "$2 (need \`$1\` on PATH)"
 }
@@ -97,7 +134,7 @@ require() {  # require CMD MSG
 require curl "install curl"
 require tar  "install tar"
 require shasum "install shasum (comes with macOS)"
-require livekit-server "install livekit-server (brew install livekit)"
+require python3 "install python3 (for GHCR token + digest JSON)"
 
 [[ "$(uname -sm)" == "Darwin arm64" ]] || die "this script only supports Apple Silicon (arm64). got $(uname -sm)"
 [[ -d "$CAEL_REPO/services/caal-stt" ]] || die "cael repo missing or has no slim services at $CAEL_REPO/services/"
@@ -224,14 +261,16 @@ HF_HOME="$CACHE_DIR/hf" "$STAGE/python/bin/huggingface-cli" download "$WHISPER_R
 # 5b. LiveKit server binary + config
 # ---------------------------------------------------------------------------
 
-log "staging LiveKit server from PATH"
-cp -L "$(command -v livekit-server)" "$STAGE/livekit-server"
+LIVEKIT_BOTTLE="$CACHE_DIR/livekit-homebrew-bottle-${LIVEKIT_FORMULA_VERSION}.tar.gz"
+fetch_livekit_homebrew_bottle "$LIVEKIT_BOTTLE"
+tar -xzf "$LIVEKIT_BOTTLE" -C "$STAGE" --strip-components=3 \
+  "livekit/${LIVEKIT_FORMULA_VERSION}/bin/livekit-server"
 chmod +x "$STAGE/livekit-server"
 
 cat > "$STAGE/config/livekit.yaml" <<'LIVEKITCFG'
 port: 7880
 rtc:
-  tcp_port: 7881
+  tcp_port: 7882
   use_external_ip: false
 room:
   auto_create: true
@@ -260,8 +299,8 @@ export PYTHONUNBUFFERED=1
 case "$SERVICE" in
   livekit)
     exec "$ROOT/livekit-server" \
-      --dev \
-      --config "$ROOT/config/livekit.yaml"
+      --config "$ROOT/config/livekit.yaml" \
+      --keys "${LIVEKIT_API_KEY:-devkey}:${LIVEKIT_API_SECRET:-secret}"
     ;;
   stt)
     export HOST=127.0.0.1 PORT=8081
@@ -295,6 +334,7 @@ case "$SERVICE" in
     export WEBHOOK_PORT=8891
     export CAAL_WORKER_PORT=8892
     export CAAL_NETWORK_STATE_PATH="$ROOT/../caal-network-state.json"
+    export DYLD_LIBRARY_PATH="$ROOT/piper:${DYLD_LIBRARY_PATH:-}"
     cd "$ROOT/services/caal-agent"
     exec python voice_agent.py start
     ;;
