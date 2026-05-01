@@ -300,7 +300,7 @@ case "$SERVICE" in
   livekit)
     exec "$ROOT/livekit-server" \
       --config "$ROOT/config/livekit.yaml" \
-      --keys "${LIVEKIT_API_KEY:-devkey}:${LIVEKIT_API_SECRET:-secret}"
+      --keys "${LIVEKIT_API_KEY:-devkey}: ${LIVEKIT_API_SECRET:-secret}"
     ;;
   stt)
     export HOST=127.0.0.1 PORT=8081
