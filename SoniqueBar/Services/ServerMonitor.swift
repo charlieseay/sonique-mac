@@ -9,6 +9,10 @@ class ServerMonitor: ObservableObject {
     @Published var profile: AssistantProfile?
     @Published var avatarImage: NSImage?
     @Published var hasActiveVoiceSession = false
+    /// Best-effort Helmsman DB snapshot for the status popover (nil = not fetched yet).
+    @Published private(set) var labPendingTaskCount: Int?
+    @Published private(set) var labHelmsmanReachable = false
+    @Published private(set) var labDockerContainerCount: Int?
 
     let settings = MacSettings()
     let sidecarManager = SidecarManager()
@@ -102,9 +106,54 @@ class ServerMonitor: ObservableObject {
         guard settings.isConfigured else { return }
         await checkHealth()
         await fetchProfile()
+        await refreshLabSnapshot()
     }
 
     private var timezoneSynced = false
+
+    private func refreshLabSnapshot() async {
+        let base = settings.helmsmanURL.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard let url = URL(string: base + "/tasks?status=pending&limit=200") else {
+            labHelmsmanReachable = false
+            return
+        }
+        var req = URLRequest(url: url, timeoutInterval: 4)
+        req.httpMethod = "GET"
+        do {
+            let (data, resp) = try await URLSession.shared.data(for: req)
+            let code = (resp as? HTTPURLResponse)?.statusCode ?? 0
+            labHelmsmanReachable = (200..<300).contains(code)
+            if labHelmsmanReachable, let arr = try? JSONSerialization.jsonObject(with: data) as? [Any] {
+                labPendingTaskCount = arr.count
+            } else {
+                labPendingTaskCount = nil
+            }
+        } catch {
+            labHelmsmanReachable = false
+            labPendingTaskCount = nil
+        }
+
+        let dockerCount: Int? = await withCheckedContinuation { cont in
+            DispatchQueue.global(qos: .utility).async {
+                let p = Process()
+                p.executableURL = URL(fileURLWithPath: "/usr/bin/env")
+                p.arguments = ["docker", "ps", "-q"]
+                let pipe = Pipe()
+                p.standardOutput = pipe
+                p.standardError = FileHandle.nullDevice
+                do {
+                    try p.run()
+                    p.waitUntilExit()
+                    let out = String(data: pipe.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8) ?? ""
+                    let n = out.split(whereSeparator: \.isNewline).filter { !$0.isEmpty }.count
+                    cont.resume(returning: p.terminationStatus == 0 ? n : nil)
+                } catch {
+                    cont.resume(returning: nil)
+                }
+            }
+        }
+        labDockerContainerCount = dockerCount
+    }
 
     private func checkHealth() async {
         guard let url = URL(string: "\(settings.backendURL)/health") else {

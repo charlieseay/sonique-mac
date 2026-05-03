@@ -12,6 +12,14 @@ enum LLMRoutingStorageKeys {
     static let fallbackPolicy = "fallbackPolicy"
     static let nvidiaFeatureEnabled = "nvidiaFeatureEnabled"
     static let nvidiaBaseURL = "nvidiaBaseURL"
+    static let nvidiaApiKey = "nvidiaApiKey"
+    static let nvidiaModel = "nvidiaModel"
+}
+
+enum LabInfrastructureStorageKeys {
+    static let helmsmanURL = "helmsmanURL"
+    static let dispatchURL = "dispatchURL"
+    static let mcpProxyHost = "mcpProxyHost"
 }
 
 /// Snake_case keys for CAAL `settings.json` and POST `/api/settings` merges (task #284).
@@ -23,6 +31,8 @@ enum LLMRoutingCAALKeys {
     static let fallbackPolicy = "llm_fallback_policy"
     static let nvidiaFeatureEnabled = "nvidia_feature_enabled"
     static let cloudInferenceBaseURL = "nvidia_base_url"
+    static let nvidiaApiKey = "nvidia_api_key"
+    static let nvidiaModel = "nvidia_model"
 }
 
 /// CAAL Docker `.env` keys (task #284). Keep identical to iOS `SoniqueSettings.swift`; never commit real secrets.
@@ -168,6 +178,21 @@ class MacSettings: ObservableObject {
     @Published var nvidiaBaseURL: String {
         didSet { UserDefaults.standard.set(nvidiaBaseURL, forKey: LLMRoutingStorageKeys.nvidiaBaseURL) }
     }
+    @Published var nvidiaApiKey: String {
+        didSet { UserDefaults.standard.set(nvidiaApiKey, forKey: LLMRoutingStorageKeys.nvidiaApiKey) }
+    }
+    @Published var nvidiaModel: String {
+        didSet { UserDefaults.standard.set(nvidiaModel, forKey: LLMRoutingStorageKeys.nvidiaModel) }
+    }
+    @Published var helmsmanURL: String {
+        didSet { UserDefaults.standard.set(helmsmanURL, forKey: LabInfrastructureStorageKeys.helmsmanURL) }
+    }
+    @Published var dispatchURL: String {
+        didSet { UserDefaults.standard.set(dispatchURL, forKey: LabInfrastructureStorageKeys.dispatchURL) }
+    }
+    @Published var mcpProxyHost: String {
+        didSet { UserDefaults.standard.set(mcpProxyHost, forKey: LabInfrastructureStorageKeys.mcpProxyHost) }
+    }
     @Published var capabilityHostCalendar: Bool {
         didSet { UserDefaults.standard.set(capabilityHostCalendar, forKey: CapabilityStorageKeys.hostCalendar) }
     }
@@ -209,6 +234,11 @@ class MacSettings: ObservableObject {
         self.fallbackPolicyRaw = UserDefaults.standard.string(forKey: LLMRoutingStorageKeys.fallbackPolicy) ?? SoniqueBarFallbackPolicy.localOnly.rawValue
         self.nvidiaFeatureEnabled = UserDefaults.standard.bool(forKey: LLMRoutingStorageKeys.nvidiaFeatureEnabled)
         self.nvidiaBaseURL = UserDefaults.standard.string(forKey: LLMRoutingStorageKeys.nvidiaBaseURL) ?? ""
+        self.nvidiaApiKey = UserDefaults.standard.string(forKey: LLMRoutingStorageKeys.nvidiaApiKey) ?? ""
+        self.nvidiaModel = UserDefaults.standard.string(forKey: LLMRoutingStorageKeys.nvidiaModel) ?? "meta/llama-3.1-70b-instruct"
+        self.helmsmanURL = UserDefaults.standard.string(forKey: LabInfrastructureStorageKeys.helmsmanURL) ?? "http://localhost:5682"
+        self.dispatchURL = UserDefaults.standard.string(forKey: LabInfrastructureStorageKeys.dispatchURL) ?? "http://localhost:5680"
+        self.mcpProxyHost = UserDefaults.standard.string(forKey: LabInfrastructureStorageKeys.mcpProxyHost) ?? "localhost"
         self.capabilityHostCalendar = UserDefaults.standard.object(forKey: CapabilityStorageKeys.hostCalendar) as? Bool ?? true
         self.capabilityHostContacts = UserDefaults.standard.object(forKey: CapabilityStorageKeys.hostContacts) as? Bool ?? true
         self.capabilityHostMail = UserDefaults.standard.object(forKey: CapabilityStorageKeys.hostMail) as? Bool ?? true

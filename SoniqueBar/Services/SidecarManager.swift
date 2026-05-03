@@ -559,9 +559,27 @@ except ImportError:
         env["TZ"] = "America/Chicago"
         env["TIMEZONE"] = "America/Chicago"
         env["TIMEZONE_DISPLAY"] = "Central Time"
-        // Embedded sidecar runs on the Mac; MCP URLs must use localhost, not host.docker.internal.
-        env["MCP_PROXY_HOST"] = "localhost"
         let defaults = UserDefaults.standard
+        let mcpHost = defaults.string(forKey: "mcpProxyHost")?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        env["MCP_PROXY_HOST"] = mcpHost.isEmpty ? "localhost" : mcpHost
+        if let hu = defaults.string(forKey: "helmsmanURL")?.trimmingCharacters(in: .whitespacesAndNewlines), !hu.isEmpty {
+            env["HELMSMAN_DB_URL"] = hu
+        }
+        if let du = defaults.string(forKey: "dispatchURL")?.trimmingCharacters(in: .whitespacesAndNewlines), !du.isEmpty {
+            let trimmed = du.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+            env["CAAL_DISPATCH_URL"] = trimmed + "/webhook/task-dispatch"
+        }
+        if defaults.bool(forKey: "nvidiaFeatureEnabled") {
+            let nk = defaults.string(forKey: "nvidiaApiKey")?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+            if !nk.isEmpty {
+                env["NVIDIA_ENABLED"] = "true"
+                let nb = defaults.string(forKey: "nvidiaBaseURL")?.trimmingCharacters(in: .whitespacesAndNewlines) ?? "https://integrate.api.nvidia.com/v1"
+                env["NVIDIA_BASE_URL"] = nb
+                env["NVIDIA_API_KEY"] = nk
+                let nm = defaults.string(forKey: "nvidiaModel")?.trimmingCharacters(in: .whitespacesAndNewlines) ?? "meta/llama-3.1-70b-instruct"
+                env["NVIDIA_MODEL"] = nm
+            }
+        }
         let livekitApiKeyKey = "SoniqueBar.livekitApiKey"
         let livekitApiSecretKey = "SoniqueBar.livekitApiSecret"
         let apiKey: String

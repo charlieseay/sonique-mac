@@ -97,6 +97,10 @@ struct StatusPopover: View {
 
                 Divider().padding(.horizontal, 8).padding(.vertical, 2)
 
+                labStatusRow
+
+                Divider().padding(.horizontal, 8).padding(.vertical, 2)
+
                 popoverButton("Chat with \(monitor.profile?.name ?? "Cael")", icon: "bubble.left.and.bubble.right") {
                     openWindow(id: "chat")
                     NSApp.activate(ignoringOtherApps: true)
@@ -195,6 +199,29 @@ struct StatusPopover: View {
         }
         req.httpBody = body
         _ = try? await URLSession.shared.data(for: req)
+    }
+
+    private var labStatusRow: some View {
+        HStack(alignment: .top, spacing: 8) {
+            Image(systemName: "server.rack")
+                .frame(width: 16)
+                .foregroundStyle(.secondary)
+                .font(.system(size: 12))
+            VStack(alignment: .leading, spacing: 2) {
+                let tasks = monitor.labPendingTaskCount
+                let tasksText = tasks.map { "\($0) pending" } ?? "tasks: —"
+                let docker = monitor.labDockerContainerCount
+                let dockText = docker.map { "\($0) containers" } ?? "docker: —"
+                let hm = monitor.labHelmsmanReachable ? "Helmsman OK" : "Helmsman offline"
+                Text("Lab: \(tasksText) · \(dockText) · \(hm)")
+                    .font(.system(size: 11))
+                    .foregroundStyle(.secondary)
+                    .lineLimit(2)
+            }
+            Spacer()
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 7)
     }
 
     private var aiRoutingRow: some View {

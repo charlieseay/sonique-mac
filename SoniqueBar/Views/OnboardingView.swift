@@ -21,7 +21,13 @@ struct OnboardingView: View {
     @State private var preferredModelDraft = "gemma4"
     @State private var fallbackPolicyDraft: SoniqueBarFallbackPolicy = .localOnly
     @State private var nvidiaBaseURLDraft = ""
+    @State private var nvidiaApiKeyDraft = ""
+    @State private var nvidiaModelDraft = "meta/llama-3.1-70b-instruct"
     @State private var nvidiaFeatureDraft = false
+    @State private var helmsmanURLDraft = "http://localhost:5682"
+    @State private var dispatchURLDraft = "http://localhost:5680"
+    @State private var mcpProxyHostDraft = "localhost"
+    @State private var labConnectionNote = ""
     @State private var scanSummary = "Not scanned yet."
     @State private var isScanning = false
     @State private var quickStartStep: QuickStartStep = .mode
@@ -59,6 +65,7 @@ struct OnboardingView: View {
 
             quickStartSection
             setupProgressSection
+            labInfrastructureSection
 
             if showAdvancedFallbacks {
                 Picker("Step", selection: $quickStartStep) {
@@ -100,7 +107,12 @@ struct OnboardingView: View {
             preferredModelDraft = monitor.settings.preferredModelLabel
             fallbackPolicyDraft = monitor.settings.fallbackPolicy
             nvidiaBaseURLDraft  = monitor.settings.nvidiaBaseURL
+            nvidiaApiKeyDraft   = monitor.settings.nvidiaApiKey
+            nvidiaModelDraft    = monitor.settings.nvidiaModel
             nvidiaFeatureDraft  = monitor.settings.nvidiaFeatureEnabled
+            helmsmanURLDraft    = monitor.settings.helmsmanURL
+            dispatchURLDraft    = monitor.settings.dispatchURL
+            mcpProxyHostDraft   = monitor.settings.mcpProxyHost
             hostCalendarDraft   = monitor.settings.capabilityHostCalendar
             hostContactsDraft   = monitor.settings.capabilityHostContacts
             hostMailDraft       = monitor.settings.capabilityHostMail
@@ -224,6 +236,78 @@ struct OnboardingView: View {
         .background(Color(nsColor: .controlBackgroundColor), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
     }
 
+    private var labInfrastructureSection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Lab infrastructure")
+                .font(.subheadline.weight(.semibold))
+            Text("Helmsman DB, dispatch webhook host, and MCP proxy hostname are passed into the embedded CAAL sidecar.")
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+            TextField("Helmsman URL", text: $helmsmanURLDraft)
+                .textFieldStyle(.roundedBorder)
+            TextField("Dispatch base URL (no /webhook path)", text: $dispatchURLDraft)
+                .textFieldStyle(.roundedBorder)
+            TextField("MCP proxy host", text: $mcpProxyHostDraft)
+                .textFieldStyle(.roundedBorder)
+            Button("Test connections") {
+                Task { await testLabConnections() }
+            }
+            .buttonStyle(.bordered)
+            if !labConnectionNote.isEmpty {
+                Text(labConnectionNote)
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .padding(10)
+        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+    }
+
+    private func testLabConnections() async {
+        var lines: [String] = []
+        let hm = helmsmanURLDraft.trimmingCharacters(in: .whitespaces)
+        if let u = URL(string: hm + "/tasks?status=pending&limit=1") {
+            var req = URLRequest(url: u, timeoutInterval: 4)
+            do {
+                let (_, resp) = try await URLSession.shared.data(for: req)
+                let code = (resp as? HTTPURLResponse)?.statusCode ?? 0
+                lines.append("Helmsman: HTTP \(code)")
+            } catch {
+                lines.append("Helmsman: failed (\(error.localizedDescription))")
+            }
+        } else {
+            lines.append("Helmsman: bad URL")
+        }
+        let host = mcpProxyHostDraft.trimmingCharacters(in: .whitespaces)
+        if let u = URL(string: "http://\(host):3700/vault/mcp") {
+            var req = URLRequest(url: u, timeoutInterval: 4)
+            req.httpMethod = "POST"
+            req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+            req.httpBody = Data(#"{"jsonrpc":"2.0","method":"initialize","params":{},"id":1}"#.utf8)
+            do {
+                let (_, resp) = try await URLSession.shared.data(for: req)
+                let code = (resp as? HTTPURLResponse)?.statusCode ?? 0
+                lines.append("MCP proxy: HTTP \(code)")
+            } catch {
+                lines.append("MCP proxy: failed (\(error.localizedDescription))")
+            }
+        }
+        let dBase = dispatchURLDraft.trimmingCharacters(in: .whitespaces)
+        if let u = URL(string: dBase) {
+            var req = URLRequest(url: u, timeoutInterval: 4)
+            do {
+                let (_, resp) = try await URLSession.shared.data(for: req)
+                let code = (resp as? HTTPURLResponse)?.statusCode ?? 0
+                lines.append("Dispatch host: HTTP \(code)")
+            } catch {
+                lines.append("Dispatch host: failed (\(error.localizedDescription))")
+            }
+        }
+        labConnectionNote = lines.joined(separator: " · ")
+    }
+
     private var voiceServicesHealthy: Bool {
         let labels = doctorResults.filter { $0.ok }.map(\.label)
         return labels.contains("Sidecar STT health") && labels.contains("Sidecar TTS health")
@@ -316,6 +400,11 @@ struct OnboardingView: View {
         monitor.settings.preferredModelLabel = preferredModelDraft.trimmingCharacters(in: .whitespaces)
         monitor.settings.fallbackPolicy = fallbackPolicyDraft
         monitor.settings.nvidiaBaseURL = nvidiaBaseURLDraft.trimmingCharacters(in: .whitespaces)
+        monitor.settings.nvidiaApiKey = nvidiaApiKeyDraft.trimmingCharacters(in: .whitespaces)
+        monitor.settings.nvidiaModel = nvidiaModelDraft.trimmingCharacters(in: .whitespaces)
+        monitor.settings.helmsmanURL = helmsmanURLDraft.trimmingCharacters(in: .whitespaces)
+        monitor.settings.dispatchURL = dispatchURLDraft.trimmingCharacters(in: .whitespaces)
+        monitor.settings.mcpProxyHost = mcpProxyHostDraft.trimmingCharacters(in: .whitespaces)
         monitor.settings.capabilityHostCalendar = false
         monitor.settings.capabilityHostContacts = false
         monitor.settings.capabilityHostMail = hostMailDraft
@@ -360,7 +449,12 @@ struct OnboardingView: View {
             preferredModelLabel: preferredModelDraft,
             fallbackPolicy: fallbackPolicyDraft.rawValue,
             nvidiaBaseURL: nvidiaBaseURLDraft,
+            nvidiaApiKey: nvidiaApiKeyDraft,
+            nvidiaModel: nvidiaModelDraft,
             nvidiaFeatureEnabled: nvidiaFeatureDraft,
+            helmsmanURL: helmsmanURLDraft,
+            dispatchURL: dispatchURLDraft,
+            mcpProxyHost: mcpProxyHostDraft,
             capabilityHostCalendar: hostCalendarDraft,
             capabilityHostContacts: hostContactsDraft,
             capabilityHostMail: hostMailDraft,
@@ -399,7 +493,12 @@ struct OnboardingView: View {
         preferredModelDraft = profile.preferredModelLabel
         fallbackPolicyDraft = SoniqueBarFallbackPolicy(rawValue: profile.fallbackPolicy) ?? fallbackPolicyDraft
         nvidiaBaseURLDraft = profile.nvidiaBaseURL
+        nvidiaApiKeyDraft = profile.nvidiaApiKey ?? ""
+        nvidiaModelDraft = profile.nvidiaModel ?? "meta/llama-3.1-70b-instruct"
         nvidiaFeatureDraft = profile.nvidiaFeatureEnabled
+        if let v = profile.helmsmanURL { helmsmanURLDraft = v }
+        if let v = profile.dispatchURL { dispatchURLDraft = v }
+        if let v = profile.mcpProxyHost { mcpProxyHostDraft = v }
         hostCalendarDraft = profile.capabilityHostCalendar
         hostContactsDraft = profile.capabilityHostContacts
         hostMailDraft = profile.capabilityHostMail
@@ -727,6 +826,19 @@ struct OnboardingView: View {
             payload["openai_base_url"] = trimmedNvidiaURL
         }
 
+        payload["nvidia_enabled"] = nvidiaFeatureDraft
+        if !trimmedNvidiaURL.isEmpty {
+            payload["nvidia_base_url"] = trimmedNvidiaURL
+        }
+        let trimmedNvidiaKey = nvidiaApiKeyDraft.trimmingCharacters(in: .whitespaces)
+        if !trimmedNvidiaKey.isEmpty {
+            payload["nvidia_api_key"] = trimmedNvidiaKey
+        }
+        let trimmedNvidiaModel = nvidiaModelDraft.trimmingCharacters(in: .whitespaces)
+        if !trimmedNvidiaModel.isEmpty {
+            payload["nvidia_model"] = trimmedNvidiaModel
+        }
+
         guard let body = try? JSONSerialization.data(withJSONObject: ["settings": payload]) else { return }
         var req = URLRequest(url: url, timeoutInterval: 6)
         req.httpMethod = "POST"
@@ -860,6 +972,10 @@ struct OnboardingView: View {
             .pickerStyle(.menu)
             if nvidiaFeatureDraft {
                 TextField("NVIDIA endpoint base URL", text: $nvidiaBaseURLDraft)
+                    .textFieldStyle(.roundedBorder)
+                SecureField("NVIDIA API key", text: $nvidiaApiKeyDraft)
+                    .textFieldStyle(.roundedBorder)
+                TextField("NVIDIA model name", text: $nvidiaModelDraft)
                     .textFieldStyle(.roundedBorder)
             }
             Text(fallbackPolicyDraft.routingHint)
@@ -1687,7 +1803,12 @@ private struct OnboardingProfile: Codable {
     let preferredModelLabel: String
     let fallbackPolicy: String
     let nvidiaBaseURL: String
+    let nvidiaApiKey: String?
+    let nvidiaModel: String?
     let nvidiaFeatureEnabled: Bool
+    let helmsmanURL: String?
+    let dispatchURL: String?
+    let mcpProxyHost: String?
     let capabilityHostCalendar: Bool
     let capabilityHostContacts: Bool
     let capabilityHostMail: Bool
