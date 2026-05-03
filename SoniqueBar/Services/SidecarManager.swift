@@ -559,6 +559,8 @@ except ImportError:
         env["TZ"] = "America/Chicago"
         env["TIMEZONE"] = "America/Chicago"
         env["TIMEZONE_DISPLAY"] = "Central Time"
+        // Embedded sidecar runs on the Mac; MCP URLs must use localhost, not host.docker.internal.
+        env["MCP_PROXY_HOST"] = "localhost"
         let defaults = UserDefaults.standard
         let livekitApiKeyKey = "SoniqueBar.livekitApiKey"
         let livekitApiSecretKey = "SoniqueBar.livekitApiSecret"
