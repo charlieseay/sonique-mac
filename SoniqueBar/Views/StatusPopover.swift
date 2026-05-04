@@ -1,6 +1,7 @@
 import SwiftUI
 import AppKit
 import CoreImage.CIFilterBuiltins
+import Darwin
 
 private let donationURL = "https://seayniclabs.com/support"
 private let caelRepoURL = "https://github.com/CoreWorxLab/CAAL"
@@ -303,7 +304,9 @@ struct StatusPopover: View {
     // MARK: - QR code
 
     private func localQRImage() -> NSImage? {
-        let lanURL = "http://localhost:3100"
+        // Try to detect Tailscale IP first (100.x.x.x), fall back to localhost backend
+        let tailscaleIP = getTailscaleIP()
+        let lanURL = tailscaleIP.map { "http://\($0):8891" } ?? "http://localhost:8891"
         let ext = monitor.settings.normalizedExternalURL
         let hasExternal = !ext.isEmpty && monitor.premium.isPremium
 
@@ -575,6 +578,39 @@ struct AboutView: View {
         .padding(28)
         .frame(width: 300)
     }
+}
+
+// MARK: - Tailscale IP Detection
+
+private func getTailscaleIP() -> String? {
+    var ifaddr: UnsafeMutablePointer<ifaddrs>?
+    guard getifaddrs(&ifaddr) == 0, let firstAddr = ifaddr else { return nil }
+    defer { freeifaddrs(ifaddr) }
+
+    var ptr = firstAddr
+    while true {
+        let flags = Int32(ptr.pointee.ifa_flags)
+        let addr = ptr.pointee.ifa_addr.pointee
+
+        if addr.sa_family == UInt8(AF_INET),
+           (flags & IFF_UP) != 0,
+           (flags & IFF_LOOPBACK) == 0,
+           let name = ptr.pointee.ifa_name,
+           String(cString: name).hasPrefix("utun") {
+            var hostname = [CChar](repeating: 0, count: Int(NI_MAXHOST))
+            if getnameinfo(ptr.pointee.ifa_addr, socklen_t(addr.sa_len),
+                          &hostname, socklen_t(hostname.count),
+                          nil, 0, NI_NUMERICHOST) == 0 {
+                let ip = String(cString: hostname)
+                if ip.hasPrefix("100.") { return ip }
+            }
+        }
+
+        guard let next = ptr.pointee.ifa_next else { break }
+        ptr = next
+    }
+
+    return nil
 }
 
 private extension View {

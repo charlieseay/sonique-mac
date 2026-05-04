@@ -349,6 +349,46 @@ final class SidecarManager: ObservableObject {
     /// Patches third-party runtime files for known version skews in the bundled
     /// sidecar environment. This runs on every boot and is idempotent.
     private func applyRuntimeCompatibilityPatches(in root: URL) throws {
+        // Generate livekit.yaml with API keys for token generation
+        let defaults = UserDefaults.standard
+        let livekitApiKeyKey = "SoniqueBar.livekitApiKey"
+        let livekitApiSecretKey = "SoniqueBar.livekitApiSecret"
+
+        let apiKey: String
+        if let existing = defaults.string(forKey: livekitApiKeyKey) {
+            apiKey = existing
+        } else {
+            apiKey = UUID().uuidString
+            defaults.set(apiKey, forKey: livekitApiKeyKey)
+        }
+
+        let apiSecret: String
+        if let existing = defaults.string(forKey: livekitApiSecretKey) {
+            apiSecret = existing
+        } else {
+            apiSecret = UUID().uuidString
+            defaults.set(apiSecret, forKey: livekitApiSecretKey)
+        }
+
+        let livekitConfig = """
+port: 7880
+bind_addresses:
+  - "0.0.0.0"
+keys:
+  \(apiKey): \(apiSecret)
+rtc:
+  tcp_port: 7881
+  use_external_ip: false
+room:
+  auto_create: true
+  enable_remote_unmute: true
+logging:
+  level: info
+"""
+        let configPath = root.appendingPathComponent("config/livekit.yaml")
+        try livekitConfig.write(to: configPath, atomically: true, encoding: .utf8)
+
+        // Patch OpenTelemetry import compatibility
         let traces = root
             .appendingPathComponent("python/lib/python3.12/site-packages/livekit/agents/telemetry/traces.py")
         guard FileManager.default.fileExists(atPath: traces.path),
@@ -550,6 +590,34 @@ except ImportError:
         restartAttempts[service.name] = 0
     }
 
+    private func getTailscaleIP() -> String? {
+        // Get Tailscale IP address (100.x.x.x) for external connectivity
+        var ifaddr: UnsafeMutablePointer<ifaddrs>?
+        guard getifaddrs(&ifaddr) == 0, let firstAddr = ifaddr else { return nil }
+        defer { freeifaddrs(ifaddr) }
+        var ptr = firstAddr
+        while true {
+            let flags = Int32(ptr.pointee.ifa_flags)
+            let addr = ptr.pointee.ifa_addr.pointee
+            if addr.sa_family == UInt8(AF_INET),
+               (flags & IFF_UP) != 0,
+               (flags & IFF_LOOPBACK) == 0,
+               let name = ptr.pointee.ifa_name,
+               String(cString: name).hasPrefix("utun") {
+                var hostname = [CChar](repeating: 0, count: Int(NI_MAXHOST))
+                if getnameinfo(ptr.pointee.ifa_addr, socklen_t(addr.sa_len),
+                              &hostname, socklen_t(hostname.count),
+                              nil, 0, NI_NUMERICHOST) == 0 {
+                    let ip = String(cString: hostname)
+                    if ip.hasPrefix("100.") { return ip }
+                }
+            }
+            guard let next = ptr.pointee.ifa_next else { break }
+            ptr = next
+        }
+        return nil
+    }
+
     private func sanitizedEnvironment() -> [String: String] {
         // Strip anything that could leak host state into the bundled runtime.
         var env: [String: String] = [:]
@@ -597,8 +665,33 @@ except ImportError:
             defaults.set(apiSecret, forKey: livekitApiSecretKey)
         }
         env["LIVEKIT_URL"] = "ws://127.0.0.1:7880"
+        if let tsIP = getTailscaleIP() {
+            env["LIVEKIT_EXTERNAL_URL"] = "ws://\(tsIP):7880"
+            env["WEBHOOK_EXTERNAL_BASE"] = "http://\(tsIP):8891"
+        }
         env["LIVEKIT_API_KEY"] = apiKey
         env["LIVEKIT_API_SECRET"] = apiSecret
+        // Auto-read dispatch secret from known Lab path; fallback to UserDefaults
+        let secretPath = "/Volumes/data/secrets/dispatch_webhook_secret"
+        if let secret = try? String(contentsOfFile: secretPath, encoding: .utf8)
+                                  .trimmingCharacters(in: .whitespacesAndNewlines),
+           !secret.isEmpty {
+            env["DISPATCH_SECRET"] = secret
+        } else if let secret = defaults.string(forKey: "dispatchSecret"),
+                  !secret.isEmpty {
+            env["DISPATCH_SECRET"] = secret
+        }
+        // Vault path for CAAL tools that read notes
+        let vaultPath = ("~/Library/Mobile Documents/iCloud~md~obsidian/Documents/SeaynicNet" as NSString)
+                            .expandingTildeInPath
+        env["VAULT_PATH"] = vaultPath
+        // LLM router tier settings — Tier 0: Ollama → Tier 1: NVIDIA → Tier 2: Claude CLI
+        env["ROUTER_SIMPLE_PROVIDER"] = defaults.string(forKey: "routerSimpleProvider") ?? "ollama"
+        env["ROUTER_SIMPLE_MODEL"] = defaults.string(forKey: "routerSimpleModel") ?? "qwen2.5:3b"
+        env["ROUTER_MEDIUM_PROVIDER"] = defaults.string(forKey: "routerMediumProvider") ?? "openai_compatible"
+        env["ROUTER_MEDIUM_MODEL"] = defaults.string(forKey: "routerMediumModel") ?? "meta/llama-3.1-70b-instruct"
+        env["ROUTER_COMPLEX_PROVIDER"] = "claude_cli"
+        env["ROUTER_COMPLEX_MODEL"] = "claude-haiku-4-5"
         env["OLLAMA_MODEL"] = preferredOllamaModel(from: defaults)
         if let url = defaults.string(forKey: "haURL"), !url.isEmpty {
             env["HA_URL"] = url

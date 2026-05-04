@@ -63,9 +63,18 @@ class VoiceManager: NSObject, ObservableObject, AVAudioPlayerDelegate {
     }
 
     private func playAudio(data: Data) throws {
-        audioPlayer = try AVAudioPlayer(data: data, fileTypeHint: AVFileType.wav.rawValue)
-        audioPlayer?.delegate = self
-        audioPlayer?.play()
+        let player = try AVAudioPlayer(data: data, fileTypeHint: AVFileType.wav.rawValue)
+        player.delegate = self
+        player.volume = 1.0
+        player.prepareToPlay()
+        guard player.play() else {
+            throw NSError(
+                domain: "VoiceManager",
+                code: 3,
+                userInfo: [NSLocalizedDescriptionKey: "Audio engine did not start playback"]
+            )
+        }
+        audioPlayer = player
     }
 
     // MARK: - AVAudioPlayerDelegate

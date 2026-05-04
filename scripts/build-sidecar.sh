@@ -269,8 +269,11 @@ chmod +x "$STAGE/livekit-server"
 
 cat > "$STAGE/config/livekit.yaml" <<'LIVEKITCFG'
 port: 7880
+bind_addresses:
+  - "0.0.0.0"
+  - "::"
 rtc:
-  tcp_port: 7882
+  tcp_port: 7881
   use_external_ip: false
 room:
   auto_create: true
@@ -299,8 +302,7 @@ export PYTHONUNBUFFERED=1
 case "$SERVICE" in
   livekit)
     exec "$ROOT/livekit-server" \
-      --config "$ROOT/config/livekit.yaml" \
-      --keys "${LIVEKIT_API_KEY:-devkey}: ${LIVEKIT_API_SECRET:-secret}"
+      --config "$ROOT/config/livekit.yaml"
     ;;
   stt)
     export HOST=127.0.0.1 PORT=8081
@@ -320,8 +322,21 @@ case "$SERVICE" in
     ;;
   agent)
     export LIVEKIT_URL="${LIVEKIT_URL:-ws://127.0.0.1:7880}"
-    export LIVEKIT_API_KEY="${LIVEKIT_API_KEY:-devkey}"
-    export LIVEKIT_API_SECRET="${LIVEKIT_API_SECRET:-secret}"
+    # Extract API key and secret from livekit.yaml keys section
+    # Format: "  API_KEY: API_SECRET" — extract both sides of the colon
+    if [[ -f "$ROOT/config/livekit.yaml" ]]; then
+      # Parse the keys section from livekit.yaml
+      keys_section=$(sed -n '/^keys:/,/^[^ ]/p' "$ROOT/config/livekit.yaml" | grep -v "^keys:" | grep ":")
+      if [[ -n "$keys_section" ]]; then
+        export LIVEKIT_API_KEY=$(echo "$keys_section" | head -1 | cut -d: -f1 | xargs)
+        export LIVEKIT_API_SECRET=$(echo "$keys_section" | head -1 | cut -d: -f2 | xargs)
+      fi
+    fi
+    # Fallback to environment or hardcoded defaults if not found
+    if [[ -z "$LIVEKIT_API_KEY" ]]; then
+      export LIVEKIT_API_KEY="devkey"
+      export LIVEKIT_API_SECRET="secret"
+    fi
     export SPEACHES_URL=http://127.0.0.1:8081
     export PIPER_URL=http://127.0.0.1:8082
     export TTS_PROVIDER=piper

@@ -190,6 +190,21 @@ class MacSettings: ObservableObject {
     @Published var dispatchURL: String {
         didSet { UserDefaults.standard.set(dispatchURL, forKey: LabInfrastructureStorageKeys.dispatchURL) }
     }
+    @Published var dispatchSecret: String {
+        didSet { UserDefaults.standard.set(dispatchSecret, forKey: "dispatchSecret") }
+    }
+    @Published var routerSimpleProvider: String {
+        didSet { UserDefaults.standard.set(routerSimpleProvider, forKey: "routerSimpleProvider") }
+    }
+    @Published var routerSimpleModel: String {
+        didSet { UserDefaults.standard.set(routerSimpleModel, forKey: "routerSimpleModel") }
+    }
+    @Published var routerMediumProvider: String {
+        didSet { UserDefaults.standard.set(routerMediumProvider, forKey: "routerMediumProvider") }
+    }
+    @Published var routerMediumModel: String {
+        didSet { UserDefaults.standard.set(routerMediumModel, forKey: "routerMediumModel") }
+    }
     @Published var mcpProxyHost: String {
         didSet { UserDefaults.standard.set(mcpProxyHost, forKey: LabInfrastructureStorageKeys.mcpProxyHost) }
     }
@@ -238,6 +253,11 @@ class MacSettings: ObservableObject {
         self.nvidiaModel = UserDefaults.standard.string(forKey: LLMRoutingStorageKeys.nvidiaModel) ?? "meta/llama-3.1-70b-instruct"
         self.helmsmanURL = UserDefaults.standard.string(forKey: LabInfrastructureStorageKeys.helmsmanURL) ?? "http://localhost:5682"
         self.dispatchURL = UserDefaults.standard.string(forKey: LabInfrastructureStorageKeys.dispatchURL) ?? "http://localhost:5680"
+        self.dispatchSecret = UserDefaults.standard.string(forKey: "dispatchSecret") ?? ""
+        self.routerSimpleProvider = UserDefaults.standard.string(forKey: "routerSimpleProvider") ?? "ollama"
+        self.routerSimpleModel = UserDefaults.standard.string(forKey: "routerSimpleModel") ?? "qwen2.5:3b"
+        self.routerMediumProvider = UserDefaults.standard.string(forKey: "routerMediumProvider") ?? "openai_compatible"
+        self.routerMediumModel = UserDefaults.standard.string(forKey: "routerMediumModel") ?? "meta/llama-3.1-70b-instruct"
         self.mcpProxyHost = UserDefaults.standard.string(forKey: LabInfrastructureStorageKeys.mcpProxyHost) ?? "localhost"
         self.capabilityHostCalendar = UserDefaults.standard.object(forKey: CapabilityStorageKeys.hostCalendar) as? Bool ?? true
         self.capabilityHostContacts = UserDefaults.standard.object(forKey: CapabilityStorageKeys.hostContacts) as? Bool ?? true
