@@ -618,6 +618,36 @@ except ImportError:
         return nil
     }
 
+    private func getLANIP() -> String? {
+        var ifaddr: UnsafeMutablePointer<ifaddrs>?
+        guard getifaddrs(&ifaddr) == 0, let firstAddr = ifaddr else { return nil }
+        defer { freeifaddrs(ifaddr) }
+        var ptr = firstAddr
+        while true {
+            let flags = Int32(ptr.pointee.ifa_flags)
+            let addr = ptr.pointee.ifa_addr.pointee
+            if addr.sa_family == UInt8(AF_INET),
+               (flags & IFF_UP) != 0,
+               (flags & IFF_LOOPBACK) == 0,
+               let name = ptr.pointee.ifa_name,
+               String(cString: name).hasPrefix("en") {
+                var hostname = [CChar](repeating: 0, count: Int(NI_MAXHOST))
+                if getnameinfo(ptr.pointee.ifa_addr, socklen_t(addr.sa_len),
+                              &hostname, socklen_t(hostname.count),
+                              nil, 0, NI_NUMERICHOST) == 0 {
+                    let ip = String(cString: hostname)
+                    // Only return private LAN addresses
+                    if ip.hasPrefix("192.168.") || ip.hasPrefix("10.") || ip.hasPrefix("172.") {
+                        return ip
+                    }
+                }
+            }
+            guard let next = ptr.pointee.ifa_next else { break }
+            ptr = next
+        }
+        return nil
+    }
+
     private func sanitizedEnvironment() -> [String: String] {
         // Strip anything that could leak host state into the bundled runtime.
         var env: [String: String] = [:]
@@ -665,9 +695,15 @@ except ImportError:
             defaults.set(apiSecret, forKey: livekitApiSecretKey)
         }
         env["LIVEKIT_URL"] = "ws://127.0.0.1:7880"
+        // Prefer LAN IP for external URL (works on local network without Tailscale).
+        // Fall back to Tailscale IP if no LAN IP is found.
+        let externalIP = getLANIP() ?? getTailscaleIP()
+        if let ip = externalIP {
+            env["LIVEKIT_EXTERNAL_URL"] = "ws://\(ip):7880"
+            env["WEBHOOK_EXTERNAL_BASE"] = "http://\(ip):8891"
+        }
         if let tsIP = getTailscaleIP() {
-            env["LIVEKIT_EXTERNAL_URL"] = "ws://\(tsIP):7880"
-            env["WEBHOOK_EXTERNAL_BASE"] = "http://\(tsIP):8891"
+            env["LIVEKIT_TAILSCALE_URL"] = "ws://\(tsIP):7880"
         }
         env["LIVEKIT_API_KEY"] = apiKey
         env["LIVEKIT_API_SECRET"] = apiSecret
