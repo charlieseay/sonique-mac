@@ -10,8 +10,9 @@
 # Bundled components:
 #   - Python 3.12 standalone (python-build-standalone, macOS arm64)
 #   - caal-stt (faster-whisper small.en)
-#   - caal-tts (Piper with en_US-ryan-high voice)
 #   - caal-agent (voice_agent.py + livekit-agents)
+#
+# TTS: Kokoro runs externally on port 8880 (not bundled)
 #
 # Runs idempotently. Downloads are cached in --cache-dir (default:
 # ~/.cache/sonique-sidecar-build/). Final tarball ~400-500 MB.
@@ -33,15 +34,6 @@ set -euo pipefail
 PYTHON_VERSION="3.12.8"
 PYTHON_BUILD_TAG="20241219"  # python-build-standalone release tag
 PYTHON_URL="https://github.com/astral-sh/python-build-standalone/releases/download/${PYTHON_BUILD_TAG}/cpython-${PYTHON_VERSION}+${PYTHON_BUILD_TAG}-aarch64-apple-darwin-install_only.tar.gz"
-
-# Piper TTS — ship the standalone binary (piper-tts Python package has no
-# macOS arm64 wheels because piper-phonemize doesn't publish them).
-PIPER_VERSION="2023.11.14-2"
-PIPER_URL="https://github.com/rhasspy/piper/releases/download/${PIPER_VERSION}/piper_macos_aarch64.tar.gz"
-
-PIPER_VOICE="en_US-ryan-high"
-PIPER_VOICE_ONNX_URL="https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_US/ryan/high/en_US-ryan-high.onnx"
-PIPER_VOICE_JSON_URL="https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_US/ryan/high/en_US-ryan-high.onnx.json"
 
 WHISPER_MODEL="small.en"
 WHISPER_REPO="Systran/faster-whisper-small.en"
@@ -148,7 +140,7 @@ STAGE="$(mktemp -d /tmp/sonique-sidecar.XXXXXX)"
 trap 'rm -rf "$STAGE"' EXIT
 
 log "staging in $STAGE"
-mkdir -p "$STAGE/python" "$STAGE/services/caal-stt" "$STAGE/services/caal-tts" "$STAGE/services/caal-agent" "$STAGE/models/piper" "$STAGE/models/whisper" "$STAGE/piper" "$STAGE/config"
+mkdir -p "$STAGE/python" "$STAGE/services/caal-stt" "$STAGE/services/caal-agent" "$STAGE/models/whisper" "$STAGE/config"
 
 # ---------------------------------------------------------------------------
 # 1. Python standalone runtime
@@ -184,9 +176,7 @@ log "installing service deps into standalone Python (no venv)"
   requests==2.32.3 \
   python-multipart==0.0.20
 
-# caal-tts deps — no piper-tts package on macOS arm64 (no piper-phonemize
-# wheel). Binary-backed tts_server.py from sonique-mac/Sidecar/ replaces
-# the Linux caal-tts server.py. Only needs fastapi + uvicorn + pydantic.
+# caal-tts: Piper removed. Kokoro runs externally on port 8880.
 
 # caal-agent deps (livekit.agents + plugins)
 "$PYBIN" -m pip install --quiet \
@@ -194,7 +184,6 @@ log "installing service deps into standalone Python (no venv)"
   groq==1.2.0 \
   ollama \
   openwakeword \
-  piper-tts \
   anthropic==0.42.0 \
   httpx==0.27.2
 
@@ -220,10 +209,6 @@ log "installing service deps into standalone Python (no venv)"
 log "copying caal-stt / caal-tts / caal-agent sources from $CAEL_REPO"
 
 cp -R "$CAEL_REPO/services/caal-stt/." "$STAGE/services/caal-stt/"
-# caal-tts: use the macOS binary-backed variant shipped in sonique-mac, not
-# the cael repo's Python-package-backed one. Same HTTP contract.
-SIDECAR_SRC="$(cd "$(dirname "$0")/.." && pwd)/Sidecar"
-cp "$SIDECAR_SRC/tts_server.py" "$STAGE/services/caal-tts/server.py"
 
 # caal-agent: voice_agent.py + src/caal/ package + prompt/
 cp "$CAEL_REPO/voice_agent.py" "$STAGE/services/caal-agent/"
@@ -231,23 +216,7 @@ cp -R "$CAEL_REPO/src" "$STAGE/services/caal-agent/src"
 [[ -d "$CAEL_REPO/prompt" ]] && cp -R "$CAEL_REPO/prompt" "$STAGE/services/caal-agent/prompt"
 
 # ---------------------------------------------------------------------------
-# 4. Piper voice (Ryan default)
-# ---------------------------------------------------------------------------
-
-log "staging Piper binary (macOS arm64)"
-PIPER_TAR="$CACHE_DIR/piper_macos_aarch64.tar.gz"
-fetch "$PIPER_URL" "$PIPER_TAR"
-tar -xzf "$PIPER_TAR" -C "$STAGE/piper" --strip-components=1
-chmod +x "$STAGE/piper/piper"
-
-log "staging Piper voice: $PIPER_VOICE"
-fetch "$PIPER_VOICE_ONNX_URL" "$CACHE_DIR/${PIPER_VOICE}.onnx"
-fetch "$PIPER_VOICE_JSON_URL" "$CACHE_DIR/${PIPER_VOICE}.onnx.json"
-cp "$CACHE_DIR/${PIPER_VOICE}.onnx"      "$STAGE/models/piper/"
-cp "$CACHE_DIR/${PIPER_VOICE}.onnx.json" "$STAGE/models/piper/"
-
-# ---------------------------------------------------------------------------
-# 5. faster-whisper model (small.en)
+# 4. faster-whisper model (small.en)
 # ---------------------------------------------------------------------------
 
 log "staging faster-whisper model: $WHISPER_MODEL"
@@ -312,13 +281,8 @@ case "$SERVICE" in
     exec python -m uvicorn server:app --host 127.0.0.1 --port 8081 --log-level warning
     ;;
   tts)
-    export HOST=127.0.0.1 PORT=8082
-    export TTS_VOICE=en_US-ryan-high
-    export TTS_VOICE_DIR="$ROOT/models/piper"
-    export PIPER_BIN="$ROOT/piper/piper"
-    export DYLD_LIBRARY_PATH="$ROOT/piper:${DYLD_LIBRARY_PATH:-}"
-    cd "$ROOT/services/caal-tts"
-    exec python -m uvicorn server:app --host 127.0.0.1 --port 8082 --log-level warning
+    # Piper TTS removed — Kokoro handles all TTS on port 8880 (external service)
+    exec sleep infinity
     ;;
   agent)
     export LIVEKIT_URL="${LIVEKIT_URL:-ws://127.0.0.1:7880}"
@@ -338,18 +302,16 @@ case "$SERVICE" in
       export LIVEKIT_API_SECRET="secret"
     fi
     export SPEACHES_URL=http://127.0.0.1:8081
-    export PIPER_URL=http://127.0.0.1:8082
-    export TTS_PROVIDER=piper
-    export TTS_MODEL=piper
+    export KOKORO_URL=http://127.0.0.1:8880
+    export TTS_PROVIDER=kokoro
+    export LLM_PROVIDER=anthropic
     export WHISPER_MODEL=small.en
-    export OLLAMA_HOST=http://127.0.0.1:11434
-    export OLLAMA_MODEL="${OLLAMA_MODEL:-gemma4:latest}"
+    export ANTHROPIC_API_KEY="$(cat /Volumes/data/secrets/sonique_anthropic_api_key 2>/dev/null)"
     export TIMEZONE="${TIMEZONE:-America/Chicago}"
     export TIMEZONE_DISPLAY="${TIMEZONE_DISPLAY:-Central Time}"
     export WEBHOOK_PORT=8891
     export CAAL_WORKER_PORT=8892
     export CAAL_NETWORK_STATE_PATH="$ROOT/../caal-network-state.json"
-    export DYLD_LIBRARY_PATH="$ROOT/piper:${DYLD_LIBRARY_PATH:-}"
     cd "$ROOT/services/caal-agent"
     exec python voice_agent.py start
     ;;
@@ -370,15 +332,13 @@ cat > "$STAGE/manifest.json" <<MANIFEST
   "schema": 1,
   "built_at": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
   "python_version": "${PYTHON_VERSION}",
-  "piper_voice": "${PIPER_VOICE}",
   "whisper_model": "${WHISPER_MODEL}",
-  "ollama_required": true,
-  "ollama_note": "Not bundled. User must install Ollama and load a model. Probed at 127.0.0.1:11434.",
+  "tts": "kokoro",
+  "tts_note": "External Kokoro service required at 127.0.0.1:8880 (OpenAI-compatible /v1/audio/speech)",
   "services": [
     { "name": "livekit", "port": 7880, "health": null },
-    { "name": "stt",   "port": 8081, "health": "http://127.0.0.1:8081/health" },
-    { "name": "tts",   "port": 8082, "health": "http://127.0.0.1:8082/health" },
-    { "name": "agent", "port": null, "health": null }
+    { "name": "stt",     "port": 8081, "health": "http://127.0.0.1:8081/health" },
+    { "name": "agent",   "port": null, "health": null }
   ]
 }
 MANIFEST
