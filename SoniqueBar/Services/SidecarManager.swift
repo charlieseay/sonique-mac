@@ -449,7 +449,7 @@ except ImportError:
         dbg("evictStalePortHolders…")
         await evictStalePortHolders()
         dbg("evict done")
-        let startOrder = ["livekit", "stt", "tts", "agent"]
+        let startOrder = ["livekit", "stt", "agent"]
         for name in startOrder {
             guard let svc = Self.services.first(where: { $0.name == name }) else { continue }
             dbg("spawn \(svc.name)…")
@@ -458,18 +458,22 @@ except ImportError:
         }
     }
 
-    /// Kill any process already bound to a sidecar service port so a fresh
-    /// spawn can bind. Handles the case where a previous SoniqueBar instance
-    /// was force-killed before stopSync could SIGTERM its children.
+    /// Kill any process bound to a sidecar service port so a fresh spawn can bind.
+    /// Also explicitly clears the agent webhook (8891) and worker (8892) ports,
+    /// which are not in Self.services (agent has port:nil) but are still bound by
+    /// the old voice_agent process after a SoniqueBar restart.
     ///
     /// Runs off the main actor — `lsof` + `waitUntilExit` + `Thread.sleep` must
     /// not block `@MainActor` or the menu bar never appears (App Not Responding).
     private func evictStalePortHolders() async {
-        let services = Self.services
+        // Service ports + ports that belong to processes not tracked in Self.services:
+        // 8082 = TTS stub (legacy compat; not in services list but still spawned by launcher)
+        // 8891 = agent webhook HTTP
+        // 8892 = LiveKit worker HTTP — both bound by voice_agent.py (port:nil in services)
+        let ports: [Int] = Self.services.compactMap(\.port) + [8082, 8891, 8892]
         await withCheckedContinuation { (cont: CheckedContinuation<Void, Never>) in
             DispatchQueue.global(qos: .userInitiated).async {
-                for svc in services {
-                    guard let port = svc.port else { continue }
+                for port in ports {
                     let task = Process()
                     task.launchPath = "/usr/sbin/lsof"
                     task.arguments = ["-nP", "-ti", "TCP:\(port)", "-sTCP:LISTEN"]
@@ -506,54 +510,56 @@ except ImportError:
     }
 
     /// Kill stale sidecar child processes left behind by prior app instances.
-    /// Port eviction alone misses orphaned `voice_agent.py` workers that may
-    /// linger without binding a unique port.
+    ///
+    /// Two-pass strategy:
+    /// 1. `pgrep -fal rootPath` — catches uvicorn and livekit-server (rootPath
+    ///    appears in their argv: model paths, config paths, etc.)
+    /// 2. `pgrep -fal "voice_agent"` — catches voice_agent.py which is launched
+    ///    via `exec python voice_agent.py start` after a `cd`; rootPath never
+    ///    appears in its argv so pass 1 misses it entirely.
     private func evictStaleSidecarProcesses(root: URL) async {
         let rootPath = root.path
         let currentPid = Int32(ProcessInfo.processInfo.processIdentifier)
+
+        func runPgrep(args: [String]) -> [Int32] {
+            let pgrep = Process()
+            pgrep.launchPath = "/usr/bin/pgrep"
+            pgrep.arguments = args
+            let pipe = Pipe()
+            pgrep.standardOutput = pipe
+            pgrep.standardError = FileHandle.nullDevice
+            do { try pgrep.run() } catch { return [] }
+            let deadline = Date().addingTimeInterval(2.0)
+            while pgrep.isRunning && Date() < deadline { Thread.sleep(forTimeInterval: 0.05) }
+            if pgrep.isRunning { pgrep.terminate(); return [] }
+            let output = String(data: pipe.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8) ?? ""
+            var pids: [Int32] = []
+            for rawLine in output.components(separatedBy: .newlines) {
+                let line = rawLine.trimmingCharacters(in: .whitespaces)
+                guard !line.isEmpty else { continue }
+                let parts = line.split(separator: " ", maxSplits: 1, omittingEmptySubsequences: true)
+                guard parts.count >= 1, let pid = Int32(parts[0]), pid > 0, pid != currentPid else { continue }
+                let command = parts.count == 2 ? String(parts[1]) : ""
+                // Filter to only known sidecar process names to avoid killing unrelated python3 procs.
+                if command.contains("voice_agent") ||
+                    command.contains("launcher.sh") ||
+                    command.contains("uvicorn server:app") ||
+                    command.contains("livekit-server") ||
+                    command.contains("multiprocessing.resource_tracker") ||
+                    command.contains("multiprocessing.spawn") {
+                    pids.append(pid)
+                }
+            }
+            return pids
+        }
+
         await withCheckedContinuation { (cont: CheckedContinuation<Void, Never>) in
             DispatchQueue.global(qos: .userInitiated).async {
-                let pgrep = Process()
-                pgrep.launchPath = "/usr/bin/pgrep"
-                pgrep.arguments = ["-fal", rootPath]
-                let pipe = Pipe()
-                pgrep.standardOutput = pipe
-                pgrep.standardError = FileHandle.nullDevice
-                do {
-                    try pgrep.run()
-                } catch {
-                    cont.resume()
-                    return
-                }
-                let deadline = Date().addingTimeInterval(2.0)
-                while pgrep.isRunning && Date() < deadline {
-                    Thread.sleep(forTimeInterval: 0.05)
-                }
-                if pgrep.isRunning {
-                    pgrep.terminate()
-                    Thread.sleep(forTimeInterval: 0.1)
-                    if pgrep.isRunning {
-                        kill(pgrep.processIdentifier, SIGKILL)
-                    }
-                    cont.resume()
-                    return
-                }
-                let output = String(data: pipe.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8) ?? ""
-                var victims: [Int32] = []
-                for rawLine in output.components(separatedBy: .newlines) {
-                    let line = rawLine.trimmingCharacters(in: .whitespaces)
-                    guard !line.isEmpty else { continue }
-                    let parts = line.split(separator: " ", maxSplits: 1, omittingEmptySubsequences: true)
-                    guard parts.count == 2, let pid = Int32(parts[0]), pid > 0, pid != currentPid else { continue }
-                    let command = String(parts[1])
-                    if command.contains("voice_agent.py") ||
-                        command.contains("launcher.sh") ||
-                        command.contains("uvicorn server:app") ||
-                        command.contains("multiprocessing.resource_tracker") ||
-                        command.contains("multiprocessing.spawn") {
-                        victims.append(pid)
-                    }
-                }
+                // Pass 1: find processes with rootPath in argv (uvicorn, livekit-server)
+                var victims = Set(runPgrep(args: ["-fal", rootPath]))
+                // Pass 2: find voice_agent.py regardless of argv (launched via cd + exec)
+                for pid in runPgrep(args: ["-fal", "voice_agent"]) { victims.insert(pid) }
+
                 for pid in victims { kill(pid, SIGTERM) }
                 Thread.sleep(forTimeInterval: 0.6)
                 for pid in victims where kill(pid, 0) == 0 { kill(pid, SIGKILL) }
