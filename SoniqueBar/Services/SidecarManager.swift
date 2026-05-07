@@ -54,12 +54,14 @@ final class SidecarManager: ObservableObject {
 
     // MARK: - Config
 
-    // Sidecar-owned processes: LiveKit, STT, TTS, and the CAAL agent.
-    // Ollama is the user's responsibility and is NOT spawned here.
+    // Sidecar-owned processes: LiveKit, STT, and the CAAL agent.
+    // TTS is NOT listed here — Kokoro is an external service (port 8880) and is
+    // not spawned by SidecarManager. The launcher.sh runs a health stub on 8082
+    // for backward compat; remove that stub and this comment together when the
+    // app no longer checks 8082. Ollama is also user-provided, not spawned here.
     private static let services: [ServiceEndpoint] = [
         ServiceEndpoint(name: "livekit", port: 7880, healthURL: nil),
         ServiceEndpoint(name: "stt",   port: 8081, healthURL: URL(string: "http://127.0.0.1:8081/health")),
-        ServiceEndpoint(name: "tts",   port: 8082, healthURL: URL(string: "http://127.0.0.1:8082/health")),
         ServiceEndpoint(name: "agent", port: nil,  healthURL: nil),  // no HTTP health endpoint; checked by process liveness
     ]
 
