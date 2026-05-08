@@ -738,7 +738,7 @@ struct OnboardingView: View {
             routingPolicyURL: "\(monitor.settings.backendURL)/routing/policy",
             backendHealthURL: "\(monitor.settings.backendURL)/health",
             frontendHealthURL: "\(monitor.settings.effectiveURL)/health",
-            expectedSimpleProvider: llmProviderDraft == .ollama ? "ollama" : "openai_compatible",
+            expectedSimpleProvider: llmProviderDraft.caalProviderString,
             contractPullPath: url.path,
             contractPullURL: monitor.contractEndpoint.runtimeContractPullURL ?? "",
             preflightTrendPullURL: monitor.contractEndpoint.preflightTrendPullURL ?? ""
@@ -787,7 +787,7 @@ struct OnboardingView: View {
     private func syncRoutingSkillAccess() async {
         guard let url = URL(string: "\(monitor.settings.backendURL)/settings") else { return }
 
-        let selectedProvider = llmProviderDraft == .ollama ? "ollama" : "openai_compatible"
+        let selectedProvider = llmProviderDraft.caalProviderString
         let fallback = fallbackPolicyDraft.rawValue
 
         var payload: [String: Any] = [
@@ -920,9 +920,9 @@ struct OnboardingView: View {
         let openAIBase = nvidiaBaseURLDraft.trimmingCharacters(in: .whitespaces)
 
         var settingsPayload: [String: Any] = [
-            "llm_provider": "ollama",
-            "router_simple_provider": "ollama",
-            "router_medium_provider": "openai_compatible",
+            "llm_provider": llmProviderDraft.caalProviderString,
+            "router_simple_provider": llmProviderDraft.caalProviderString,
+            "router_medium_provider": llmProviderDraft == .ollama ? "ollama" : "openai_compatible",
             "router_complex_provider": "claude_cli",
             "n8n_enabled": true
         ]
@@ -954,10 +954,10 @@ struct OnboardingView: View {
                 .toggleStyle(.switch)
                 .controlSize(.small)
                 .onChange(of: nvidiaFeatureDraft) { _, enabled in
-                    if !enabled, llmProviderDraft == .nvidia { llmProviderDraft = .ollama }
+                    if !enabled, llmProviderDraft == .nvidia { llmProviderDraft = .anthropic }
                 }
             Picker("Provider", selection: $llmProviderDraft) {
-                ForEach(nvidiaFeatureDraft ? SoniqueBarLLMProvider.allCases : [.ollama]) { provider in
+                ForEach(monitor.settings.availableProviders) { provider in
                     Text(provider.label).tag(provider)
                 }
             }
@@ -1219,7 +1219,7 @@ struct OnboardingView: View {
         doctorResults = await QuickStartScanner.runDoctor(
             effectiveURL: monitor.settings.effectiveURL,
             backendURL: monitor.settings.backendURL,
-            expectedSimpleProvider: llmProviderDraft == .ollama ? "ollama" : "openai_compatible",
+            expectedSimpleProvider: llmProviderDraft.caalProviderString,
             requireHostCLIs: requireHostCLIs
         )
         preflightTrend = loadPreflightTrendSummary()
@@ -1512,13 +1512,8 @@ struct OnboardingView: View {
     private func reconcileRoutingParity(expectedSimpleProvider: String) async {
         guard let url = URL(string: "\(monitor.settings.backendURL)/settings") else { return }
         var settingsPayload: [String: Any] = [:]
-        if expectedSimpleProvider == "ollama" {
-            settingsPayload["router_simple_provider"] = "ollama"
-            settingsPayload["llm_provider"] = "ollama"
-        } else {
-            settingsPayload["router_simple_provider"] = "openai_compatible"
-            settingsPayload["llm_provider"] = "openai_compatible"
-        }
+        settingsPayload["router_simple_provider"] = expectedSimpleProvider
+        settingsPayload["llm_provider"] = expectedSimpleProvider
         guard let body = try? JSONSerialization.data(withJSONObject: ["settings": settingsPayload]) else { return }
         var req = URLRequest(url: url, timeoutInterval: 6)
         req.httpMethod = "POST"
@@ -1648,7 +1643,7 @@ Auto-setup needs a quick decision:
             routingPolicyURL: "\(monitor.settings.backendURL)/routing/policy",
             backendHealthURL: "\(monitor.settings.backendURL)/health",
             frontendHealthURL: "\(monitor.settings.effectiveURL)/health",
-            expectedSimpleProvider: llmProviderDraft == .ollama ? "ollama" : "openai_compatible",
+            expectedSimpleProvider: llmProviderDraft.caalProviderString,
             contractPullPath: target.path,
             contractPullURL: monitor.contractEndpoint.runtimeContractPullURL ?? "",
             preflightTrendPullURL: monitor.contractEndpoint.preflightTrendPullURL ?? ""

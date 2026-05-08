@@ -106,6 +106,7 @@ extension PiperVoice {
 enum SoniqueBarLLMProvider: String, CaseIterable, Identifiable {
     case ollama
     case nvidia
+    case anthropic
 
     var id: String { rawValue }
 
@@ -113,6 +114,16 @@ enum SoniqueBarLLMProvider: String, CaseIterable, Identifiable {
         switch self {
         case .ollama: return "Ollama (Local)"
         case .nvidia: return "NVIDIA NIM (preview)"
+        case .anthropic: return "Anthropic (Claude)"
+        }
+    }
+
+    /// The string CAAL's voice_agent.py expects for the llm_provider setting.
+    var caalProviderString: String {
+        switch self {
+        case .ollama: return "ollama"
+        case .nvidia: return "openai_compatible"
+        case .anthropic: return "anthropic"
         }
     }
 }
@@ -297,7 +308,7 @@ class MacSettings: ObservableObject {
     var llmProvider: SoniqueBarLLMProvider {
         get {
             let decoded = SoniqueBarLLMProvider(rawValue: llmProviderRaw) ?? .ollama
-            if !nvidiaFeatureEnabled, decoded == .nvidia { return .ollama }
+            if !nvidiaFeatureEnabled, decoded == .nvidia { return .anthropic }
             return decoded
         }
         set { llmProviderRaw = newValue.rawValue }
@@ -309,7 +320,9 @@ class MacSettings: ObservableObject {
     }
 
     var availableProviders: [SoniqueBarLLMProvider] {
-        nvidiaFeatureEnabled ? SoniqueBarLLMProvider.allCases : [.ollama]
+        var providers: [SoniqueBarLLMProvider] = [.ollama, .anthropic]
+        if nvidiaFeatureEnabled { providers.append(.nvidia) }
+        return providers
     }
 
     /// Idle-style summary aligned with iOS `SoniqueSettings.llmRoutingSummaryLine` (prefs only until #284 ships server-side).
