@@ -33,9 +33,9 @@ struct SoniqueBarApp: App {
         .onChange(of: appDelegate.openChatRequested) { _, requested in
             if requested {
                 appDelegate.openChatRequested = false
-                NSApp.activate(ignoringOtherApps: true)
-                // openWindow is not directly accessible here; use notification
-                NotificationCenter.default.post(name: .openChatWindow, object: nil)
+                if let url = URL(string: "slack://open?channel=C0B3JRFF58V") {
+                    NSWorkspace.shared.open(url)
+                }
             }
         }
         .menuBarExtraStyle(.window)
@@ -131,7 +131,9 @@ private struct BarLabel: View {
         .frame(minWidth: 22, minHeight: 18)
         .accessibilityLabel("Sonique")
         .onReceive(NotificationCenter.default.publisher(for: .openChatWindow)) { _ in
-            openWindow(id: "chat")
+            if let url = URL(string: "slack://open?channel=C0B3JRFF58V") {
+                NSWorkspace.shared.open(url)
+            }
         }
     }
 

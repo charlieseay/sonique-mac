@@ -103,8 +103,9 @@ struct StatusPopover: View {
                 Divider().padding(.horizontal, 8).padding(.vertical, 2)
 
                 popoverButton("Chat with \(monitor.profile?.name ?? "Cael")", icon: "bubble.left.and.bubble.right") {
-                    openWindow(id: "chat")
-                    NSApp.activate(ignoringOtherApps: true)
+                    if let url = URL(string: "slack://open?channel=C0B3JRFF58V") {
+                        NSWorkspace.shared.open(url)
+                    }
                 }
                 popoverButton("Open Runtime Health", icon: "heart.text.square",
                               disabled: !monitor.isOnline) {
