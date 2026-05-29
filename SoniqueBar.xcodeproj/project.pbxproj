@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		3F38966C2FCA03E10010DC4E /* CommandServer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3F38966B2FCA03E10010DC4E /* CommandServer.swift */; };
+		3F3967C52FCA0C2300B7CE51 /* IntentRouter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3F3967C42FCA0C2300B7CE51 /* IntentRouter.swift */; };
 		BB000021000000000000021 /* SoniqueBarApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB000020000000000000020 /* SoniqueBarApp.swift */; };
 		BB000023000000000000023 /* AssistantProfile.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB000022000000000000022 /* AssistantProfile.swift */; };
 		BB000025000000000000025 /* MacSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB000024000000000000024 /* MacSettings.swift */; };
@@ -27,7 +28,8 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
-		3F38966B2FCA03E10010DC4E /* CommandServer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CommandServer.swift; sourceTree = "<group>"; };
+		3F38966B2FCA03E10010DC4E /* CommandServer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = CommandServer.swift; path = SoniqueBar/Services/CommandServer.swift; sourceTree = SOURCE_ROOT; };
+		3F3967C42FCA0C2300B7CE51 /* IntentRouter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = IntentRouter.swift; path = SoniqueBar/Services/IntentRouter.swift; sourceTree = SOURCE_ROOT; };
 		BB000004000000000000004 /* SoniqueBar.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = SoniqueBar.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		BB000014000000000000014 /* SoniqueBar.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = SoniqueBar.entitlements; sourceTree = SOURCE_ROOT; };
 		BB000016000000000000016 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; name = Info.plist; path = SoniqueBar/Resources/Info.plist; sourceTree = SOURCE_ROOT; };
@@ -118,6 +120,7 @@
 		BB000011000000000000011 /* Services */ = {
 			isa = PBXGroup;
 			children = (
+				3F3967C42FCA0C2300B7CE51 /* IntentRouter.swift */,
 				3F38966B2FCA03E10010DC4E /* CommandServer.swift */,
 				BB000024000000000000024 /* MacSettings.swift */,
 				BB000026000000000000026 /* ServerMonitor.swift */,
@@ -217,6 +220,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				3F3967C52FCA0C2300B7CE51 /* IntentRouter.swift in Sources */,
 				BB000021000000000000021 /* SoniqueBarApp.swift in Sources */,
 				BB000023000000000000023 /* AssistantProfile.swift in Sources */,
 				BB000025000000000000025 /* MacSettings.swift in Sources */,

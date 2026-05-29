@@ -175,9 +175,23 @@ class CommandServer: ObservableObject {
     }
 
     private func executeCommand(_ text: String) async -> String {
-        // TODO: Wire to IntentRouter
-        // For now, detect simple patterns
+        // Classify the intent
+        let intent = IntentRouter.classify(text)
 
+        switch intent {
+        case .conversation(let query):
+            return await handleConversation(query)
+
+        case .infrastructure(let command):
+            return await InfrastructureExecutor.execute(command: command)
+
+        case .unknown(let input):
+            return "I'm not sure what to do with: \(input)"
+        }
+    }
+
+    private func handleConversation(_ text: String) async -> String {
+        // Simple time check
         if text.lowercased().contains("time") {
             let formatter = DateFormatter()
             formatter.dateStyle = .none
@@ -185,13 +199,8 @@ class CommandServer: ObservableObject {
             return "The current time is \(formatter.string(from: Date()))"
         }
 
-        if text.lowercased().contains("restart") && text.lowercased().contains("n8n") {
-            // TODO: Execute via Process.run()
-            return "I would restart the n8n container, but the infrastructure commands aren't wired yet."
-        }
-
-        // Default: conversational response (would route to LLM)
-        return "Received: \(text)"
+        // TODO: Route to ask_helmsman for LLM responses
+        return "Conversational query: \(text)"
     }
 
     private func sendResponse(_ response: String, to connection: NWConnection) {
