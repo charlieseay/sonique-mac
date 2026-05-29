@@ -25,8 +25,7 @@ class CommandServer: ObservableObject {
         guard !isRunning else { return }
 
         listener?.start(queue: .main)
-        isRunning = true
-        print("[CommandServer] Started on port \(port)")
+        print("[CommandServer] Called listener.start() on port \(port)")
     }
 
     func stop() {
@@ -53,7 +52,10 @@ class CommandServer: ObservableObject {
             listener?.stateUpdateHandler = { [weak self] state in
                 switch state {
                 case .ready:
-                    print("[CommandServer] Listener ready")
+                    Task { @MainActor in
+                        self?.isRunning = true
+                        print("[CommandServer] Listener ready - set isRunning=true")
+                    }
                 case .failed(let error):
                     print("[CommandServer] Listener failed: \(error)")
                     Task { @MainActor in
