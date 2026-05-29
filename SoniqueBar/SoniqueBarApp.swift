@@ -5,6 +5,7 @@ import AppKit
 struct SoniqueBarApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
     @StateObject private var monitor = ServerMonitor()
+    @StateObject private var commandServer = CommandServer()
 
     init() {
         // Defer SMAppService / keychain work so App init never blocks the main thread
@@ -20,15 +21,25 @@ struct SoniqueBarApp: App {
                 StatusPopover()
                     .environmentObject(monitor)
                     .environmentObject(monitor.premium)
+                    .environmentObject(commandServer)
+                    .onAppear {
+                        commandServer.start()
+                    }
             } else {
                 OnboardingView()
                     .environmentObject(monitor)
+                    .onAppear {
+                        commandServer.start()
+                    }
             }
         } label: {
             BarLabel(monitor: monitor, sidecarManager: monitor.sidecarManager)
         }
         .onChange(of: appDelegate.isTerminating) { _, terminating in
-            if terminating { monitor.sidecarManager.stopSync() }
+            if terminating {
+                commandServer.stop()
+                monitor.sidecarManager.stopSync()
+            }
         }
         .onChange(of: appDelegate.openChatRequested) { _, requested in
             if requested {
@@ -43,12 +54,14 @@ struct SoniqueBarApp: App {
         Window("Sonique Settings", id: "settings") {
             OnboardingView()
                 .environmentObject(monitor)
+                .environmentObject(commandServer)
         }
         .windowResizability(.contentSize)
 
         Window("Chat", id: "chat") {
             ChatView()
                 .environmentObject(monitor)
+                .environmentObject(commandServer)
         }
         .windowResizability(.contentSize)
         .defaultPosition(.center)
@@ -56,12 +69,14 @@ struct SoniqueBarApp: App {
         Window("About Sonique", id: "about") {
             AboutView()
                 .environmentObject(monitor.premium)
+                .environmentObject(commandServer)
         }
         .windowResizability(.contentSize)
 
         Window("Upgrade Sonique", id: "upgrade") {
             MacUpgradeView()
                 .environmentObject(monitor.premium)
+                .environmentObject(commandServer)
         }
         .windowResizability(.contentSize)
     }
@@ -74,6 +89,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
     @Published var openChatRequested = false
 
     private var hotKeyMonitor: Any?
+    private var commandServer: CommandServer?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         // Terminate any older instance of SoniqueBar so there's never more than one running.
@@ -97,11 +113,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
             else { return }
             DispatchQueue.main.async { self?.openChatRequested = true }
         }
+
+        // Start CommandServer
+        Task { @MainActor in
+            commandServer = CommandServer()
+            commandServer?.start()
+        }
     }
 
     func applicationWillTerminate(_ notification: Notification) {
         if let monitor = hotKeyMonitor {
             NSEvent.removeMonitor(monitor)
+        }
+        Task { @MainActor in
+            commandServer?.stop()
         }
         isTerminating = true
         RunLoop.current.run(until: Date().addingTimeInterval(0.05))
