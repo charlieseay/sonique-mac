@@ -5,6 +5,8 @@ import Network
 /// Handles text-based commands and routes them to infrastructure or LLM.
 @MainActor
 class CommandServer: ObservableObject {
+    static let shared = CommandServer()
+
     @Published var isRunning = false
     @Published var lastCommand: String = ""
     @Published var requestCount: Int = 0
@@ -12,7 +14,7 @@ class CommandServer: ObservableObject {
     private var listener: NWListener?
     private let port: NWEndpoint.Port = 8890
 
-    init() {
+    private init() {
         setupListener()
     }
 
@@ -25,7 +27,7 @@ class CommandServer: ObservableObject {
         guard !isRunning else { return }
 
         listener?.start(queue: .main)
-        print("[CommandServer] Called listener.start() on port \(port)")
+        print("[CommandServer] Started on port \(port)")
     }
 
     func stop() {

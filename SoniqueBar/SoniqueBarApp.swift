@@ -4,6 +4,7 @@ import AppKit
 @main
 struct SoniqueBarApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
+    @StateObject private var commandServer = CommandServer.shared
 
     var body: some Scene {
         MenuBarExtra {
@@ -11,9 +12,9 @@ struct SoniqueBarApp: App {
                 // Server status
                 HStack {
                     Circle()
-                        .fill(appDelegate.commandServer.isRunning ? Color.green : Color.red)
+                        .fill(commandServer.isRunning ? Color.green : Color.red)
                         .frame(width: 8, height: 8)
-                    Text(appDelegate.commandServer.isRunning ? "Online" : "Offline")
+                    Text(commandServer.isRunning ? "Online" : "Offline")
                         .font(.caption)
                 }
 
@@ -21,10 +22,10 @@ struct SoniqueBarApp: App {
 
                 // Stats
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("Requests: \(appDelegate.commandServer.requestCount)")
+                    Text("Requests: \(commandServer.requestCount)")
                         .font(.caption)
-                    if !appDelegate.commandServer.lastCommand.isEmpty {
-                        Text("Last: \(appDelegate.commandServer.lastCommand)")
+                    if !commandServer.lastCommand.isEmpty {
+                        Text("Last: \(commandServer.lastCommand)")
                             .font(.caption2)
                             .foregroundColor(.secondary)
                             .lineLimit(1)
@@ -39,19 +40,16 @@ struct SoniqueBarApp: App {
             }
             .padding()
         } label: {
-            Image(systemName: appDelegate.commandServer.isRunning ? "waveform" : "waveform.slash")
+            Image(systemName: commandServer.isRunning ? "waveform" : "waveform.slash")
                 .font(.system(size: 14, weight: .medium))
-                .foregroundColor(appDelegate.commandServer.isRunning ? .primary : .red)
+                .foregroundColor(commandServer.isRunning ? .primary : .red)
         }
         .menuBarExtraStyle(.window)
     }
 }
 
 /// Handles app lifecycle and CommandServer startup
-@MainActor
-final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
-    @Published var commandServer = CommandServer()
-
+final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         // Terminate any older instance
         let me = NSRunningApplication.current
@@ -64,13 +62,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
 
         // Start CommandServer
         Task { @MainActor in
-            commandServer.start()
+            CommandServer.shared.start()
         }
     }
 
     func applicationWillTerminate(_ notification: Notification) {
         Task { @MainActor in
-            commandServer.stop()
+            CommandServer.shared.stop()
         }
         RunLoop.current.run(until: Date().addingTimeInterval(0.05))
     }
