@@ -541,6 +541,12 @@ struct InfrastructureExecutor {
         process.executableURL = URL(fileURLWithPath: "/bin/zsh")
         process.arguments = ["-c", command]
 
+        // Set PATH to include ~/.local/bin and Homebrew for ask_helmsman and other tools
+        let homeDir = FileManager.default.homeDirectoryForCurrentUser.path
+        var env = ProcessInfo.processInfo.environment
+        env["PATH"] = "\(homeDir)/.local/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
+        process.environment = env
+
         let stdoutPipe = Pipe()
         let stderrPipe = Pipe()
         process.standardOutput = stdoutPipe
