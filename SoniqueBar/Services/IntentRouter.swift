@@ -18,6 +18,9 @@ struct IntentRouter {
         case openURL(url: String)
         case screenshot(region: ScreenshotRegion)
         case slackMessage(channel: String, text: String)
+        case createTask(description: String)
+        case createProject(name: String, description: String)
+        case createNote(title: String, content: String)
     }
 
     enum ScreenshotRegion {
@@ -29,7 +32,25 @@ struct IntentRouter {
     static func classify(_ text: String) -> Intent {
         let lower = text.lowercased()
 
-        // Slack message to #cael (check first - highest priority for delegation)
+        // Task creation (check first - high priority)
+        if (lower.contains("create") || lower.contains("add") || lower.contains("new")) &&
+           (lower.contains("task") || lower.contains("feature") || lower.contains("bug")) {
+            return .infrastructure(command: .createTask(description: text))
+        }
+
+        // Project creation
+        if (lower.contains("start") || lower.contains("create") || lower.contains("new")) &&
+           lower.contains("project") {
+            // Extract project name - simple pattern for now
+            let words = text.components(separatedBy: .whitespaces)
+            if let projectIndex = words.firstIndex(where: { $0.lowercased() == "project" }),
+               projectIndex + 1 < words.count {
+                let projectName = words[projectIndex + 1]
+                return .infrastructure(command: .createProject(name: projectName, description: text))
+            }
+        }
+
+        // Slack message to #cael
         if lower.contains("tell the team") || lower.contains("ask the team") {
             let message = text.replacingOccurrences(of: "tell the team", with: "", options: .caseInsensitive)
                              .replacingOccurrences(of: "ask the team", with: "", options: .caseInsensitive)
@@ -44,6 +65,11 @@ struct IntentRouter {
             }
         }
 
+        // Lab status (environment overview)
+        if (lower.contains("lab") || lower.contains("environment")) && (lower.contains("status") || lower.contains("state")) {
+            return .infrastructure(command: .checkStatus(service: "lab"))
+        }
+
         // Status checks
         if lower.contains("status") || lower.contains("check") {
             if let service = extractServiceName(from: text) {
@@ -54,6 +80,15 @@ struct IntentRouter {
         // Helmsman queries
         if lower.contains("queue") || lower.contains("helmsman") || lower.contains("tasks") {
             return .infrastructure(command: .helmsmanQuery(query: text))
+        }
+
+        // Note taking
+        if (lower.contains("take a note") || lower.contains("create a note") || lower.contains("write a note")) {
+            let noteContent = text.replacingOccurrences(of: "take a note", with: "", options: .caseInsensitive)
+                                 .replacingOccurrences(of: "create a note", with: "", options: .caseInsensitive)
+                                 .replacingOccurrences(of: "write a note", with: "", options: .caseInsensitive)
+                                 .trimmingCharacters(in: .whitespacesAndNewlines)
+            return .infrastructure(command: .createNote(title: "Voice Note", content: noteContent))
         }
 
         // Vault queries (MCP)
@@ -158,6 +193,15 @@ struct InfrastructureExecutor {
 
         case .slackMessage(let channel, let text):
             return await sendToSlack(channel, text)
+
+        case .createTask(let description):
+            return await createTask(description)
+
+        case .createProject(let name, let description):
+            return await createProject(name, description)
+
+        case .createNote(let title, let content):
+            return await createNote(title, content)
         }
     }
 
@@ -177,6 +221,9 @@ struct InfrastructureExecutor {
 
     private static func checkServiceStatus(_ service: String) async -> String {
         switch service.lowercased() {
+        case "lab", "environment":
+            return await LabStatusService.shared.getStatus()
+
         case "docker", "containers":
             let result = await shell("docker ps --format 'table {{.Names}}\t{{.Status}}'")
             return result.exitCode == 0 ? result.stdout : "Failed to check Docker status"
@@ -361,6 +408,129 @@ struct InfrastructureExecutor {
             return "Posted to #\(channel)"
         } else {
             return "Slack post failed: \(result.stdout)"
+        }
+    }
+
+    // MARK: - Task Creation
+
+    private static func createTask(_ description: String) async -> String {
+        // Extract metadata
+        guard let metadata = await TaskDispatcher.extractTaskMetadata(from: description) else {
+            return "I couldn't extract task details from that. Can you be more specific about the project, effort level, and what needs to be done?"
+        }
+
+        // Generate brief
+        let context = await MemoryService.shared.getContextForLLM()
+        let brief = TaskDispatcher.generateBrief(from: metadata, context: description)
+
+        // Dispatch
+        do {
+            let project = metadata.project ?? "General"
+            let owner = metadata.owner ?? "AIDER-GEM"
+
+            let taskNum = try await TaskDispatcher.dispatch(
+                task: metadata.description,
+                owner: owner,
+                project: project,
+                effort: metadata.effort,
+                brief: brief
+            )
+
+            return "Created task #\(taskNum): \(metadata.description), \(metadata.effort) effort, assigned to \(owner)"
+        } catch {
+            return "Failed to create task: \(error.localizedDescription)"
+        }
+    }
+
+    private static func createProject(_ name: String, _ description: String) async -> String {
+        // Create vault folder
+        let vaultPath = FileManager.default.homeDirectoryForCurrentUser
+            .appendingPathComponent("Library/Mobile Documents/iCloud~md~obsidian/Documents/SeaynicNet/Projects")
+            .appendingPathComponent(name)
+
+        do {
+            try FileManager.default.createDirectory(at: vaultPath, withIntermediateDirectories: true)
+
+            // Create initial note
+            let dateFormatter = DateFormatter()
+            dateFormatter.dateFormat = "yyyy-MM-dd"
+            let dateString = dateFormatter.string(from: Date())
+
+            let noteContent = """
+            ---
+            tags: [projects, \(name.lowercased())]
+            created: \(dateString)
+            status: planning
+            ---
+
+            # \(name)
+
+            \(description)
+
+            ## Status
+
+            Planning phase
+
+            ## Next Steps
+
+            [To be determined]
+            """
+
+            let notePath = vaultPath.appendingPathComponent("\(name).md")
+            try noteContent.write(to: notePath, atomically: true, encoding: .utf8)
+
+            return "Created project \(name) at \(vaultPath.path). Vault note created."
+        } catch {
+            return "Failed to create project: \(error.localizedDescription)"
+        }
+    }
+
+    private static func createNote(_ title: String, _ content: String) async -> String {
+        // Create note in Daily Notes or general Notes folder
+        let notesPath = FileManager.default.homeDirectoryForCurrentUser
+            .appendingPathComponent("Library/Mobile Documents/iCloud~md~obsidian/Documents/SeaynicNet/Daily Notes")
+
+        let dateFormatter = DateFormatter()
+        dateFormatter.dateFormat = "yyyy-MM-dd"
+        let dateString = dateFormatter.string(from: Date())
+
+        let timestamp = ISO8601DateFormatter().string(from: Date())
+
+        let noteContent = """
+        ## \(title) (\(timestamp))
+
+        \(content)
+
+        ---
+
+        """
+
+        // Append to today's daily note
+        let dailyNotePath = notesPath.appendingPathComponent("\(dateString).md")
+
+        do {
+            if FileManager.default.fileExists(atPath: dailyNotePath.path) {
+                // Append to existing note
+                let existingContent = try String(contentsOf: dailyNotePath)
+                let updatedContent = existingContent + "\n" + noteContent
+                try updatedContent.write(to: dailyNotePath, atomically: true, encoding: .utf8)
+            } else {
+                // Create new daily note
+                let header = """
+                ---
+                tags: [daily-notes]
+                created: \(dateString)
+                ---
+
+                # \(dateString)
+
+                """
+                try (header + noteContent).write(to: dailyNotePath, atomically: true, encoding: .utf8)
+            }
+
+            return "Note added to today's daily note: \(dateString).md"
+        } catch {
+            return "Failed to create note: \(error.localizedDescription)"
         }
     }
 

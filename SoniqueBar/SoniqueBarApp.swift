@@ -5,6 +5,7 @@ import AppKit
 struct SoniqueBarApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
     @StateObject private var commandServer = CommandServer.shared
+    @StateObject private var memoryService = MemoryService.shared
 
     var body: some Scene {
         MenuBarExtra {
@@ -36,6 +37,15 @@ struct SoniqueBarApp: App {
                     }
                 }
 
+                // Memory stats
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Memory: \(String(format: "%.1f", memoryService.memorySizeMB))MB")
+                        .font(.caption)
+                    Text("Conversations: \(memoryService.workingMemory.count) in session")
+                        .font(.caption2)
+                        .foregroundColor(.secondary)
+                }
+
                 Divider()
 
                 // Actions
@@ -51,6 +61,11 @@ struct SoniqueBarApp: App {
 
                 Button(action: testConnection) {
                     Label("Test Connection", systemImage: "network")
+                        .font(.caption)
+                }
+
+                Button(action: clearMemory) {
+                    Label("Clear Memory", systemImage: "trash")
                         .font(.caption)
                 }
 
@@ -92,6 +107,20 @@ struct SoniqueBarApp: App {
             alert.messageText = "Connection Test"
             alert.informativeText = result.exitCode == 0 ? "✅ Server is healthy\n\(result.stdout)" : "❌ Server is unreachable\n\(result.stderr)"
             alert.alertStyle = result.exitCode == 0 ? .informational : .warning
+            alert.addButton(withTitle: "OK")
+            alert.runModal()
+        }
+    }
+
+    private func clearMemory() {
+        Task { @MainActor in
+            await MemoryService.shared.cleanMemory()
+            MemoryService.shared.clearWorkingMemory()
+
+            let alert = NSAlert()
+            alert.messageText = "Memory Cleared"
+            alert.informativeText = "Working memory and old conversations have been cleared."
+            alert.alertStyle = .informational
             alert.addButton(withTitle: "OK")
             alert.runModal()
         }

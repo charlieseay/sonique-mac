@@ -214,16 +214,34 @@ class CommandServer: ObservableObject {
         // Classify the intent
         let intent = IntentRouter.classify(text)
 
+        var responseText: String
+        var intentType: String
+        var actions: [String] = []
+
         switch intent {
         case .conversation(let query):
-            return await handleConversation(query)
+            intentType = "conversation"
+            responseText = await handleConversation(query)
 
         case .infrastructure(let command):
-            return await InfrastructureExecutor.execute(command: command)
+            intentType = "infrastructure"
+            responseText = await InfrastructureExecutor.execute(command: command)
+            actions.append("executed: \(command)")
 
         case .unknown(let input):
-            return "I'm not sure what to do with: \(input)"
+            intentType = "unknown"
+            responseText = "I'm not sure what to do with: \(input)"
         }
+
+        // Log to memory
+        await MemoryService.shared.addExchange(
+            user: text,
+            assistant: responseText,
+            intent: intentType,
+            actions: actions.isEmpty ? nil : actions
+        )
+
+        return responseText
     }
 
     private func handleConversation(_ text: String) async -> String {
@@ -240,8 +258,24 @@ class CommandServer: ObservableObject {
             return "LLM not available. Check that ask_helmsman is in PATH."
         }
 
-        // Route to ask_helmsman for conversational responses
-        let result = await InfrastructureExecutor.shell("ask_helmsman '\(text.replacingOccurrences(of: "'", with: "'\\''"))'")
+        // Get context from memory
+        let context = await MemoryService.shared.getContextForLLM()
+
+        // Build prompt with context
+        let fullPrompt = """
+        \(context)
+
+        # Current Request
+        \(text)
+
+        Respond directly and concisely. Use the context above to inform your response but don't reference it explicitly.
+        """
+
+        // Escape for shell
+        let escapedPrompt = fullPrompt.replacingOccurrences(of: "'", with: "'\\''")
+
+        // Route to ask_helmsman with context
+        let result = await InfrastructureExecutor.shell("ask_helmsman '\(escapedPrompt)'")
 
         if result.exitCode == 0 && !result.stdout.isEmpty {
             return result.stdout
