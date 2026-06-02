@@ -234,8 +234,64 @@ struct InfrastructureExecutor {
     // MARK: - MCP Tool Integration
 
     private static func invokeMCPTool(_ tool: String, query: String) async -> String {
-        // For now, just acknowledge - full MCP integration would require the MCP proxy
-        return "MCP tool '\(tool)' would handle: \(query)"
+        // MCP proxy runs on localhost:3700
+        // For vault queries, extract the note name and read it
+        if tool == "vault" {
+            // Extract note name from query
+            let noteName = extractNoteName(from: query)
+
+            // Call vault MCP via curl
+            let payload = """
+            {
+              "method": "tools/call",
+              "params": {
+                "name": "read_note",
+                "arguments": {
+                  "title": "\(noteName)"
+                }
+              }
+            }
+            """
+
+            let command = """
+            curl -s -X POST http://localhost:3700/vault \
+              -H 'Content-Type: application/json' \
+              -d '\(payload)'
+            """
+
+            let result = await shell(command)
+
+            if result.exitCode == 0 {
+                // Parse MCP response
+                if let data = result.stdout.data(using: .utf8),
+                   let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                   let resultObj = json["result"] as? [String: Any],
+                   let content = resultObj["content"] as? [[String: Any]],
+                   let text = content.first?["text"] as? String {
+                    // Return first 500 chars
+                    let preview = String(text.prefix(500))
+                    return preview + (text.count > 500 ? "..." : "")
+                }
+            }
+
+            return "Could not read note '\(noteName)' from vault"
+        }
+
+        return "MCP tool '\(tool)' not yet implemented"
+    }
+
+    private static func extractNoteName(from query: String) -> String {
+        // Extract note name from queries like "read note X" or "vault note X"
+        let words = query.components(separatedBy: .whitespaces)
+
+        // Find "note" keyword and take the next word(s)
+        if let noteIndex = words.firstIndex(where: { $0.lowercased() == "note" }) {
+            let remainingWords = words.dropFirst(noteIndex + 1)
+            return remainingWords.joined(separator: " ")
+        }
+
+        // Fallback: return the whole query
+        return query
     }
 
     // MARK: - Shell Execution
@@ -310,7 +366,7 @@ struct InfrastructureExecutor {
 
     // MARK: - Shell Helper
 
-    private static func shell(_ command: String) async -> (stdout: String, stderr: String, exitCode: Int32) {
+    static func shell(_ command: String) async -> (stdout: String, stderr: String, exitCode: Int32) {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/bin/zsh")
         process.arguments = ["-c", command]

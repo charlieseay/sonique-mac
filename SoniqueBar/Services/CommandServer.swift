@@ -118,6 +118,8 @@ class CommandServer: ObservableObject {
         // Route the request
         if method == "GET" && path == "/health" {
             await handleHealth(connection)
+        } else if method == "GET" && path == "/config" {
+            await handleConfig(connection)
         } else if method == "POST" && path == "/command" {
             await handleCommand(data, connection)
         } else {
@@ -132,6 +134,36 @@ class CommandServer: ObservableObject {
         \r
         {"status":"ok","port":\(port)}
         """
+        sendResponse(response, to: connection)
+    }
+
+    private func handleConfig(_ connection: NWConnection) async {
+        // Read ElevenLabs API key from secrets file
+        let secretPath = "/Volumes/data/secrets/elevenlabs_api_key"
+
+        guard let apiKey = try? String(contentsOfFile: secretPath, encoding: .utf8).trimmingCharacters(in: .whitespacesAndNewlines) else {
+            let errorResponse = """
+            HTTP/1.1 500 Internal Server Error\r
+            Content-Type: application/json\r
+            \r
+            {"error":"Could not read ElevenLabs API key from \(secretPath)"}
+            """
+            sendResponse(errorResponse, to: connection)
+            return
+        }
+
+        let responseJSON = """
+        {"elevenlabsAPIKey":"\(apiKey)"}
+        """
+
+        let response = """
+        HTTP/1.1 200 OK\r
+        Content-Type: application/json\r
+        Content-Length: \(responseJSON.utf8.count)\r
+        \r
+        \(responseJSON)
+        """
+
         sendResponse(response, to: connection)
     }
 
@@ -195,16 +227,27 @@ class CommandServer: ObservableObject {
     }
 
     private func handleConversation(_ text: String) async -> String {
-        // Simple time check
-        if text.lowercased().contains("time") {
-            let formatter = DateFormatter()
-            formatter.dateStyle = .none
-            formatter.timeStyle = .short
-            return "The current time is \(formatter.string(from: Date()))"
+        // Check if ask_helmsman is available
+        let which = await InfrastructureExecutor.shell("which ask_helmsman")
+        guard which.exitCode == 0 else {
+            // Fallback: simple time check
+            if text.lowercased().contains("time") {
+                let formatter = DateFormatter()
+                formatter.dateStyle = .none
+                formatter.timeStyle = .short
+                return "The current time is \(formatter.string(from: Date()))"
+            }
+            return "LLM not available. Check that ask_helmsman is in PATH."
         }
 
-        // TODO: Route to ask_helmsman for LLM responses
-        return "Conversational query: \(text)"
+        // Route to ask_helmsman for conversational responses
+        let result = await InfrastructureExecutor.shell("ask_helmsman '\(text.replacingOccurrences(of: "'", with: "'\\''"))'")
+
+        if result.exitCode == 0 && !result.stdout.isEmpty {
+            return result.stdout
+        } else {
+            return "Sorry, I couldn't process that request: \(result.stderr)"
+        }
     }
 
     private func sendResponse(_ response: String, to connection: NWConnection) {
