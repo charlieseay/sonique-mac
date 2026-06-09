@@ -16,6 +16,12 @@ Menu bar app that manages Sonique runtime (Docker stack or embedded sidecar), in
 
 ---
 
+## Current State
+
+Sonique macOS (SoniqueBar) is a production-ready menu bar app targeting macOS 12.3+, in TestFlight and Jarvis Mode phase. Latest commit (2a1c122) completes QLM learning layer with drift detection, lesson pipeline, health discovery, and 4 Bridge dashboards. Clean repository (no uncommitted changes). Pure-embedded runtime as default; optional Docker CAAL stack. Integrates CAAL backend (port 8890 LAN/Tailscale), provides onboarding + settings, manages task dispatch, memory layer (Jarvis), and lab status aggregation. Adaptive UI supports remote displays (Jump Desktop on iPad). Phase 11 (Jarvis Mode) production-active.
+
+---
+
 ## Last Decisions
 
 | Decision | Date | Rationale |
@@ -90,6 +96,16 @@ If using CAAL Docker stack:
 - **Error 301 (Speech Recognition):** Fixed 2026-06-09 by reordering initialization (recognition task before audio tap)
 - **Path resolution:** ~/.local/bin now in PATH for shell commands
 - **Settings scrolling:** Implemented min/ideal/max sizing for remote display constraints
+
+---
+
+## Next Steps
+
+1. **[Priority: High]** Complete TestFlight beta feedback loop — iterate on user feedback from beta testers; finalize App Store submission targets.
+
+2. **[Priority: Med]** Expand learning layer integrations — connect more downstream services to QLM pipeline (speech models, tool outputs, conversation context); improve memory quality.
+
+3. **[Priority: Med]** Add command palette — cmd+K interface for quick actions (open notes, jump to service, change model); improve power-user workflow.
 
 ---
 
