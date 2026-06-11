@@ -327,6 +327,10 @@ class CommandServer: ObservableObject {
         \(text)
 
         Respond directly and concisely in 1–3 sentences. Do not use markdown.
+        Do NOT infer the user's emotional state or ask if they are sad/upset unless they
+        explicitly say so. If the request is ambiguous, brief, or looks like a stray sound
+        (e.g. "(sighs)", "hmm", a single word), just answer the literal question or ask a
+        neutral clarifying question — never assume distress.
         """
         let escaped = fullPrompt.replacingOccurrences(of: "'", with: "'\\''")
 
