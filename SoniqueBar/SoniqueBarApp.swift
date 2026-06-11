@@ -11,8 +11,14 @@ struct SoniqueBarApp: App {
         MenuBarExtra {
             VStack(alignment: .leading, spacing: 12) {
                 // Header
-                Text("SoniqueBar")
-                    .font(.headline)
+                HStack(alignment: .firstTextBaseline) {
+                    Text("SoniqueBar")
+                        .font(.headline)
+                    Spacer()
+                    Text(appVersion)
+                        .font(.caption2)
+                        .foregroundColor(.secondary)
+                }
 
                 Divider()
 
@@ -86,6 +92,12 @@ struct SoniqueBarApp: App {
     }
 
     // MARK: - Actions
+
+    private var appVersion: String {
+        let v = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "?"
+        let b = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "?"
+        return "v\(v) (\(b))"
+    }
 
     private func restartServer() {
         Task { @MainActor in
