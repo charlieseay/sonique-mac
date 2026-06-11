@@ -356,18 +356,60 @@ class CommandServer: ObservableObject {
 
         // Resolve the binary dynamically — /opt/homebrew/bin/claude (Homebrew cask).
         let claudePath = await resolveClaudePath()
+        // stream-json + partial messages = token-level streaming, so we can speak the
+        // first sentence as soon as it's formed instead of waiting for the full reply.
         let claudeCmd = "cd /tmp && '\(claudePath)' --print "
+            + "--output-format stream-json --include-partial-messages --verbose "
             + "--allowedTools 'Bash' --permission-mode acceptEdits "
             + "--append-system-prompt '\(escapedSystem)' "
             + "'\(escapedPrompt)' 2>/dev/null"
-        let fallbackCmd = "ask_helmsman '\(escapedPrompt)'"
 
-        // Run, collect stdout, segment into sentences
-        let streamedText = await streamShellCommand(claudeCmd, fallback: fallbackCmd)
+        // Open a chunked HTTP response and emit each sentence as it completes.
+        startChunkedResponse(to: connection)
 
-        let body = buildNDJSONBody(segmentIntoSentences(streamedText))
-        sendNDJSONResponse(body, to: connection)
-        await MemoryService.shared.addExchange(user: text, assistant: streamedText, intent: "conversation", actions: nil)
+        var sentenceBuf = ""
+        var fullText = ""
+        var index = 0
+        let terminators = CharacterSet(charactersIn: ".!?…")
+
+        let exit = await runStreaming(claudeCmd) { [weak self] line in
+            guard let self, let token = self.extractTextDelta(line) else { return }
+            sentenceBuf += token
+            fullText += token
+            // Flush complete sentences as they form.
+            while let r = sentenceBuf.rangeOfCharacter(from: terminators) {
+                let after = sentenceBuf.index(after: r.lowerBound)
+                // sentence boundary = terminator followed by space/end
+                if after == sentenceBuf.endIndex || sentenceBuf[after] == " " {
+                    let sentence = String(sentenceBuf[...r.lowerBound]).trimmingCharacters(in: .whitespacesAndNewlines)
+                    sentenceBuf = String(sentenceBuf[after...]).trimmingCharacters(in: .init(charactersIn: " "))
+                    if !sentence.isEmpty {
+                        Task { @MainActor in self.sendSentenceChunk(sentence, index: index, to: connection) }
+                        index += 1
+                    }
+                } else { break }
+            }
+        }
+
+        // Flush trailing partial sentence.
+        let tail = sentenceBuf.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !tail.isEmpty {
+            sendSentenceChunk(tail, index: index, to: connection)
+        }
+
+        // Fallback if streaming produced nothing.
+        if fullText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            let fb = await InfrastructureExecutor.shell("ask_helmsman '\(escapedPrompt)'")
+            let fbText = fb.stdout.isEmpty ? "Sorry, I couldn't process that request." : fb.stdout
+            for (i, s) in segmentIntoSentences(fbText).enumerated() {
+                sendSentenceChunk(s, index: i, to: connection)
+            }
+            fullText = fbText
+        }
+
+        _ = exit
+        endChunkedResponse(to: connection)
+        await MemoryService.shared.addExchange(user: text, assistant: fullText.trimmingCharacters(in: .whitespacesAndNewlines), intent: "conversation", actions: nil)
     }
 
     /// Resolve the `claude` CLI path. Prefers `which`, falls back to known Homebrew location.
@@ -380,6 +422,60 @@ class CommandServer: ObservableObject {
             return "/opt/homebrew/bin/claude"
         }
         return "claude"  // last resort — rely on PATH
+    }
+
+    /// Run a shell command, calling `onLine` for each stdout line AS IT ARRIVES.
+    /// Returns the process exit code. Used to stream claude's stream-json output.
+    private func runStreaming(_ command: String, onLine: @escaping (String) -> Void) async -> Int32 {
+        await withCheckedContinuation { continuation in
+            let process = Process()
+            process.executableURL = URL(fileURLWithPath: "/bin/zsh")
+            process.arguments = ["-c", command]
+            let outPipe = Pipe()
+            process.standardOutput = outPipe
+            process.standardError = Pipe()
+
+            let handle = outPipe.fileHandleForReading
+            var buffer = Data()
+            handle.readabilityHandler = { fh in
+                let data = fh.availableData
+                if data.isEmpty { return }
+                buffer.append(data)
+                // Emit complete lines (newline-delimited)
+                while let nl = buffer.firstIndex(of: 0x0A) {
+                    let lineData = buffer.subdata(in: buffer.startIndex..<nl)
+                    buffer.removeSubrange(buffer.startIndex...nl)
+                    if let line = String(data: lineData, encoding: .utf8), !line.isEmpty {
+                        onLine(line)
+                    }
+                }
+            }
+
+            process.terminationHandler = { proc in
+                handle.readabilityHandler = nil
+                // flush any trailing partial line
+                if !buffer.isEmpty, let line = String(data: buffer, encoding: .utf8), !line.isEmpty {
+                    onLine(line)
+                }
+                continuation.resume(returning: proc.terminationStatus)
+            }
+
+            do { try process.run() }
+            catch { continuation.resume(returning: -1) }
+        }
+    }
+
+    /// Extract the assistant text token from a claude stream-json line, if present.
+    private func extractTextDelta(_ jsonLine: String) -> String? {
+        guard let data = jsonLine.data(using: .utf8),
+              let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              obj["type"] as? String == "stream_event",
+              let event = obj["event"] as? [String: Any],
+              event["type"] as? String == "content_block_delta",
+              let delta = event["delta"] as? [String: Any],
+              delta["type"] as? String == "text_delta",
+              let text = delta["text"] as? String else { return nil }
+        return text
     }
 
     /// Run a shell command and return its full stdout.
@@ -431,6 +527,52 @@ class CommandServer: ObservableObject {
         guard let bodyData = body.data(using: .utf8) else { return }
         let response = "HTTP/1.1 200 OK\r\nContent-Type: application/x-ndjson\r\nContent-Length: \(bodyData.count)\r\nCache-Control: no-cache\r\nConnection: close\r\n\r\n" + body
         sendResponse(response, to: connection)
+    }
+
+    // MARK: - Chunked (incremental) NDJSON streaming
+
+    /// Send the HTTP/1.1 chunked-transfer response headers. After this, call
+    /// `sendChunk` per NDJSON line and `endChunkedResponse` when done.
+    private func startChunkedResponse(to connection: NWConnection) {
+        let headers = "HTTP/1.1 200 OK\r\n"
+            + "Content-Type: application/x-ndjson\r\n"
+            + "Cache-Control: no-cache\r\n"
+            + "Transfer-Encoding: chunked\r\n"
+            + "Connection: close\r\n\r\n"
+        if let data = headers.data(using: .utf8) {
+            connection.send(content: data, completion: .contentProcessed { _ in })
+        }
+    }
+
+    /// Send one NDJSON line as a single HTTP chunk (hex-length CRLF body CRLF).
+    private func sendChunk(_ line: String, to connection: NWConnection) {
+        let payload = line + "\n"
+        guard let payloadData = payload.data(using: .utf8) else { return }
+        let chunk = String(format: "%X\r\n", payloadData.count)
+        var out = Data()
+        out.append(chunk.data(using: .utf8)!)
+        out.append(payloadData)
+        out.append("\r\n".data(using: .utf8)!)
+        connection.send(content: out, completion: .contentProcessed { _ in })
+    }
+
+    /// Emit one sentence chunk as NDJSON over the open chunked response.
+    private func sendSentenceChunk(_ sentence: String, index: Int, to connection: NWConnection) {
+        if let data = try? JSONSerialization.data(withJSONObject: ["chunk": sentence, "index": index, "is_final": false]),
+           let line = String(data: data, encoding: .utf8) {
+            sendChunk(line, to: connection)
+        }
+    }
+
+    /// Close the chunked response: send the {"done":true} line + terminal 0-chunk.
+    private func endChunkedResponse(to connection: NWConnection) {
+        sendChunk("{\"done\":true}", to: connection)
+        let terminator = "0\r\n\r\n"
+        if let data = terminator.data(using: .utf8) {
+            connection.send(content: data, completion: .contentProcessed { _ in
+                connection.cancel()
+            })
+        }
     }
 
     private func sendResponse(_ response: String, to connection: NWConnection) {
