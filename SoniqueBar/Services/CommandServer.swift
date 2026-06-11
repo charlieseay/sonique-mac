@@ -122,6 +122,8 @@ class CommandServer: ObservableObject {
             await handleConfig(connection)
         } else if method == "POST" && path == "/command" {
             await handleCommand(data, connection)
+        } else if method == "POST" && path == "/command/stream" {
+            await handleCommandStream(data, connection)
         } else {
             sendResponse("HTTP/1.1 404 Not Found\r\n\r\n", to: connection)
         }
@@ -282,6 +284,120 @@ class CommandServer: ObservableObject {
         } else {
             return "Sorry, I couldn't process that request: \(result.stderr)"
         }
+    }
+
+    private func handleCommandStream(_ data: Data, _ connection: NWConnection) async {
+        // Extract JSON body from POST request (same as handleCommand)
+        guard let requestString = String(data: data, encoding: .utf8) else {
+            sendResponse("HTTP/1.1 400 Bad Request\r\n\r\n", to: connection)
+            return
+        }
+
+        // Find the JSON body (after the headers)
+        let components = requestString.components(separatedBy: "\r\n\r\n")
+        guard components.count >= 2,
+              let bodyData = components[1].data(using: .utf8),
+              let json = try? JSONSerialization.jsonObject(with: bodyData) as? [String: Any],
+              let text = json["text"] as? String else {
+            sendResponse("HTTP/1.1 400 Bad Request\r\n\r\n{\"error\":\"Missing 'text' field\"}", to: connection)
+            return
+        }
+
+        await MainActor.run {
+            self.lastCommand = text
+            self.requestCount += 1
+        }
+
+        print("[CommandServer] Received streaming command: \(text)")
+
+        // Execute command and stream response as NDJSON
+        let responseText = await executeCommand(text)
+
+        // Segment response into sentence-like chunks
+        let chunks = segmentIntoChunks(responseText)
+
+        // Build the full response body (all NDJSON lines)
+        // Using simple NDJSON format without HTTP chunked encoding for compatibility
+        var responseBody = ""
+        for (index, chunk) in chunks.enumerated() {
+            // Emit one NDJSON object per chunk
+            let jsonObject: [String: Any] = [
+                "chunk": chunk,
+                "index": index,
+                "is_final": (index == chunks.count - 1)
+            ]
+
+            if let jsonData = try? JSONSerialization.data(withJSONObject: jsonObject),
+               let jsonString = String(data: jsonData, encoding: .utf8) {
+                responseBody += jsonString + "\n"
+            }
+        }
+
+        // Add final done marker
+        responseBody += "{\"done\":true}\n"
+
+        // Send HTTP response with Content-Length
+        guard let responseBodyData = responseBody.data(using: .utf8) else { return }
+
+        let response = """
+        HTTP/1.1 200 OK\r
+        Content-Type: application/x-ndjson\r
+        Content-Length: \(responseBodyData.count)\r
+        Cache-Control: no-cache\r
+        Connection: close\r
+        \r
+        """ + responseBody
+
+        sendResponse(response, to: connection)
+
+        // Log to memory
+        await MemoryService.shared.addExchange(
+            user: text,
+            assistant: responseText,
+            intent: "conversation",
+            actions: nil
+        )
+    }
+
+    /// Segment response into sentence-like chunks.
+    /// FUTURE: Replace with true token-streaming from Claude API.
+    /// TODO: When Bedrock/ask_helmsman supports streaming, wire individual tokens here instead of sentence segmentation.
+    private func segmentIntoChunks(_ text: String) -> [String] {
+        // Split on sentence boundaries: . ? ! followed by space or end
+        let sentencePattern = try? NSRegularExpression(pattern: "([.!?…]|\\n)\\s+", options: [])
+
+        var chunks: [String] = []
+        var currentChunk = ""
+        let cleanText = text.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        let lines = cleanText.components(separatedBy: .newlines)
+        for line in lines {
+            if line.isEmpty { continue }
+
+            // Split each line by sentence boundaries
+            let words = line.components(separatedBy: " ")
+            for word in words {
+                currentChunk += (currentChunk.isEmpty ? "" : " ") + word
+
+                // Check if this word ends a sentence
+                if word.last.map({ "..!?".contains($0) }) ?? false {
+                    chunks.append(currentChunk)
+                    currentChunk = ""
+                }
+            }
+        }
+
+        // Append remaining text as final chunk
+        if !currentChunk.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            chunks.append(currentChunk)
+        }
+
+        // If no chunks found (no punctuation), emit the whole thing as one chunk
+        if chunks.isEmpty {
+            chunks = [cleanText]
+        }
+
+        return chunks
     }
 
     private func sendResponse(_ response: String, to connection: NWConnection) {
