@@ -144,6 +144,24 @@
 			<key>isa</key>
 			<string>PBXBuildFile</string>
 		</dict>
+		<key>AC1B00200000000000SB01A</key>
+		<dict>
+			<key>isa</key>
+			<string>PBXFileReference</string>
+			<key>lastKnownFileType</key>
+			<string>sourcecode.swift</string>
+			<key>path</key>
+			<string>SoniqueBar/Services/SoniqueBrain.swift</string>
+			<key>sourceTree</key>
+			<string>&lt;group&gt;</string>
+		</dict>
+		<key>AC1B00200000000000SB01B</key>
+		<dict>
+			<key>fileRef</key>
+			<string>AC1B00200000000000SB01A</string>
+			<key>isa</key>
+			<string>PBXBuildFile</string>
+		</dict>
 		<key>BB000001000000000000001</key>
 		<dict>
 			<key>attributes</key>
@@ -237,6 +255,7 @@
 			<array>
 				<string>3F3967C52FCA0C2300B7CE51</string>
 				<string>AC1B00200000000000NI01B</string>
+				<string>AC1B00200000000000SB01B</string>
 				<string>BB000021000000000000021</string>
 				<string>3F73A4402FCE856A0057ED63</string>
 				<string>3F73A4412FCE856A0057ED63</string>
@@ -500,6 +519,7 @@
 			<array>
 				<string>3F3967C42FCA0C2300B7CE51</string>
 				<string>AC1B00200000000000NI01A</string>
+				<string>AC1B00200000000000SB01A</string>
 				<string>3F38966B2FCA03E10010DC4E</string>
 			</array>
 			<key>isa</key>

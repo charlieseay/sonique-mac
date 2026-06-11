@@ -1,0 +1,146 @@
+import Foundation
+
+/// The iCloud-backed "brain" — persona, lessons, and directives stored in
+/// iCloud Drive/SoniqueProfiles so they grow, sync, and back up natively.
+///
+///   SoniqueProfiles/
+///     shared/   IDENTITY.md, RULES.md, SOUL.md   (one persona, both devices read)
+///     Desktop/  lessons.jsonl, directives.md, conversations.jsonl   (SoniqueBar owns)
+///     mobile/   ...                                                  (Sonique iOS owns)
+///
+/// SoniqueBar manages the Desktop folder; Sonique iOS manages mobile. Shared persona is
+/// read by both; SoniqueBar is the canonical writer for shared (it has the fuller context).
+@MainActor
+final class SoniqueBrain {
+    static let shared = SoniqueBrain()
+
+    /// Soft quota for this device's folder; oldest lessons/turns trimmed past it.
+    var quotaBytes: Int = 50 * 1024 * 1024   // 50 MB per device
+
+    private let device = "Desktop"
+    private let fm = FileManager.default
+
+    /// iCloud Drive base. Nil if iCloud isn't available (we fall back to local app support).
+    private var iCloudBase: URL? {
+        // ubiquityIdentityToken is non-nil when the user is signed into iCloud.
+        guard fm.ubiquityIdentityToken != nil else { return nil }
+        let docs = fm.homeDirectoryForCurrentUser
+            .appendingPathComponent("Library/Mobile Documents/com~apple~CloudDocs")
+        return docs.appendingPathComponent("SoniqueProfiles")
+    }
+
+    private var localFallback: URL {
+        fm.homeDirectoryForCurrentUser
+            .appendingPathComponent("Library/Application Support/SoniqueBar/SoniqueProfiles")
+    }
+
+    private var base: URL { iCloudBase ?? localFallback }
+    private var sharedDir: URL { base.appendingPathComponent("shared") }
+    private var deviceDir: URL { base.appendingPathComponent(device) }
+
+    private init() {
+        ensureStructure()
+    }
+
+    private func ensureStructure() {
+        for dir in [sharedDir, deviceDir] {
+            try? fm.createDirectory(at: dir, withIntermediateDirectories: true)
+        }
+    }
+
+    // MARK: - Reads (persona context for the LLM)
+
+    /// Compose the persona context: shared identity/rules/soul + this device's directives.
+    func personaContext() -> String {
+        let identity = readText(sharedDir.appendingPathComponent("IDENTITY.md"))
+        let rules = readText(sharedDir.appendingPathComponent("RULES.md"))
+        let soul = readText(sharedDir.appendingPathComponent("SOUL.md"))
+        let directives = readText(deviceDir.appendingPathComponent("directives.md"))
+        let lessons = recentLessons(limit: 10)
+
+        var parts: [String] = []
+        if !identity.isEmpty { parts.append("# Identity\n\(identity)") }
+        if !soul.isEmpty { parts.append("# Persona\n\(soul)") }
+        if !rules.isEmpty { parts.append("# Rules\n\(rules)") }
+        if !directives.isEmpty { parts.append("# Device Directives (\(device))\n\(directives)") }
+        if !lessons.isEmpty { parts.append("# Recent Lessons\n" + lessons.joined(separator: "\n")) }
+        return parts.joined(separator: "\n\n")
+    }
+
+    // MARK: - Writes (grow the brain)
+
+    /// Append a lesson learned to this device's lessons.jsonl.
+    func recordLesson(_ text: String) {
+        let entry: [String: Any] = ["lesson": text, "ts": ISO8601DateFormatter().string(from: Date())]
+        appendJSONL(entry, to: deviceDir.appendingPathComponent("lessons.jsonl"))
+        enforceQuota()
+    }
+
+    /// Append a conversation exchange to this device's conversations.jsonl.
+    func recordExchange(user: String, assistant: String) {
+        let entry: [String: Any] = [
+            "user": user, "assistant": assistant,
+            "ts": ISO8601DateFormatter().string(from: Date())
+        ]
+        appendJSONL(entry, to: deviceDir.appendingPathComponent("conversations.jsonl"))
+        enforceQuota()
+    }
+
+    private func recentLessons(limit: Int) -> [String] {
+        let url = deviceDir.appendingPathComponent("lessons.jsonl")
+        guard let content = try? String(contentsOf: url, encoding: .utf8) else { return [] }
+        let lines = content.split(separator: "\n").suffix(limit)
+        return lines.compactMap { line in
+            guard let data = line.data(using: .utf8),
+                  let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                  let lesson = obj["lesson"] as? String else { return nil }
+            return "- \(lesson)"
+        }
+    }
+
+    // MARK: - Quota
+
+    /// Trim oldest lines from conversations.jsonl (then lessons) until under quota.
+    private func enforceQuota() {
+        guard deviceFolderSize() > quotaBytes else { return }
+        let convo = deviceDir.appendingPathComponent("conversations.jsonl")
+        trimOldest(convo, keepFraction: 0.7)
+        if deviceFolderSize() > quotaBytes {
+            trimOldest(deviceDir.appendingPathComponent("lessons.jsonl"), keepFraction: 0.8)
+        }
+    }
+
+    private func deviceFolderSize() -> Int {
+        guard let files = try? fm.contentsOfDirectory(at: deviceDir, includingPropertiesForKeys: [.fileSizeKey]) else { return 0 }
+        return files.reduce(0) { acc, url in
+            acc + ((try? url.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0)
+        }
+    }
+
+    private func trimOldest(_ url: URL, keepFraction: Double) {
+        guard let content = try? String(contentsOf: url, encoding: .utf8) else { return }
+        let lines = content.split(separator: "\n", omittingEmptySubsequences: true)
+        let keep = max(1, Int(Double(lines.count) * keepFraction))
+        let trimmed = lines.suffix(keep).joined(separator: "\n") + "\n"
+        try? trimmed.write(to: url, atomically: true, encoding: .utf8)
+    }
+
+    // MARK: - Helpers
+
+    private func readText(_ url: URL) -> String {
+        (try? String(contentsOf: url, encoding: .utf8))?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+    }
+
+    private func appendJSONL(_ obj: [String: Any], to url: URL) {
+        guard let data = try? JSONSerialization.data(withJSONObject: obj),
+              let line = String(data: data, encoding: .utf8) else { return }
+        let entry = line + "\n"
+        if let handle = try? FileHandle(forWritingTo: url) {
+            handle.seekToEndOfFile()
+            if let d = entry.data(using: .utf8) { handle.write(d) }
+            try? handle.close()
+        } else {
+            try? entry.write(to: url, atomically: true, encoding: .utf8)
+        }
+    }
+}

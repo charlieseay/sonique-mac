@@ -334,9 +334,14 @@ class CommandServer: ObservableObject {
         // Conversational / agentic: claude --print WITH Bash tool access so it can ACT
         // (run date/cal/osascript/shortcuts) on novel requests, not just answer as text.
         // Subscription CLI, no API cost.
-        let context = await MemoryService.shared.getContextForLLM()
+        // Persona + lessons + directives come from the iCloud-backed brain (shared persona
+        // + this device's overlay); recent working memory from MemoryService.
+        let persona = SoniqueBrain.shared.personaContext()
+        let working = await MemoryService.shared.getContextForLLM()
         let userPrompt = """
-        \(context)
+        \(persona)
+
+        \(working)
 
         # Current Request
         \(text)
@@ -409,7 +414,10 @@ class CommandServer: ObservableObject {
 
         _ = exit
         endChunkedResponse(to: connection)
-        await MemoryService.shared.addExchange(user: text, assistant: fullText.trimmingCharacters(in: .whitespacesAndNewlines), intent: "conversation", actions: nil)
+        let finalText = fullText.trimmingCharacters(in: .whitespacesAndNewlines)
+        await MemoryService.shared.addExchange(user: text, assistant: finalText, intent: "conversation", actions: nil)
+        // Grow the iCloud brain (Desktop folder) — backed up + synced natively.
+        SoniqueBrain.shared.recordExchange(user: text, assistant: finalText)
     }
 
     /// Resolve the `claude` CLI path. Prefers `which`, falls back to known Homebrew location.
