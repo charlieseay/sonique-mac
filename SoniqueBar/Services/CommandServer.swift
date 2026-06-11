@@ -402,14 +402,23 @@ class CommandServer: ObservableObject {
             sendSentenceChunk(tail, index: index, to: connection)
         }
 
-        // Fallback if streaming produced nothing.
+        // If nothing was produced, speak a graceful message — never silence, never an error.
         if fullText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-            let fb = await InfrastructureExecutor.shell("ask_helmsman '\(escapedPrompt)'")
-            let fbText = fb.stdout.isEmpty ? "Sorry, I couldn't process that request." : fb.stdout
-            for (i, s) in segmentIntoSentences(fbText).enumerated() {
+            let message: String
+            if exit == -2 {
+                // Timed out (wedged tool call / permission prompt). Friendly, retryable.
+                message = "Sorry, that took too long. Please try again."
+            } else {
+                // Try the fallback brain once; if it too is empty, a friendly retry message.
+                let fb = await InfrastructureExecutor.shell("ask_helmsman '\(escapedPrompt)'")
+                message = fb.stdout.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                    ? "Sorry, I ran into an issue with that. Please try again."
+                    : fb.stdout
+            }
+            for (i, s) in segmentIntoSentences(message).enumerated() {
                 sendSentenceChunk(s, index: i, to: connection)
             }
-            fullText = fbText
+            fullText = message
         }
 
         _ = exit
