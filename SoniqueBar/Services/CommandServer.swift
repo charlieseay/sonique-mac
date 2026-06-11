@@ -434,6 +434,11 @@ class CommandServer: ObservableObject {
 
     /// Run a shell command, calling `onLine` for each stdout line AS IT ARRIVES.
     /// Returns the process exit code. Used to stream claude's stream-json output.
+    /// Max wall-clock for a single agentic call. If a tool call wedges (e.g. a macOS
+    /// permission prompt the background app can't surface, or a runaway loop), kill it so
+    /// SoniqueBar never freezes for minutes. A healthy reply finishes in 12–20s.
+    private let agenticTimeout: TimeInterval = 60
+
     private func runStreaming(_ command: String, onLine: @escaping (String) -> Void) async -> Int32 {
         await withCheckedContinuation { continuation in
             let process = Process()
@@ -443,13 +448,22 @@ class CommandServer: ObservableObject {
             process.standardOutput = outPipe
             process.standardError = Pipe()
 
+            // Resume the continuation exactly once (termination OR timeout).
+            let resumed = NSLock()
+            var didResume = false
+            func finish(_ code: Int32) {
+                resumed.lock(); defer { resumed.unlock() }
+                guard !didResume else { return }
+                didResume = true
+                continuation.resume(returning: code)
+            }
+
             let handle = outPipe.fileHandleForReading
             var buffer = Data()
             handle.readabilityHandler = { fh in
                 let data = fh.availableData
                 if data.isEmpty { return }
                 buffer.append(data)
-                // Emit complete lines (newline-delimited)
                 while let nl = buffer.firstIndex(of: 0x0A) {
                     let lineData = buffer.subdata(in: buffer.startIndex..<nl)
                     buffer.removeSubrange(buffer.startIndex...nl)
@@ -461,15 +475,26 @@ class CommandServer: ObservableObject {
 
             process.terminationHandler = { proc in
                 handle.readabilityHandler = nil
-                // flush any trailing partial line
                 if !buffer.isEmpty, let line = String(data: buffer, encoding: .utf8), !line.isEmpty {
                     onLine(line)
                 }
-                continuation.resume(returning: proc.terminationStatus)
+                finish(proc.terminationStatus)
+            }
+
+            // Watchdog: kill the process tree if it runs past the timeout.
+            DispatchQueue.global().asyncAfter(deadline: .now() + agenticTimeout) {
+                if process.isRunning {
+                    print("[CommandServer] agentic call exceeded \(self.agenticTimeout)s — terminating")
+                    process.terminate()
+                    DispatchQueue.global().asyncAfter(deadline: .now() + 2) {
+                        if process.isRunning { kill(process.processIdentifier, SIGKILL) }
+                    }
+                    finish(-2)   // -2 = timed out
+                }
             }
 
             do { try process.run() }
-            catch { continuation.resume(returning: -1) }
+            catch { finish(-1) }
         }
     }
 
