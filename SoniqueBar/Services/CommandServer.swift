@@ -85,7 +85,11 @@ class CommandServer: ObservableObject {
                 }
             }
 
-            if isComplete || error != nil {
+            // Do NOT cancel on isComplete — the client finishing its upload (isComplete=true)
+            // does not mean we're done. A long agentic call may still be running and will
+            // write the response + cancel the connection itself (sendResponse). Cancelling
+            // here resets the socket mid-request → client sees badResponse in ~40ms.
+            if error != nil {
                 connection.cancel()
             }
         }
