@@ -20,13 +20,20 @@ final class SoniqueBrain {
     private let device = "Desktop"
     private let fm = FileManager.default
 
-    /// iCloud Drive base. Nil if iCloud isn't available (we fall back to local app support).
+    /// Shared iCloud container base — the SAME container the iOS app uses, so both devices
+    /// read/write one brain. Container id: iCloud.com.seayniclabs.sonique.
+    /// On macOS this resolves to ~/Library/Mobile Documents/iCloud~com~seayniclabs~sonique/Documents.
+    private let containerID = "iCloud.com.seayniclabs.sonique"
     private var iCloudBase: URL? {
-        // ubiquityIdentityToken is non-nil when the user is signed into iCloud.
+        if let container = fm.url(forUbiquityContainerIdentifier: containerID) {
+            return container.appendingPathComponent("Documents/SoniqueProfiles")
+        }
+        // Fallback: construct the known container path directly (the container folder
+        // exists once the app is provisioned with the iCloud entitlement).
         guard fm.ubiquityIdentityToken != nil else { return nil }
-        let docs = fm.homeDirectoryForCurrentUser
-            .appendingPathComponent("Library/Mobile Documents/com~apple~CloudDocs")
-        return docs.appendingPathComponent("SoniqueProfiles")
+        let path = fm.homeDirectoryForCurrentUser
+            .appendingPathComponent("Library/Mobile Documents/iCloud~com~seayniclabs~sonique/Documents/SoniqueProfiles")
+        return path
     }
 
     private var localFallback: URL {
