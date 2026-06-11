@@ -24,29 +24,32 @@ final class SoniqueBrain {
     /// read/write one brain. Container id: iCloud.com.seayniclabs.sonique.
     /// On macOS this resolves to ~/Library/Mobile Documents/iCloud~com~seayniclabs~sonique/Documents.
     private let containerID = "iCloud.com.seayniclabs.sonique"
-    private var iCloudBase: URL? {
-        if let container = fm.url(forUbiquityContainerIdentifier: containerID) {
-            return container.appendingPathComponent("Documents/SoniqueProfiles")
-        }
-        // Fallback: construct the known container path directly (the container folder
-        // exists once the app is provisioned with the iCloud entitlement).
-        guard fm.ubiquityIdentityToken != nil else { return nil }
-        let path = fm.homeDirectoryForCurrentUser
-            .appendingPathComponent("Library/Mobile Documents/iCloud~com~seayniclabs~sonique/Documents/SoniqueProfiles")
-        return path
-    }
 
+    // Resolved once, OFF the main thread (Apple: url(forUbiquityContainerIdentifier:) is
+    // potentially slow/blocking). Cached for all subsequent access.
+    private var cachedBase: URL?
     private var localFallback: URL {
         fm.homeDirectoryForCurrentUser
             .appendingPathComponent("Library/Application Support/SoniqueBar/SoniqueProfiles")
     }
 
-    private var base: URL { iCloudBase ?? localFallback }
+    private var base: URL { cachedBase ?? localFallback }
     private var sharedDir: URL { base.appendingPathComponent("shared") }
     private var deviceDir: URL { base.appendingPathComponent(device) }
 
     private init() {
-        ensureStructure()
+        // Resolve the ubiquity container off-main, then ensure the folder structure.
+        let id = containerID
+        let fmRef = fm
+        Task.detached(priority: .utility) {
+            let resolved = fmRef.url(forUbiquityContainerIdentifier: id)?
+                .appendingPathComponent("Documents/SoniqueProfiles")
+            await MainActor.run {
+                self.cachedBase = resolved
+                self.ensureStructure()
+            }
+        }
+        ensureStructure()  // ensure local fallback exists immediately
     }
 
     private func ensureStructure() {
@@ -135,19 +138,33 @@ final class SoniqueBrain {
     // MARK: - Helpers
 
     private func readText(_ url: URL) -> String {
-        (try? String(contentsOf: url, encoding: .utf8))?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        // Files authored on another device may not be downloaded yet — trigger it, then
+        // read via a coordinated read so we get a consistent snapshot.
+        if (try? url.checkResourceIsReachable()) != true {
+            try? fm.startDownloadingUbiquitousItem(at: url)
+        }
+        var result = ""
+        var coordError: NSError?
+        NSFileCoordinator().coordinate(readingItemAt: url, options: [], error: &coordError) { readURL in
+            result = (try? String(contentsOf: readURL, encoding: .utf8)) ?? ""
+        }
+        return result.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
+    /// Coordinated append — prevents corruption if both devices touch the same file.
     private func appendJSONL(_ obj: [String: Any], to url: URL) {
         guard let data = try? JSONSerialization.data(withJSONObject: obj),
               let line = String(data: data, encoding: .utf8) else { return }
         let entry = line + "\n"
-        if let handle = try? FileHandle(forWritingTo: url) {
-            handle.seekToEndOfFile()
-            if let d = entry.data(using: .utf8) { handle.write(d) }
-            try? handle.close()
-        } else {
-            try? entry.write(to: url, atomically: true, encoding: .utf8)
+        var coordError: NSError?
+        NSFileCoordinator().coordinate(writingItemAt: url, options: [], error: &coordError) { writeURL in
+            if let handle = try? FileHandle(forWritingTo: writeURL) {
+                handle.seekToEndOfFile()
+                if let d = entry.data(using: .utf8) { handle.write(d) }
+                try? handle.close()
+            } else {
+                try? entry.write(to: writeURL, atomically: true, encoding: .utf8)
+            }
         }
     }
 }
