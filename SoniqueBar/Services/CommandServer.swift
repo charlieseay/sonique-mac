@@ -128,6 +128,8 @@ class CommandServer: ObservableObject {
             await handleCommand(data, connection)
         } else if method == "POST" && path == "/command/stream" {
             await handleCommandStream(data, connection)
+        } else if method == "GET" && path.hasPrefix("/artifact/") {
+            await handleArtifact(path, connection)
         } else {
             sendResponse("HTTP/1.1 404 Not Found\r\n\r\n", to: connection)
         }
@@ -141,6 +143,24 @@ class CommandServer: ObservableObject {
         {"status":"ok","port":\(port)}
         """
         sendResponse(response, to: connection)
+    }
+
+    /// Serve an ephemeral artifact image: GET /artifact/<filename>.png
+    private func handleArtifact(_ path: String, _ connection: NWConnection) async {
+        // Sanitize: only a bare filename from the artifacts dir, no traversal.
+        let name = (path as NSString).lastPathComponent
+        guard !name.contains(".."), !name.isEmpty else {
+            sendResponse("HTTP/1.1 400 Bad Request\r\n\r\n", to: connection); return
+        }
+        let filePath = "\(Self.artifactDir)/\(name)"
+        guard let data = FileManager.default.contents(atPath: filePath) else {
+            sendResponse("HTTP/1.1 404 Not Found\r\n\r\n", to: connection); return
+        }
+        let mime = name.lowercased().hasSuffix(".jpg") || name.lowercased().hasSuffix(".jpeg") ? "image/jpeg" : "image/png"
+        let header = "HTTP/1.1 200 OK\r\nContent-Type: \(mime)\r\nContent-Length: \(data.count)\r\nCache-Control: no-cache\r\nConnection: close\r\n\r\n"
+        var out = Data(header.utf8)
+        out.append(data)
+        connection.send(content: out, completion: .contentProcessed { _ in connection.cancel() })
     }
 
     private func handleConfig(_ connection: NWConnection) async {
@@ -356,6 +376,18 @@ class CommandServer: ObservableObject {
         run the command. Respond in 1–2 short spoken sentences, no markdown, no lists. \
         Do not infer the user's emotional state unless they say so; treat brief or stray \
         input as a literal question.
+
+        SHOWING IMAGES: When the user wants to SEE something on screen (screenshot, "show me", \
+        "what's on my screen"), capture it and SAVE THE PNG to the directory \
+        /tmp/sonique-artifacts/ — it will automatically appear on their device, so you do NOT \
+        need to describe it in detail; a short confirmation is enough. Choose the right scope: \
+        • Whole screen ("the screen", "my Mac"): screencapture -x /tmp/sonique-artifacts/shot.png \
+        • A specific window/app ("Safari", "VSCode"): find the window id with \
+        `osascript -e 'tell application "System Events" to tell process "APP" to get {position, size} of window 1'` \
+        then screencapture -x -R<x,y,w,h> /tmp/sonique-artifacts/shot.png (or capture the whole \
+        screen and crop). • A region of a window ("the address bar", "the favicon"): compute the \
+        sub-rectangle and use screencapture -R<x,y,w,h>. Always create the directory first: \
+        mkdir -p /tmp/sonique-artifacts. Use a unique filename each time.
         """
         let escapedSystem = system.replacingOccurrences(of: "'", with: "'\\''")
 
@@ -368,6 +400,9 @@ class CommandServer: ObservableObject {
             + "--allowedTools 'Bash' --permission-mode acceptEdits "
             + "--append-system-prompt '\(escapedSystem)' "
             + "'\(escapedPrompt)' 2>/dev/null"
+
+        // Note artifacts present before the call, so we can detect any NEW image the LLM creates.
+        let artifactsBefore = Self.currentArtifacts()
 
         // Open a chunked HTTP response and emit each sentence as it completes.
         startChunkedResponse(to: connection)
@@ -422,11 +457,67 @@ class CommandServer: ObservableObject {
         }
 
         _ = exit
+
+        // Detect a NEW image artifact the LLM created during this call, and tell the app
+        // to display it (ephemeral, Snapchat-style). Emit BEFORE closing the response.
+        let artifactsAfter = Self.currentArtifacts()
+        if let newest = artifactsAfter.subtracting(artifactsBefore)
+            .sorted(by: { Self.modTime($0) > Self.modTime($1) }).first,
+           let servedID = Self.publishArtifact(newest) {
+            if let data = try? JSONSerialization.data(withJSONObject: [
+                "artifact": ["type": "image", "id": servedID]
+            ]), let line = String(data: data, encoding: .utf8) {
+                sendChunk(line, to: connection)
+            }
+        }
+
         endChunkedResponse(to: connection)
         let finalText = fullText.trimmingCharacters(in: .whitespacesAndNewlines)
         await MemoryService.shared.addExchange(user: text, assistant: finalText, intent: "conversation", actions: nil)
         // Grow the iCloud brain (Desktop folder) — backed up + synced natively.
         SoniqueBrain.shared.recordExchange(user: text, assistant: finalText)
+    }
+
+    // MARK: - Artifacts (ephemeral screenshots shown on the device)
+
+    static let artifactDir = "/tmp/sonique-artifacts"
+
+    /// Image artifacts the LLM may have created. We watch the dedicated artifacts dir AND
+    /// /tmp for the LLM's habitual `sonique-screenshot-*.png` naming, so detection is robust
+    /// regardless of which path it chose.
+    static func currentArtifacts() -> Set<String> {
+        let fm = FileManager.default
+        var paths = Set<String>()
+        func isImage(_ n: String) -> Bool {
+            let l = n.lowercased(); return l.hasSuffix(".png") || l.hasSuffix(".jpg") || l.hasSuffix(".jpeg")
+        }
+        if let files = try? fm.contentsOfDirectory(atPath: artifactDir) {
+            for f in files where isImage(f) { paths.insert("\(artifactDir)/\(f)") }
+        }
+        if let tmp = try? fm.contentsOfDirectory(atPath: "/tmp") {
+            for f in tmp where isImage(f) && (f.contains("sonique") || f.contains("screenshot")) {
+                paths.insert("/tmp/\(f)")
+            }
+        }
+        return paths
+    }
+
+    static func modTime(_ path: String) -> TimeInterval {
+        (try? FileManager.default.attributesOfItem(atPath: path)[.modificationDate] as? Date)??.timeIntervalSince1970 ?? 0
+    }
+
+    /// Copy a detected artifact into the served dir under a clean id; return that id (the
+    /// filename the app fetches at /artifact/<id>). Nil on failure.
+    static func publishArtifact(_ sourcePath: String) -> String? {
+        let fm = FileManager.default
+        try? fm.createDirectory(atPath: artifactDir, withIntermediateDirectories: true)
+        let ext = (sourcePath as NSString).pathExtension.isEmpty ? "png" : (sourcePath as NSString).pathExtension
+        let id = "art-\(Int(Date().timeIntervalSince1970)).\(ext)"
+        let dest = "\(artifactDir)/\(id)"
+        if sourcePath == dest { return id }
+        try? fm.removeItem(atPath: dest)
+        do { try fm.copyItem(atPath: sourcePath, toPath: dest); return id }
+        catch { return nil }
     }
 
     /// Resolve the `claude` CLI path. Prefers `which`, falls back to known Homebrew location.

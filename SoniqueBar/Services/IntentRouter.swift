@@ -110,10 +110,10 @@ struct IntentRouter {
             }
         }
 
-        // Screenshot
-        if lower.contains("screenshot") || lower.contains("screen shot") {
-            return .infrastructure(command: .screenshot(region: .fullScreen))
-        }
+        // Screenshots intentionally fall through to the agentic/conversational path so it
+        // can do SCOPE-AWARE capture (full screen / specific window / region) AND so the
+        // artifact-detection in CommandServer can show the image on the device. The old
+        // infrastructure .screenshot(fullScreen) path only did full-screen + didn't display.
 
         // Default: conversational
         return .conversation(text: text)
