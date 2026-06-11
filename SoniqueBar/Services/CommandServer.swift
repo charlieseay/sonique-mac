@@ -287,13 +287,11 @@ class CommandServer: ObservableObject {
     }
 
     private func handleCommandStream(_ data: Data, _ connection: NWConnection) async {
-        // Extract JSON body from POST request (same as handleCommand)
         guard let requestString = String(data: data, encoding: .utf8) else {
             sendResponse("HTTP/1.1 400 Bad Request\r\n\r\n", to: connection)
             return
         }
 
-        // Find the JSON body (after the headers)
         let components = requestString.components(separatedBy: "\r\n\r\n")
         guard components.count >= 2,
               let bodyData = components[1].data(using: .utf8),
@@ -308,96 +306,93 @@ class CommandServer: ObservableObject {
             self.requestCount += 1
         }
 
-        print("[CommandServer] Received streaming command: \(text)")
+        print("[CommandServer] Streaming command: \(text)")
 
-        // Execute command and stream response as NDJSON
-        let responseText = await executeCommand(text)
-
-        // Segment response into sentence-like chunks
-        let chunks = segmentIntoChunks(responseText)
-
-        // Build the full response body (all NDJSON lines)
-        // Using simple NDJSON format without HTTP chunked encoding for compatibility
-        var responseBody = ""
-        for (index, chunk) in chunks.enumerated() {
-            // Emit one NDJSON object per chunk
-            let jsonObject: [String: Any] = [
-                "chunk": chunk,
-                "index": index,
-                "is_final": (index == chunks.count - 1)
-            ]
-
-            if let jsonData = try? JSONSerialization.data(withJSONObject: jsonObject),
-               let jsonString = String(data: jsonData, encoding: .utf8) {
-                responseBody += jsonString + "\n"
-            }
+        // Try infrastructure routing first (non-conversational commands don't need streaming)
+        let intent = IntentRouter.classify(text)
+        if case .conversation = intent {} else {
+            let responseText = await executeCommand(text)
+            let body = buildNDJSONBody(segmentIntoSentences(responseText))
+            sendNDJSONResponse(body, to: connection)
+            await MemoryService.shared.addExchange(user: text, assistant: responseText, intent: "infrastructure", actions: nil)
+            return
         }
 
-        // Add final done marker
-        responseBody += "{\"done\":true}\n"
+        // Conversational: stream via `claude -p` (subscription CLI, no API cost)
+        let context = await MemoryService.shared.getContextForLLM()
+        let fullPrompt = """
+        \(context)
 
-        // Send HTTP response with Content-Length
-        guard let responseBodyData = responseBody.data(using: .utf8) else { return }
+        # Current Request
+        \(text)
 
-        let response = """
-        HTTP/1.1 200 OK\r
-        Content-Type: application/x-ndjson\r
-        Content-Length: \(responseBodyData.count)\r
-        Cache-Control: no-cache\r
-        Connection: close\r
-        \r
-        """ + responseBody
+        Respond directly and concisely in 1–3 sentences. Do not use markdown.
+        """
+        let escaped = fullPrompt.replacingOccurrences(of: "'", with: "'\\''")
 
-        sendResponse(response, to: connection)
+        // claude --print streams tokens to stdout line-by-line
+        let homeDir = FileManager.default.homeDirectoryForCurrentUser.path
+        let claudePath = "\(homeDir)/.local/bin/claude"
+        let claudeCmd = "'\(claudePath)' --print '\(escaped)' 2>/dev/null"
+        let fallbackCmd = "ask_helmsman '\(escaped)'"
 
-        // Log to memory
-        await MemoryService.shared.addExchange(
-            user: text,
-            assistant: responseText,
-            intent: "conversation",
-            actions: nil
-        )
+        // Run streaming in a Process, collect stdout as it arrives, segment into sentences
+        let streamedText = await streamShellCommand(claudeCmd, fallback: fallbackCmd)
+
+        let body = buildNDJSONBody(segmentIntoSentences(streamedText))
+        sendNDJSONResponse(body, to: connection)
+        await MemoryService.shared.addExchange(user: text, assistant: streamedText, intent: "conversation", actions: nil)
     }
 
-    /// Segment response into sentence-like chunks.
-    /// FUTURE: Replace with true token-streaming from Claude API.
-    /// TODO: When Bedrock/ask_helmsman supports streaming, wire individual tokens here instead of sentence segmentation.
-    private func segmentIntoChunks(_ text: String) -> [String] {
-        // Split on sentence boundaries: . ? ! followed by space or end
-        let sentencePattern = try? NSRegularExpression(pattern: "([.!?…]|\\n)\\s+", options: [])
+    /// Run a shell command and return its full stdout.
+    /// Tries primaryCmd first; falls back to fallbackCmd on non-zero exit or empty output.
+    private func streamShellCommand(_ primaryCmd: String, fallback: String) async -> String {
+        let result = await InfrastructureExecutor.shell(primaryCmd)
+        if result.exitCode == 0 && !result.stdout.isEmpty {
+            return result.stdout
+        }
+        let fallbackResult = await InfrastructureExecutor.shell(fallback)
+        return fallbackResult.exitCode == 0 && !fallbackResult.stdout.isEmpty
+            ? fallbackResult.stdout
+            : "Sorry, I couldn't process that request."
+    }
 
+    private func segmentIntoSentences(_ text: String) -> [String] {
         var chunks: [String] = []
-        var currentChunk = ""
-        let cleanText = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        var current = ""
+        let clean = text.trimmingCharacters(in: .whitespacesAndNewlines)
 
-        let lines = cleanText.components(separatedBy: .newlines)
-        for line in lines {
-            if line.isEmpty { continue }
-
-            // Split each line by sentence boundaries
-            let words = line.components(separatedBy: " ")
-            for word in words {
-                currentChunk += (currentChunk.isEmpty ? "" : " ") + word
-
-                // Check if this word ends a sentence
-                if word.last.map({ "..!?".contains($0) }) ?? false {
-                    chunks.append(currentChunk)
-                    currentChunk = ""
-                }
+        for word in clean.components(separatedBy: " ") {
+            if word.isEmpty { continue }
+            current += (current.isEmpty ? "" : " ") + word
+            if let last = word.last, ".!?…".contains(last) {
+                chunks.append(current)
+                current = ""
             }
         }
-
-        // Append remaining text as final chunk
-        if !currentChunk.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-            chunks.append(currentChunk)
+        if !current.trimmingCharacters(in: .whitespaces).isEmpty {
+            chunks.append(current)
         }
+        return chunks.isEmpty ? [clean] : chunks
+    }
 
-        // If no chunks found (no punctuation), emit the whole thing as one chunk
-        if chunks.isEmpty {
-            chunks = [cleanText]
+    private func buildNDJSONBody(_ chunks: [String]) -> String {
+        var body = ""
+        for (i, chunk) in chunks.enumerated() {
+            if let data = try? JSONSerialization.data(withJSONObject: [
+                "chunk": chunk, "index": i, "is_final": (i == chunks.count - 1)
+            ]), let line = String(data: data, encoding: .utf8) {
+                body += line + "\n"
+            }
         }
+        body += "{\"done\":true}\n"
+        return body
+    }
 
-        return chunks
+    private func sendNDJSONResponse(_ body: String, to connection: NWConnection) {
+        guard let bodyData = body.data(using: .utf8) else { return }
+        let response = "HTTP/1.1 200 OK\r\nContent-Type: application/x-ndjson\r\nContent-Length: \(bodyData.count)\r\nCache-Control: no-cache\r\nConnection: close\r\n\r\n" + body
+        sendResponse(response, to: connection)
     }
 
     private func sendResponse(_ response: String, to connection: NWConnection) {
