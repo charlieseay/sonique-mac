@@ -308,7 +308,16 @@ class CommandServer: ObservableObject {
 
         print("[CommandServer] Streaming command: \(text)")
 
-        // Try infrastructure routing first (non-conversational commands don't need streaming)
+        // Native-first: handle common local facts/actions instantly (time, date, open
+        // app, volume) with macOS native tools — no LLM, deterministic and free.
+        if let native = await NativeIntents.handle(text) {
+            let body = buildNDJSONBody(segmentIntoSentences(native))
+            sendNDJSONResponse(body, to: connection)
+            await MemoryService.shared.addExchange(user: text, assistant: native, intent: "native", actions: nil)
+            return
+        }
+
+        // Infrastructure routing (non-conversational commands don't need streaming)
         let intent = IntentRouter.classify(text)
         if case .conversation = intent {} else {
             let responseText = await executeCommand(text)
@@ -334,9 +343,9 @@ class CommandServer: ObservableObject {
         """
         let escaped = fullPrompt.replacingOccurrences(of: "'", with: "'\\''")
 
-        // claude --print streams tokens to stdout line-by-line
-        let homeDir = FileManager.default.homeDirectoryForCurrentUser.path
-        let claudePath = "\(homeDir)/.local/bin/claude"
+        // claude --print streams tokens to stdout. Resolve the binary dynamically —
+        // it lives at /opt/homebrew/bin/claude (Homebrew cask), not ~/.local/bin.
+        let claudePath = await resolveClaudePath()
         let claudeCmd = "'\(claudePath)' --print '\(escaped)' 2>/dev/null"
         let fallbackCmd = "ask_helmsman '\(escaped)'"
 
@@ -346,6 +355,18 @@ class CommandServer: ObservableObject {
         let body = buildNDJSONBody(segmentIntoSentences(streamedText))
         sendNDJSONResponse(body, to: connection)
         await MemoryService.shared.addExchange(user: text, assistant: streamedText, intent: "conversation", actions: nil)
+    }
+
+    /// Resolve the `claude` CLI path. Prefers `which`, falls back to known Homebrew location.
+    private func resolveClaudePath() async -> String {
+        let result = await InfrastructureExecutor.shell("which claude 2>/dev/null")
+        let path = result.stdout.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !path.isEmpty && FileManager.default.fileExists(atPath: path) { return path }
+        // Known Homebrew cask location.
+        if FileManager.default.fileExists(atPath: "/opt/homebrew/bin/claude") {
+            return "/opt/homebrew/bin/claude"
+        }
+        return "claude"  // last resort — rely on PATH
     }
 
     /// Run a shell command and return its full stdout.
