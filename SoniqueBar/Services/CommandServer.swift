@@ -327,29 +327,38 @@ class CommandServer: ObservableObject {
             return
         }
 
-        // Conversational: stream via `claude -p` (subscription CLI, no API cost)
+        // Conversational / agentic: claude --print WITH Bash tool access so it can ACT
+        // (run date/cal/osascript/shortcuts) on novel requests, not just answer as text.
+        // Subscription CLI, no API cost.
         let context = await MemoryService.shared.getContextForLLM()
-        let fullPrompt = """
+        let userPrompt = """
         \(context)
 
         # Current Request
         \(text)
-
-        Respond directly and concisely in 1–3 sentences. Do not use markdown.
-        Do NOT infer the user's emotional state or ask if they are sad/upset unless they
-        explicitly say so. If the request is ambiguous, brief, or looks like a stray sound
-        (e.g. "(sighs)", "hmm", a single word), just answer the literal question or ask a
-        neutral clarifying question — never assume distress.
         """
-        let escaped = fullPrompt.replacingOccurrences(of: "'", with: "'\\''")
+        let escapedPrompt = userPrompt.replacingOccurrences(of: "'", with: "'\\''")
 
-        // claude --print streams tokens to stdout. Resolve the binary dynamically —
-        // it lives at /opt/homebrew/bin/claude (Homebrew cask), not ~/.local/bin.
+        let system = """
+        You are Sonique, a voice assistant running on Charlie's Mac with shell access. \
+        USE the Bash tool to act on factual or action requests — date/cal for time math, \
+        osascript for device control (volume, apps, system), shortcuts for automations, \
+        system commands for status. Never say you "can't" do something the Mac can do; \
+        run the command. Respond in 1–2 short spoken sentences, no markdown, no lists. \
+        Do not infer the user's emotional state unless they say so; treat brief or stray \
+        input as a literal question.
+        """
+        let escapedSystem = system.replacingOccurrences(of: "'", with: "'\\''")
+
+        // Resolve the binary dynamically — /opt/homebrew/bin/claude (Homebrew cask).
         let claudePath = await resolveClaudePath()
-        let claudeCmd = "'\(claudePath)' --print '\(escaped)' 2>/dev/null"
-        let fallbackCmd = "ask_helmsman '\(escaped)'"
+        let claudeCmd = "cd /tmp && '\(claudePath)' --print "
+            + "--allowedTools 'Bash' --permission-mode acceptEdits "
+            + "--append-system-prompt '\(escapedSystem)' "
+            + "'\(escapedPrompt)' 2>/dev/null"
+        let fallbackCmd = "ask_helmsman '\(escapedPrompt)'"
 
-        // Run streaming in a Process, collect stdout as it arrives, segment into sentences
+        // Run, collect stdout, segment into sentences
         let streamedText = await streamShellCommand(claudeCmd, fallback: fallbackCmd)
 
         let body = buildNDJSONBody(segmentIntoSentences(streamedText))
