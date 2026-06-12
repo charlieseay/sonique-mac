@@ -351,14 +351,32 @@ class CommandServer: ObservableObject {
             return
         }
 
-        // Conversational / agentic: claude --print WITH Bash tool access so it can ACT
-        // (run date/cal/osascript/shortcuts) on novel requests, not just answer as text.
-        // Subscription CLI, no API cost.
+        // Conversational / agentic: Bedrock Haiku PRIMARY, Claude CLI Haiku FALLBACK
+        // PRIMARY: ask_claude_bedrock --lane haiku (metered, $1/$5 per MTok, faster)
+        // FALLBACK: claude CLI --model haiku (subscription, flat-rate safety net)
         // Persona + lessons + directives come from the iCloud-backed brain (shared persona
         // + this device's overlay); recent working memory from MemoryService.
         let persona = SoniqueBrain.shared.personaContext()
         let working = await MemoryService.shared.getContextForLLM()
-        let userPrompt = """
+
+        let systemInstructions = """
+        You are Sonique, a voice assistant. Your persistent identity, rules, and capabilities \
+        are in your brain (provided above in the persona context). Follow them.
+
+        Key reminders:
+        - USE the Bash tool to act — never say you "can't" do what the Mac can do
+        - Respond in 1–2 short spoken sentences (you're being heard, not read)
+        - Check your CAPABILITIES.md before claiming you can't do something
+        - Verify memory/resources exist before claiming they don't
+
+        When Charlie wants to SEE something (screenshot, "show me"), save the PNG to \
+        /tmp/sonique-artifacts/ — it auto-displays on his iPad. See CAPABILITIES.md for details.
+        """
+
+        // Combine system + persona + working memory + request into one prompt for Bedrock
+        let fullPrompt = """
+        \(systemInstructions)
+
         \(persona)
 
         \(working)
@@ -366,97 +384,71 @@ class CommandServer: ObservableObject {
         # Current Request
         \(text)
         """
-        let escapedPrompt = userPrompt.replacingOccurrences(of: "'", with: "'\\''")
-
-        let system = """
-        You are Sonique, a voice assistant running on Charlie's Mac with shell access. \
-        USE the Bash tool to act on factual or action requests — date/cal for time math, \
-        osascript for device control (volume, apps, system), shortcuts for automations, \
-        system commands for status. Never say you "can't" do something the Mac can do; \
-        run the command. Respond in 1–2 short spoken sentences, no markdown, no lists. \
-        Do not infer the user's emotional state unless they say so; treat brief or stray \
-        input as a literal question.
-
-        SHOWING IMAGES: When the user wants to SEE something on screen (screenshot, "show me", \
-        "what's on my screen"), capture it and SAVE THE PNG to the directory \
-        /tmp/sonique-artifacts/ — it will automatically appear on their device, so you do NOT \
-        need to describe it in detail; a short confirmation is enough. Choose the right scope: \
-        • Whole screen ("the screen", "my Mac"): screencapture -x /tmp/sonique-artifacts/shot.png \
-        • A specific window/app ("Safari", "VSCode"): find the window id with \
-        `osascript -e 'tell application "System Events" to tell process "APP" to get {position, size} of window 1'` \
-        then screencapture -x -R<x,y,w,h> /tmp/sonique-artifacts/shot.png (or capture the whole \
-        screen and crop). • A region of a window ("the address bar", "the favicon"): compute the \
-        sub-rectangle and use screencapture -R<x,y,w,h>. Always create the directory first: \
-        mkdir -p /tmp/sonique-artifacts. Use a unique filename each time.
-        """
-        let escapedSystem = system.replacingOccurrences(of: "'", with: "'\\''")
-
-        // Resolve the binary dynamically — /opt/homebrew/bin/claude (Homebrew cask).
-        let claudePath = await resolveClaudePath()
-        // stream-json + partial messages = token-level streaming, so we can speak the
-        // first sentence as soon as it's formed instead of waiting for the full reply.
-        let claudeCmd = "cd /tmp && '\(claudePath)' --print "
-            + "--output-format stream-json --include-partial-messages --verbose "
-            + "--allowedTools 'Bash' --permission-mode acceptEdits "
-            + "--append-system-prompt '\(escapedSystem)' "
-            + "'\(escapedPrompt)' 2>/dev/null"
+        let escapedPrompt = fullPrompt.replacingOccurrences(of: "'", with: "'\\''")
+        let escapedSystem = systemInstructions.replacingOccurrences(of: "'", with: "'\\''")
 
         // Note artifacts present before the call, so we can detect any NEW image the LLM creates.
         let artifactsBefore = Self.currentArtifacts()
 
-        // Open a chunked HTTP response and emit each sentence as it completes.
+        // PRIMARY: Try Bedrock Haiku first (metered, but cheaper and faster than subscription)
+        // Use temp file to avoid shell escaping issues with large prompts
+        let promptFile = "/tmp/sonique-prompt-\(UUID().uuidString).txt"
+        try? fullPrompt.write(toFile: promptFile, atomically: true, encoding: .utf8)
+
+        let bedrockCmd = "timeout 30 bash -c 'source /Volumes/data/secrets/aws_bedrock.env 2>/dev/null; ask_claude_bedrock --lane haiku \"$(cat \"\(promptFile)\")\" && rm \"\(promptFile)\"'"
+        print("[CommandServer] Calling Bedrock Haiku...")
+        let bedrockResult = await InfrastructureExecutor.shell(bedrockCmd)
+        var responseText = bedrockResult.stdout.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        // Debug: log failures
+        if bedrockResult.exitCode != 0 {
+            print("[CommandServer] Bedrock failed: exit=\(bedrockResult.exitCode), stderr=\(bedrockResult.stderr.prefix(200))")
+        } else {
+            print("[CommandServer] Bedrock succeeded: \(responseText.prefix(100))")
+        }
+        try? FileManager.default.removeItem(atPath: promptFile)  // cleanup if command failed
+
+        // FALLBACK: If Bedrock failed or returned empty, fall back to Claude CLI Haiku (subscription)
+        // With 45-second timeout (allows for tool use)
+        if bedrockResult.exitCode != 0 || responseText.isEmpty {
+            print("[CommandServer] Bedrock Haiku failed (exit \(bedrockResult.exitCode)), falling back to subscription Claude CLI Haiku")
+            let claudePath = await resolveClaudePath()
+            let userPrompt = """
+            \(persona)
+
+            \(working)
+
+            # Current Request
+            \(text)
+            """
+
+            // Use temp files to avoid shell escaping hell
+            let userPromptFile = "/tmp/sonique-user-\(UUID().uuidString).txt"
+            let systemPromptFile = "/tmp/sonique-sys-\(UUID().uuidString).txt"
+            try? userPrompt.write(toFile: userPromptFile, atomically: true, encoding: .utf8)
+            try? systemInstructions.write(toFile: systemPromptFile, atomically: true, encoding: .utf8)
+
+            let claudeCmd = "timeout 45 bash -c 'cd /tmp && \"\(claudePath)\" --print --model haiku --allowedTools \"Bash\" --permission-mode acceptEdits --append-system-prompt \"$(cat \"\(systemPromptFile)\")\" \"$(cat \"\(userPromptFile)\")\" 2>/dev/null && rm \"\(userPromptFile)\" \"\(systemPromptFile)\"'"
+
+            let claudeResult = await InfrastructureExecutor.shell(claudeCmd)
+            responseText = claudeResult.stdout.trimmingCharacters(in: .whitespacesAndNewlines)
+
+            // Cleanup temp files
+            try? FileManager.default.removeItem(atPath: userPromptFile)
+            try? FileManager.default.removeItem(atPath: systemPromptFile)
+
+            // If both failed or timed out, graceful error
+            if responseText.isEmpty {
+                let msg = claudeResult.exitCode == 124 ? "Sorry, that took too long." : "Sorry, I ran into an issue with that."
+                responseText = "\(msg) Please try again."
+            }
+        }
+
+        // Stream the response sentence-by-sentence
         startChunkedResponse(to: connection)
-
-        var sentenceBuf = ""
-        var fullText = ""
-        var index = 0
-        let terminators = CharacterSet(charactersIn: ".!?…")
-
-        let exit = await runStreaming(claudeCmd) { [weak self] line in
-            guard let self, let token = self.extractTextDelta(line) else { return }
-            sentenceBuf += token
-            fullText += token
-            // Flush complete sentences as they form.
-            while let r = sentenceBuf.rangeOfCharacter(from: terminators) {
-                let after = sentenceBuf.index(after: r.lowerBound)
-                // sentence boundary = terminator followed by space/end
-                if after == sentenceBuf.endIndex || sentenceBuf[after] == " " {
-                    let sentence = String(sentenceBuf[...r.lowerBound]).trimmingCharacters(in: .whitespacesAndNewlines)
-                    sentenceBuf = String(sentenceBuf[after...]).trimmingCharacters(in: .init(charactersIn: " "))
-                    if !sentence.isEmpty {
-                        Task { @MainActor in self.sendSentenceChunk(sentence, index: index, to: connection) }
-                        index += 1
-                    }
-                } else { break }
-            }
+        for (i, sentence) in segmentIntoSentences(responseText).enumerated() {
+            sendSentenceChunk(sentence, index: i, to: connection)
         }
-
-        // Flush trailing partial sentence.
-        let tail = sentenceBuf.trimmingCharacters(in: .whitespacesAndNewlines)
-        if !tail.isEmpty {
-            sendSentenceChunk(tail, index: index, to: connection)
-        }
-
-        // If nothing was produced, speak a graceful message — never silence, never an error.
-        if fullText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-            let message: String
-            if exit == -2 {
-                // Timed out (wedged tool call / permission prompt). Friendly, retryable.
-                message = "Sorry, that took too long. Please try again."
-            } else {
-                // Try the fallback brain once; if it too is empty, a friendly retry message.
-                let fb = await InfrastructureExecutor.shell("ask_helmsman '\(escapedPrompt)'")
-                message = fb.stdout.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-                    ? "Sorry, I ran into an issue with that. Please try again."
-                    : fb.stdout
-            }
-            for (i, s) in segmentIntoSentences(message).enumerated() {
-                sendSentenceChunk(s, index: i, to: connection)
-            }
-            fullText = message
-        }
-
-        _ = exit
 
         // Detect a NEW image artifact the LLM created during this call, and tell the app
         // to display it (ephemeral, Snapchat-style). Emit BEFORE closing the response.
@@ -472,10 +464,9 @@ class CommandServer: ObservableObject {
         }
 
         endChunkedResponse(to: connection)
-        let finalText = fullText.trimmingCharacters(in: .whitespacesAndNewlines)
-        await MemoryService.shared.addExchange(user: text, assistant: finalText, intent: "conversation", actions: nil)
+        await MemoryService.shared.addExchange(user: text, assistant: responseText, intent: "conversation", actions: nil)
         // Grow the iCloud brain (Desktop folder) — backed up + synced natively.
-        SoniqueBrain.shared.recordExchange(user: text, assistant: finalText)
+        SoniqueBrain.shared.recordExchange(user: text, assistant: responseText)
     }
 
     // MARK: - Artifacts (ephemeral screenshots shown on the device)

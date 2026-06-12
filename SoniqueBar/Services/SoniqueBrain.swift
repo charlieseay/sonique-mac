@@ -60,11 +60,13 @@ final class SoniqueBrain {
 
     // MARK: - Reads (persona context for the LLM)
 
-    /// Compose the persona context: shared identity/rules/soul + this device's directives.
+    /// Compose the persona context: shared identity/rules/soul/capabilities/routing + this device's directives.
     func personaContext() -> String {
         let identity = readText(sharedDir.appendingPathComponent("IDENTITY.md"))
         let rules = readText(sharedDir.appendingPathComponent("RULES.md"))
         let soul = readText(sharedDir.appendingPathComponent("SOUL.md"))
+        let capabilities = readText(sharedDir.appendingPathComponent("CAPABILITIES.md"))
+        let routing = readText(sharedDir.appendingPathComponent("ROUTING.md"))
         let directives = readText(deviceDir.appendingPathComponent("directives.md"))
         let lessons = recentLessons(limit: 10)
 
@@ -72,6 +74,8 @@ final class SoniqueBrain {
         if !identity.isEmpty { parts.append("# Identity\n\(identity)") }
         if !soul.isEmpty { parts.append("# Persona\n\(soul)") }
         if !rules.isEmpty { parts.append("# Rules\n\(rules)") }
+        if !capabilities.isEmpty { parts.append("# Capabilities\n\(capabilities)") }
+        if !routing.isEmpty { parts.append("# Intelligence Routing\n\(routing)") }
         if !directives.isEmpty { parts.append("# Device Directives (\(device))\n\(directives)") }
         if !lessons.isEmpty { parts.append("# Recent Lessons\n" + lessons.joined(separator: "\n")) }
         return parts.joined(separator: "\n\n")
