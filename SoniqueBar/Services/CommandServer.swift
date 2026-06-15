@@ -39,8 +39,15 @@ class CommandServer: ObservableObject {
     }
 
     private func setupListener() {
+        // Use default TCP parameters - NWListener will bind to both IPv4 and IPv6
+        // by creating separate listeners internally
         let parameters = NWParameters.tcp
         parameters.allowLocalEndpointReuse = true
+        parameters.acceptLocalOnly = false  // Allow remote connections
+
+        // Explicitly set IPv4 options to ensure it binds to IPv4
+        let ipOptions = parameters.defaultProtocolStack.internetProtocol as? NWProtocolIP.Options
+        ipOptions?.version = .v4
 
         do {
             listener = try NWListener(using: parameters, on: port)
