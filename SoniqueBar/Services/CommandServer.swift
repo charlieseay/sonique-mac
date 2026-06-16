@@ -211,22 +211,16 @@ class CommandServer: ObservableObject {
     }
 
     private func handleCapabilities(_ connection: NWConnection) async {
-        // Discover available MCP servers and capabilities
-        var mcpServers: [[String: Any]] = []
-
-        // Check if MCP proxy is available
-        if let mcpList = await discoverMCPServers() {
-            mcpServers = mcpList
-        }
-
+        // Return capabilities - simplified for now
         let capabilities: [String: Any] = [
-            "mcp_servers": mcpServers,
             "native_capabilities": [
                 "time_and_calendar",
                 "system_control",
                 "web_search",
                 "vision_analysis"
-            ]
+            ],
+            "mcp_servers": [],
+            "status": "discovery_not_yet_implemented"
         ]
 
         guard let responseData = try? JSONSerialization.data(withJSONObject: capabilities),
