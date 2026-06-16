@@ -26,6 +26,11 @@ enum NativeIntents {
             return dayOfWeek()
         }
 
+        // --- Battery: Mac (check Mac patterns FIRST before generic battery) ---
+        if lower.matchesAny(["mac battery", "mac mini battery", "computer battery", "laptop battery"]) {
+            return await macBattery()
+        }
+
         // --- Battery: device (iOS) ---
         if lower.matchesAny(["battery", "what's my battery", "whats my battery", "battery level",
                              "sonique battery", "device battery", "phone battery", "ipad battery"]) {
@@ -35,11 +40,6 @@ enum NativeIntents {
             }
             // Fallback if no device info
             return "I can't read the device battery right now."
-        }
-
-        // --- Battery: Mac ---
-        if lower.matchesAny(["mac battery", "mac mini battery", "computer battery", "laptop battery"]) {
-            return await macBattery()
         }
 
         // --- Calendar: today's events ---
@@ -205,16 +205,15 @@ enum NativeIntents {
                 }
 
                 let count = reminders.count
-                let limit = 5
 
                 if count == 1 {
                     continuation.resume(returning: "You have 1 reminder: \(reminders[0].title ?? "Untitled").")
-                } else if count <= limit {
+                } else if count <= 5 {
                     let list = reminders.map { $0.title ?? "Untitled" }.joined(separator: ", ")
                     continuation.resume(returning: "You have \(count) reminders: \(list).")
                 } else {
-                    let list = reminders.prefix(limit).map { $0.title ?? "Untitled" }.joined(separator: ", ")
-                    continuation.resume(returning: "You have \(count) reminders. Here are the first \(limit): \(list).")
+                    // Many reminders - ask what they want
+                    continuation.resume(returning: "You have \(count) reminders. Want all of them, just today's, or something specific?")
                 }
             }
         }

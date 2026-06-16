@@ -232,6 +232,21 @@ struct InfrastructureExecutor {
             let result = await shell("docker ps --filter name=n8n --format '{{.Status}}'")
             return result.exitCode == 0 ? "n8n: \(result.stdout)" : "n8n is not running"
 
+        case "helmsman":
+            // Check Helmsman REST service health
+            let result = await shell("curl -s http://localhost:5682/health")
+            if result.exitCode == 0, result.stdout.contains("ok") {
+                // Get pending count
+                let tasks = await shell("curl -s 'http://localhost:5682/tasks?status=pending'")
+                if let data = tasks.stdout.data(using: .utf8),
+                   let json = try? JSONSerialization.jsonObject(with: data) as? [[String: Any]] {
+                    return "Helmsman is running with \(json.count) pending tasks."
+                }
+                return "Helmsman is running."
+            } else {
+                return "Helmsman REST service is not reachable."
+            }
+
         default:
             return "Unknown service: \(service)"
         }
@@ -282,19 +297,19 @@ struct InfrastructureExecutor {
 
     private static func invokeMCPTool(_ tool: String, query: String) async -> String {
         // MCP proxy runs on localhost:3700
-        // For vault queries, extract the note name and read it
+        // For vault queries, search the vault (don't assume literal note name)
         if tool == "vault" {
-            // Extract note name from query
-            let noteName = extractNoteName(from: query)
+            // Extract search query
+            let searchQuery = extractSearchQuery(from: query)
 
-            // Call vault MCP via curl
+            // Call vault MCP search_notes via curl
             let payload = """
             {
               "method": "tools/call",
               "params": {
-                "name": "read_note",
+                "name": "search_notes",
                 "arguments": {
-                  "title": "\(noteName)"
+                  "query": "\(searchQuery)"
                 }
               }
             }
@@ -321,24 +336,23 @@ struct InfrastructureExecutor {
                 }
             }
 
-            return "Could not read note '\(noteName)' from vault"
+            return "Could not search vault for '\(searchQuery)'"
         }
 
         return "MCP tool '\(tool)' not yet implemented"
     }
 
-    private static func extractNoteName(from query: String) -> String {
-        // Extract note name from queries like "read note X" or "vault note X"
-        let words = query.components(separatedBy: .whitespaces)
+    private static func extractSearchQuery(from query: String) -> String {
+        // Extract search query from queries like "search vault for X" or "find notes about X"
+        var cleaned = query.lowercased()
 
-        // Find "note" keyword and take the next word(s)
-        if let noteIndex = words.firstIndex(where: { $0.lowercased() == "note" }) {
-            let remainingWords = words.dropFirst(noteIndex + 1)
-            return remainingWords.joined(separator: " ")
+        // Remove common command phrases
+        let phrases = ["search", "vault", "for", "find", "notes", "about", "in my", "from"]
+        for phrase in phrases {
+            cleaned = cleaned.replacingOccurrences(of: phrase, with: "")
         }
 
-        // Fallback: return the whole query
-        return query
+        return cleaned.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
     // MARK: - Shell Execution

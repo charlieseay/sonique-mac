@@ -13,9 +13,11 @@ class CommandServer: ObservableObject {
 
     private var listener: NWListener?
     private let port: NWEndpoint.Port = 8890
+    private var healthCheckTimer: Timer?
 
     private init() {
         setupListener()
+        startHealthCheck()
     }
 
     deinit {
@@ -69,6 +71,12 @@ class CommandServer: ObservableObject {
                     print("[CommandServer] Listener failed: \(error)")
                     Task { @MainActor in
                         self?.isRunning = false
+                        // Auto-restart after 5 seconds
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 5) {
+                            print("[CommandServer] Attempting auto-restart after failure...")
+                            self?.setupListener()
+                            self?.start()
+                        }
                     }
                 default:
                     break
@@ -914,5 +922,31 @@ class CommandServer: ObservableObject {
             }
             connection.cancel()
         })
+    }
+
+    // MARK: - Health Check & Auto-Recovery
+
+    private func startHealthCheck() {
+        // Check every 30 seconds if the server is still responsive
+        healthCheckTimer = Timer.scheduledTimer(withTimeInterval: 30, repeats: true) { [weak self] _ in
+            Task { @MainActor in
+                guard let self = self else { return }
+
+                // If we think we're running but listener is dead, restart
+                if self.isRunning {
+                    let state = self.listener?.state
+                    if case .failed = state {
+                        print("[CommandServer] Health check detected failed listener - restarting")
+                        self.setupListener()
+                        self.start()
+                    }
+                } else {
+                    // If we're not running, try to start
+                    print("[CommandServer] Health check detected stopped server - starting")
+                    self.setupListener()
+                    self.start()
+                }
+            }
+        }
     }
 }
