@@ -731,7 +731,7 @@ class CommandServer: ObservableObject {
         process.executableURL = URL(fileURLWithPath: "/bin/bash")
         process.arguments = [
             "-c",
-            "cd /tmp && timeout 45 '\(claudePath)' --print --model haiku --allowedTools 'Bash' --permission-mode acceptEdits --output-format stream-json --append-system-prompt \"$(cat '\(systemPromptFile)')\" \"$(cat '\(userPromptFile)')\" 2>/dev/null"
+            "cd /tmp && timeout 45 '\(claudePath)' --print --verbose --model haiku --allowedTools 'Bash' --permission-mode acceptEdits --output-format stream-json --append-system-prompt \"$(cat '\(systemPromptFile)')\" \"$(cat '\(userPromptFile)')\" 2>&1"
         ]
 
         let outputPipe = Pipe()
@@ -780,29 +780,40 @@ class CommandServer: ObservableObject {
                         let line = String(lineBuffer[..<newlineRange.lowerBound])
                         lineBuffer = String(lineBuffer[newlineRange.upperBound...])
 
-                        // Parse SSE event (stream-json format)
+                        // Parse JSON event (verbose format from Claude CLI)
                         guard let jsonData = line.data(using: .utf8),
                               let event = try? JSONSerialization.jsonObject(with: jsonData) as? [String: Any] else {
                             continue
                         }
 
-                        // Extract text from content_block_delta events
-                        if event["type"] as? String == "content_block_delta",
-                           let delta = event["delta"] as? [String: Any],
-                           delta["type"] as? String == "text_delta",
-                           let text = delta["text"] as? String {
+                        // Extract text from assistant messages
+                        if event["type"] as? String == "assistant",
+                           let message = event["message"] as? [String: Any],
+                           let content = message["content"] as? [[String: Any]] {
 
-                            await MainActor.run {
-                                accumulatedText += text
-                                sentenceBuffer += text
+                            for block in content {
+                                // Skip thinking blocks
+                                if block["type"] as? String == "thinking" {
+                                    continue
+                                }
 
-                                // Check for sentence boundaries and send complete sentences
-                                let (sentences, remainder) = self.extractCompleteSentences(from: sentenceBuffer)
-                                sentenceBuffer = remainder
+                                // Extract text content
+                                if block["type"] as? String == "text",
+                                   let text = block["text"] as? String {
 
-                                for sentence in sentences {
-                                    self.sendSentenceChunk(sentence, index: chunkIndex, to: connection)
-                                    chunkIndex += 1
+                                    await MainActor.run {
+                                        accumulatedText += text
+                                        sentenceBuffer += text
+
+                                        // Check for sentence boundaries and send complete sentences
+                                        let (sentences, remainder) = self.extractCompleteSentences(from: sentenceBuffer)
+                                        sentenceBuffer = remainder
+
+                                        for sentence in sentences {
+                                            self.sendSentenceChunk(sentence, index: chunkIndex, to: connection)
+                                            chunkIndex += 1
+                                        }
+                                    }
                                 }
                             }
                         }
