@@ -147,6 +147,10 @@ class CommandServer: ObservableObject {
             await handleCommandStream(data, connection)
         } else if method == "GET" && path.hasPrefix("/artifact/") {
             await handleArtifact(path, connection)
+        } else if method == "POST" && path == "/log" {
+            await handleLogFromDevice(data, connection)
+        } else if method == "GET" && path == "/logs" {
+            await handleGetLogs(connection)
         } else {
             sendResponse("HTTP/1.1 404 Not Found\r\n\r\n", to: connection)
         }
@@ -664,6 +668,9 @@ class CommandServer: ObservableObject {
     // MARK: - Artifacts (ephemeral screenshots shown on the device)
 
     static let artifactDir = "/tmp/sonique-artifacts"
+    static let logFile = "/tmp/sonique-session.log"
+    private static var logEntries: [String] = []
+    private static let maxLogEntries = 500
 
     /// Image artifacts the LLM may have created. We watch the dedicated artifacts dir AND
     /// /tmp for the LLM's habitual `sonique-screenshot-*.png` naming, so detection is robust
@@ -1113,5 +1120,63 @@ class CommandServer: ObservableObject {
                 }
             }
         }
+    }
+
+    // MARK: - Logging
+
+    private func handleLogFromDevice(_ data: Data, _ connection: NWConnection) async {
+        guard let requestString = String(data: data, encoding: .utf8) else {
+            sendResponse("HTTP/1.1 400 Bad Request\r\n\r\n", to: connection)
+            return
+        }
+
+        let components = requestString.components(separatedBy: "\r\n\r\n")
+        guard components.count >= 2,
+              let bodyData = components[1].data(using: .utf8),
+              let json = try? JSONSerialization.jsonObject(with: bodyData) as? [String: Any],
+              let message = json["message"] as? String else {
+            sendResponse("HTTP/1.1 400 Bad Request\r\n\r\n", to: connection)
+            return
+        }
+
+        let timestamp = ISO8601DateFormatter().string(from: Date())
+        let source = json["source"] as? String ?? "iOS"
+        let logLine = "[\(timestamp)] [\(source)] \(message)"
+
+        // Write to file
+        if let logData = (logLine + "\n").data(using: .utf8) {
+            if let handle = try? FileHandle(forWritingTo: URL(fileURLWithPath: Self.logFile)) {
+                handle.seekToEndOfFile()
+                handle.write(logData)
+                try? handle.close()
+            } else {
+                try? logData.write(to: URL(fileURLWithPath: Self.logFile))
+            }
+        }
+
+        // Keep in memory (ring buffer)
+        await MainActor.run {
+            Self.logEntries.append(logLine)
+            if Self.logEntries.count > Self.maxLogEntries {
+                Self.logEntries.removeFirst(Self.logEntries.count - Self.maxLogEntries)
+            }
+        }
+
+        sendResponse("HTTP/1.1 200 OK\r\n\r\n", to: connection)
+    }
+
+    private func handleGetLogs(_ connection: NWConnection) async {
+        let entries = await MainActor.run { Self.logEntries }
+        let logsText = entries.joined(separator: "\n")
+
+        let response = """
+        HTTP/1.1 200 OK\r
+        Content-Type: text/plain\r
+        Content-Length: \(logsText.utf8.count)\r
+        \r
+        \(logsText)
+        """
+
+        sendResponse(response, to: connection)
     }
 }
