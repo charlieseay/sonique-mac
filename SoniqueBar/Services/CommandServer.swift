@@ -139,6 +139,8 @@ class CommandServer: ObservableObject {
             await handleHealth(connection)
         } else if method == "GET" && path == "/config" {
             await handleConfig(connection)
+        } else if method == "GET" && path == "/capabilities" {
+            await handleCapabilities(connection)
         } else if method == "POST" && path == "/command" {
             await handleCommand(data, connection)
         } else if method == "POST" && path == "/command/stream" {
@@ -206,6 +208,85 @@ class CommandServer: ObservableObject {
         """
 
         sendResponse(response, to: connection)
+    }
+
+    private func handleCapabilities(_ connection: NWConnection) async {
+        // Discover available MCP servers and capabilities
+        var mcpServers: [[String: Any]] = []
+
+        // Check if MCP proxy is available
+        if let mcpList = await discoverMCPServers() {
+            mcpServers = mcpList
+        }
+
+        let capabilities: [String: Any] = [
+            "mcp_servers": mcpServers,
+            "native_capabilities": [
+                "time_and_calendar",
+                "system_control",
+                "web_search",
+                "vision_analysis"
+            ]
+        ]
+
+        guard let responseData = try? JSONSerialization.data(withJSONObject: capabilities),
+              let responseJSON = String(data: responseData, encoding: .utf8) else {
+            sendResponse("HTTP/1.1 500 Internal Server Error\r\n\r\n", to: connection)
+            return
+        }
+
+        let response = """
+        HTTP/1.1 200 OK\r
+        Content-Type: application/json\r
+        Content-Length: \(responseJSON.utf8.count)\r
+        \r
+        \(responseJSON)
+        """
+
+        sendResponse(response, to: connection)
+    }
+
+    private func discoverMCPServers() async -> [[String: Any]]? {
+        var servers: [[String: Any]] = []
+
+        // Check if Home Assistant is available
+        if await checkHomeAssistant() {
+            servers.append([
+                "name": "Home Assistant",
+                "endpoint": "http://homeassistant.local:8123",
+                "capabilities": [
+                    "Control lights and switches",
+                    "Query device states",
+                    "Trigger automations"
+                ]
+            ])
+        }
+
+        // Check MCP proxy (if available)
+        // This would query the Claude CLI or MCP gateway for available servers
+        // For now, just return what we found
+
+        return servers.isEmpty ? nil : servers
+    }
+
+    private func checkHomeAssistant() async -> Bool {
+        guard let url = URL(string: "http://homeassistant.local:8123/api/") else { return false }
+
+        var request = URLRequest(url: url)
+        request.timeoutInterval = 2.0
+
+        // Try to load HA token
+        if let tokenData = try? Data(contentsOf: URL(fileURLWithPath: "/Volumes/data/secrets/ha_token")),
+           let token = String(data: tokenData, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines) {
+            request.addValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
+
+        do {
+            let (_, response) = try await URLSession.shared.data(for: request)
+            return (response as? HTTPURLResponse)?.statusCode == 200
+        } catch {
+            return false
+        }
     }
 
     private func handleCommand(_ data: Data, _ connection: NWConnection) async {
