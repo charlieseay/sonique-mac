@@ -439,25 +439,23 @@ class CommandServer: ObservableObject {
             try? userPrompt.write(toFile: userPromptFile, atomically: true, encoding: .utf8)
             try? systemInstructions.write(toFile: systemPromptFile, atomically: true, encoding: .utf8)
 
-            let claudeCmd = "timeout 45 bash -c 'cd /tmp && \"\(claudePath)\" --print --model haiku --allowedTools \"Bash\" --permission-mode acceptEdits --output-format stream-json --append-system-prompt \"$(cat \"\(systemPromptFile)\")\" \"$(cat \"\(userPromptFile)\")\" 2>/dev/null && rm \"\(userPromptFile)\" \"\(systemPromptFile)\"'"
-
-            let claudeResult = await InfrastructureExecutor.shell(claudeCmd)
-            responseText = claudeResult.stdout.trimmingCharacters(in: .whitespacesAndNewlines)
+            // Stream Claude CLI output in real-time (token-by-token via stream-json)
+            let success = await streamClaudeResponse(
+                claudePath: claudePath,
+                userPromptFile: userPromptFile,
+                systemPromptFile: systemPromptFile,
+                connection: connection,
+                startIndex: 1  // index 0 was the "…" indicator
+            )
 
             // Cleanup temp files
             try? FileManager.default.removeItem(atPath: userPromptFile)
             try? FileManager.default.removeItem(atPath: systemPromptFile)
 
-            // If both failed or timed out, graceful error
-            if responseText.isEmpty {
-                let msg = claudeResult.exitCode == 124 ? "Sorry, that took too long." : "Sorry, I ran into an issue with that."
-                responseText = "\(msg) Please try again."
+            if !success {
+                // Error already handled in streamClaudeResponse
+                responseText = ""  // Mark as handled
             }
-        }
-
-        // Stream the response sentence-by-sentence (chunked response already started above with "…")
-        for (i, sentence) in segmentIntoSentences(responseText).enumerated() {
-            sendSentenceChunk(sentence, index: i + 1, to: connection)
         }
 
         // Detect a NEW image artifact the LLM created during this call, and tell the app
@@ -707,6 +705,164 @@ class CommandServer: ObservableObject {
                 connection.cancel()
             })
         }
+    }
+
+    /// Stream Claude CLI output in real-time. Reads --output-format stream-json line-by-line
+    /// and sends NDJSON chunks to the client as tokens arrive. Returns true on success.
+    private func streamClaudeResponse(
+        claudePath: String,
+        userPromptFile: String,
+        systemPromptFile: String,
+        connection: NWConnection,
+        startIndex: Int
+    ) async -> Bool {
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/bin/bash")
+        process.arguments = [
+            "-c",
+            "cd /tmp && timeout 45 '\(claudePath)' --print --model haiku --allowedTools 'Bash' --permission-mode acceptEdits --output-format stream-json --append-system-prompt \"$(cat '\(systemPromptFile)')\" \"$(cat '\(userPromptFile)')\" 2>/dev/null"
+        ]
+
+        let outputPipe = Pipe()
+        process.standardOutput = outputPipe
+        process.standardError = Pipe()
+
+        do {
+            try process.run()
+        } catch {
+            print("[CommandServer] Failed to start Claude CLI: \(error)")
+            sendSentenceChunk("Sorry, I ran into an issue.", index: startIndex, to: connection)
+            return false
+        }
+
+        // Read output line-by-line and parse stream-json events
+        var chunkIndex = startIndex
+        var accumulatedText = ""
+        var sentenceBuffer = ""
+
+        let handle = outputPipe.fileHandleForReading
+
+        // Read in background to avoid blocking
+        await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
+            Task.detached {
+                var lineBuffer = ""
+
+                while true {
+                    // Check if process is still running
+                    if !process.isRunning {
+                        break
+                    }
+
+                    // Read available data
+                    let data = handle.availableData
+                    guard !data.isEmpty else {
+                        // No data available, process might have finished
+                        try? await Task.sleep(nanoseconds: 10_000_000) // 10ms
+                        continue
+                    }
+
+                    guard let chunk = String(data: data, encoding: .utf8) else { continue }
+                    lineBuffer += chunk
+
+                    // Process complete lines
+                    while let newlineRange = lineBuffer.range(of: "\n") {
+                        let line = String(lineBuffer[..<newlineRange.lowerBound])
+                        lineBuffer = String(lineBuffer[newlineRange.upperBound...])
+
+                        // Parse SSE event (stream-json format)
+                        guard let jsonData = line.data(using: .utf8),
+                              let event = try? JSONSerialization.jsonObject(with: jsonData) as? [String: Any] else {
+                            continue
+                        }
+
+                        // Extract text from content_block_delta events
+                        if event["type"] as? String == "content_block_delta",
+                           let delta = event["delta"] as? [String: Any],
+                           delta["type"] as? String == "text_delta",
+                           let text = delta["text"] as? String {
+
+                            await MainActor.run {
+                                accumulatedText += text
+                                sentenceBuffer += text
+
+                                // Check for sentence boundaries and send complete sentences
+                                let (sentences, remainder) = self.extractCompleteSentences(from: sentenceBuffer)
+                                sentenceBuffer = remainder
+
+                                for sentence in sentences {
+                                    self.sendSentenceChunk(sentence, index: chunkIndex, to: connection)
+                                    chunkIndex += 1
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // Process any remaining data
+                if !lineBuffer.isEmpty {
+                    if let jsonData = lineBuffer.data(using: .utf8),
+                       let event = try? JSONSerialization.jsonObject(with: jsonData) as? [String: Any],
+                       event["type"] as? String == "content_block_delta",
+                       let delta = event["delta"] as? [String: Any],
+                       delta["type"] as? String == "text_delta",
+                       let text = delta["text"] as? String {
+
+                        await MainActor.run {
+                            accumulatedText += text
+                            sentenceBuffer += text
+                        }
+                    }
+                }
+
+                // Wait for process to complete
+                process.waitUntilExit()
+
+                // Send any remaining partial sentence
+                await MainActor.run {
+                    let remaining = sentenceBuffer.trimmingCharacters(in: .whitespaces)
+                    if !remaining.isEmpty {
+                        self.sendSentenceChunk(remaining, index: chunkIndex, to: connection)
+                    }
+                }
+
+                continuation.resume()
+            }
+        }
+
+        process.waitUntilExit()
+        let exitCode = process.terminationStatus
+
+        if exitCode != 0 {
+            print("[CommandServer] Claude CLI failed with exit code \(exitCode)")
+            if accumulatedText.isEmpty {
+                let msg = exitCode == 124 ? "Sorry, that took too long." : "Sorry, I ran into an issue."
+                await MainActor.run {
+                    sendSentenceChunk(msg, index: chunkIndex, to: connection)
+                }
+            }
+            return false
+        }
+
+        return true
+    }
+
+    private func extractCompleteSentences(from text: String) -> ([String], String) {
+        var sentences: [String] = []
+        var remainder = text
+        let terminators = CharacterSet(charactersIn: ".!?…")
+
+        while let range = remainder.rangeOfCharacter(from: terminators) {
+            let after = remainder.index(after: range.lowerBound)
+            if after == remainder.endIndex || remainder[after] == " " || remainder[after] == "\n" {
+                let sentence = String(remainder[...range.lowerBound]).trimmingCharacters(in: .whitespaces)
+                if !sentence.isEmpty { sentences.append(sentence) }
+                remainder = after < remainder.endIndex
+                    ? String(remainder[after...]).trimmingCharacters(in: .init(charactersIn: " \n"))
+                    : ""
+            } else { break }
+        }
+
+        return (sentences, remainder)
     }
 
     /// Strip JSON metadata that ask_claude_bedrock emits before the actual response text.
