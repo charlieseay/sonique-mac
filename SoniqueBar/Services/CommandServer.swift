@@ -360,6 +360,13 @@ class CommandServer: ObservableObject {
             deviceBattery = (batteryPercent, isCharging)
         }
 
+        // Extract identity (name, wake_word, skills) if present
+        var identity: [String: Any]? = nil
+        if let identityInfo = json["identity"] as? [String: Any] {
+            identity = identityInfo
+            print("[CommandServer] Identity received: name=\(identityInfo["name"] ?? "unknown"), wake_word=\(identityInfo["wake_word"] ?? "unknown")")
+        }
+
         await MainActor.run {
             self.lastCommand = text
             self.requestCount += 1
@@ -394,6 +401,23 @@ class CommandServer: ObservableObject {
         let persona = SoniqueBrain.shared.personaContext()
         let working = await MemoryService.shared.getContextForLLM()
 
+        // Build skills section from identity payload
+        var skillsSection = ""
+        if let identity = identity,
+           let skills = identity["skills"] as? [[String: Any]] {
+            skillsSection = "\n\n# Your Capabilities\n\n"
+            for categoryGroup in skills {
+                if let category = categoryGroup["category"] as? String,
+                   let skillList = categoryGroup["skills"] as? [String] {
+                    skillsSection += "## \(category)\n"
+                    for skill in skillList {
+                        skillsSection += "- \(skill)\n"
+                    }
+                    skillsSection += "\n"
+                }
+            }
+        }
+
         let systemInstructions = """
         You are Sonique, a voice assistant. Your persistent identity, rules, and capabilities \
         are in your brain (provided above in the persona context). Follow them.
@@ -408,7 +432,7 @@ class CommandServer: ObservableObject {
         - Just answer the question naturally
 
         When Charlie wants to SEE something (screenshot, "show me"), save the PNG to \
-        /tmp/sonique-artifacts/ — it auto-displays on his iPad. See CAPABILITIES.md for details.
+        /tmp/sonique-artifacts/ — it auto-displays on his iPad. See CAPABILITIES.md for details.\(skillsSection)
         """
 
         // Combine system + persona + working memory + request into one prompt for Bedrock
