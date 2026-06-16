@@ -278,9 +278,16 @@ class CommandServer: ObservableObject {
     }
 
     private func handleConversation(_ text: String) async -> String {
-        // Check if ask_helmsman is available
-        let which = await InfrastructureExecutor.shell("which ask_helmsman")
-        guard which.exitCode == 0 else {
+        // Voice replies must be FAST. Prefer ask_llm (routes to healthy low-latency
+        // providers — groq/cerebras, sub-second) over ask_helmsman (NVIDIA-first;
+        // when NVIDIA inference stalls it drags every reply through a 20-30s
+        // timeout+fallback chain, which makes the assistant feel hung/broken).
+        let llmBin: String
+        if await InfrastructureExecutor.shell("which ask_llm").exitCode == 0 {
+            llmBin = "ask_llm --lane fast"
+        } else if await InfrastructureExecutor.shell("which ask_helmsman").exitCode == 0 {
+            llmBin = "ask_helmsman"
+        } else {
             // Fallback: simple time check
             if text.lowercased().contains("time") {
                 let formatter = DateFormatter()
@@ -288,7 +295,7 @@ class CommandServer: ObservableObject {
                 formatter.timeStyle = .short
                 return "The current time is \(formatter.string(from: Date()))"
             }
-            return "LLM not available. Check that ask_helmsman is in PATH."
+            return "LLM not available. Check that ask_llm or ask_helmsman is in PATH."
         }
 
         // Get context from memory
@@ -307,11 +314,16 @@ class CommandServer: ObservableObject {
         // Escape for shell
         let escapedPrompt = fullPrompt.replacingOccurrences(of: "'", with: "'\\''")
 
-        // Route to ask_helmsman with context
-        let result = await InfrastructureExecutor.shell("ask_helmsman '\(escapedPrompt)'")
+        // Route to the chosen LLM with context, BOUND by a hard timeout so a
+        // voice reply is fast or fails gracefully (`timeout` returns 124 on expiry).
+        let result = await InfrastructureExecutor.shell(
+            "timeout 12 \(llmBin) '\(escapedPrompt)'"
+        )
 
         if result.exitCode == 0 && !result.stdout.isEmpty {
             return result.stdout
+        } else if result.exitCode == 124 {
+            return "Sorry, that took too long to answer. Please try again."
         } else {
             return "Sorry, I couldn't process that request: \(result.stderr)"
         }
