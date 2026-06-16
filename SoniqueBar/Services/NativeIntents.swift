@@ -1,4 +1,5 @@
 import Foundation
+import EventKit
 
 /// Native-first intent layer. Handles common local facts and actions directly with
 /// macOS native tools BEFORE any LLM is involved — instant, deterministic, free.
@@ -23,6 +24,19 @@ enum NativeIntents {
         // --- Day of week only ---
         if lower.matchesAny(["what day of the week", "which day is it"]) {
             return dayOfWeek()
+        }
+
+        // --- Calendar: today's events ---
+        if lower.matchesAny(["what's on my calendar", "whats on my calendar", "my calendar", "calendar today",
+                             "what's on the calendar", "whats on the calendar", "today's calendar", "todays calendar",
+                             "my schedule", "today's schedule", "todays schedule", "what do i have today"]) {
+            return await todaysCalendar()
+        }
+
+        // --- Reminders: show all incomplete ---
+        if lower.matchesAny(["my reminders", "show reminders", "what are my reminders", "reminder list",
+                             "what do i need to do", "my tasks", "task list"]) {
+            return await showReminders()
         }
 
         // --- Open an app or URL: "open Safari", "open music" ---
@@ -89,6 +103,80 @@ enum NativeIntents {
         let next = max(0, min(100, current + delta))
         _ = await shell("osascript -e 'set volume output volume \(next)'")
         return "Volume \(delta > 0 ? "up" : "down") to \(next) percent."
+    }
+
+    // MARK: - Calendar & Reminders (native EventKit - no OAuth needed)
+
+    private static func todaysCalendar() async -> String {
+        let store = EKEventStore()
+
+        // Request access if needed
+        let granted = await withCheckedContinuation { continuation in
+            store.requestFullAccessToEvents { granted, error in
+                continuation.resume(returning: granted)
+            }
+        }
+
+        guard granted else {
+            return "I need Calendar permission. Go to System Settings → Privacy & Security → Calendar and enable SoniqueBar."
+        }
+
+        // Get today's events
+        let calendar = Calendar.current
+        let startOfDay = calendar.startOfDay(for: Date())
+        let endOfDay = calendar.date(byAdding: .day, value: 1, to: startOfDay)!
+
+        let predicate = store.predicateForEvents(withStart: startOfDay, end: endOfDay, calendars: nil)
+        let events = store.events(matching: predicate)
+
+        if events.isEmpty {
+            return "You have no events scheduled for today."
+        }
+
+        let formatter = DateFormatter()
+        formatter.timeStyle = .short
+
+        var summary = events.count == 1 ? "You have 1 event today: " : "You have \(events.count) events today: "
+        let eventList = events.map { event in
+            let timeStr = event.isAllDay ? "all day" : formatter.string(from: event.startDate)
+            return "\(event.title ?? "Untitled") at \(timeStr)"
+        }.joined(separator: ", ")
+
+        return summary + eventList + "."
+    }
+
+    private static func showReminders() async -> String {
+        let store = EKEventStore()
+
+        // Request access if needed
+        let granted = await withCheckedContinuation { continuation in
+            store.requestFullAccessToReminders { granted, error in
+                continuation.resume(returning: granted)
+            }
+        }
+
+        guard granted else {
+            return "I need Reminders permission. Go to System Settings → Privacy & Security → Reminders and enable SoniqueBar."
+        }
+
+        // Get all incomplete reminders
+        let predicate = store.predicateForIncompleteReminders(withDueDateStarting: nil, ending: nil, calendars: nil)
+
+        return await withCheckedContinuation { continuation in
+            store.fetchReminders(matching: predicate) { reminders in
+                guard let reminders = reminders, !reminders.isEmpty else {
+                    continuation.resume(returning: "You have no reminders.")
+                    return
+                }
+
+                let count = reminders.count
+                let summary = count == 1 ? "You have 1 reminder: " : "You have \(count) reminders: "
+                let list = reminders.prefix(10).map { $0.title ?? "Untitled" }.joined(separator: ", ")
+                let more = count > 10 ? ", and \(count - 10) more" : ""
+
+                continuation.resume(returning: summary + list + more + ".")
+            }
+        }
     }
 
     // MARK: - Shell helper

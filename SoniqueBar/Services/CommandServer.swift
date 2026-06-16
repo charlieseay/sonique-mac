@@ -418,6 +418,11 @@ class CommandServer: ObservableObject {
 
         if useClaudeCLI {
             print("[CommandServer] Using Claude CLI Haiku with tool execution for voice")
+
+            // Send immediate "thinking" indicator so user sees activity during LLM processing
+            startChunkedResponse(to: connection)
+            sendSentenceChunk("…", index: 0, to: connection)
+
             let claudePath = await resolveClaudePath()
             let userPrompt = """
             \(persona)
@@ -434,7 +439,7 @@ class CommandServer: ObservableObject {
             try? userPrompt.write(toFile: userPromptFile, atomically: true, encoding: .utf8)
             try? systemInstructions.write(toFile: systemPromptFile, atomically: true, encoding: .utf8)
 
-            let claudeCmd = "timeout 45 bash -c 'cd /tmp && \"\(claudePath)\" --print --model haiku --allowedTools \"Bash\" --permission-mode acceptEdits --append-system-prompt \"$(cat \"\(systemPromptFile)\")\" \"$(cat \"\(userPromptFile)\")\" 2>/dev/null && rm \"\(userPromptFile)\" \"\(systemPromptFile)\"'"
+            let claudeCmd = "timeout 45 bash -c 'cd /tmp && \"\(claudePath)\" --print --model haiku --allowedTools \"Bash\" --permission-mode acceptEdits --output-format stream-json --append-system-prompt \"$(cat \"\(systemPromptFile)\")\" \"$(cat \"\(userPromptFile)\")\" 2>/dev/null && rm \"\(userPromptFile)\" \"\(systemPromptFile)\"'"
 
             let claudeResult = await InfrastructureExecutor.shell(claudeCmd)
             responseText = claudeResult.stdout.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -450,10 +455,9 @@ class CommandServer: ObservableObject {
             }
         }
 
-        // Stream the response sentence-by-sentence
-        startChunkedResponse(to: connection)
+        // Stream the response sentence-by-sentence (chunked response already started above with "…")
         for (i, sentence) in segmentIntoSentences(responseText).enumerated() {
-            sendSentenceChunk(sentence, index: i, to: connection)
+            sendSentenceChunk(sentence, index: i + 1, to: connection)
         }
 
         // Detect a NEW image artifact the LLM created during this call, and tell the app
