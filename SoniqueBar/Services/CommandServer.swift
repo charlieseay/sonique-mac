@@ -409,29 +409,15 @@ class CommandServer: ObservableObject {
         // Note artifacts present before the call, so we can detect any NEW image the LLM creates.
         let artifactsBefore = Self.currentArtifacts()
 
-        // PRIMARY: Try Bedrock Haiku first (metered, but cheaper and faster than subscription)
-        // Use temp file to avoid shell escaping issues with large prompts
-        let promptFile = "/tmp/sonique-prompt-\(UUID().uuidString).txt"
-        try? fullPrompt.write(toFile: promptFile, atomically: true, encoding: .utf8)
+        // VOICE PATH: Use Claude CLI with tool execution (subscription, but reliable + fast).
+        // Bedrock via ask_claude_bedrock doesn't have tool execution - it just returns
+        // XML like "<Bash>...</Bash>" which leaks into TTS as raw text. Claude CLI with
+        // --allowedTools actually EXECUTES the tools and returns clean results.
+        var responseText = ""
+        let useClaudeCLI = true  // Force Claude CLI for voice (has tool execution)
 
-        let bedrockCmd = "timeout 30 bash -c 'source /Volumes/data/secrets/aws_bedrock.env 2>/dev/null; ask_claude_bedrock --lane haiku \"$(cat \"\(promptFile)\")\" && rm \"\(promptFile)\"'"
-        print("[CommandServer] Calling Bedrock Haiku...")
-        let bedrockResult = await InfrastructureExecutor.shell(bedrockCmd)
-        // Strip JSON metadata that ask_claude_bedrock emits ({"contentType": "application/json"})
-        var responseText = stripJSONMetadata(from: bedrockResult.stdout)
-
-        // Debug: log failures
-        if bedrockResult.exitCode != 0 {
-            print("[CommandServer] Bedrock failed: exit=\(bedrockResult.exitCode), stderr=\(bedrockResult.stderr.prefix(200))")
-        } else {
-            print("[CommandServer] Bedrock succeeded: \(responseText.prefix(100))")
-        }
-        try? FileManager.default.removeItem(atPath: promptFile)  // cleanup if command failed
-
-        // FALLBACK: If Bedrock failed or returned empty, fall back to Claude CLI Haiku (subscription)
-        // With 45-second timeout (allows for tool use)
-        if bedrockResult.exitCode != 0 || responseText.isEmpty {
-            print("[CommandServer] Bedrock Haiku failed (exit \(bedrockResult.exitCode)), falling back to subscription Claude CLI Haiku")
+        if useClaudeCLI {
+            print("[CommandServer] Using Claude CLI Haiku with tool execution for voice")
             let claudePath = await resolveClaudePath()
             let userPrompt = """
             \(persona)
