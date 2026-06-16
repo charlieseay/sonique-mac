@@ -417,7 +417,8 @@ class CommandServer: ObservableObject {
         let bedrockCmd = "timeout 30 bash -c 'source /Volumes/data/secrets/aws_bedrock.env 2>/dev/null; ask_claude_bedrock --lane haiku \"$(cat \"\(promptFile)\")\" && rm \"\(promptFile)\"'"
         print("[CommandServer] Calling Bedrock Haiku...")
         let bedrockResult = await InfrastructureExecutor.shell(bedrockCmd)
-        var responseText = bedrockResult.stdout.trimmingCharacters(in: .whitespacesAndNewlines)
+        // Strip JSON metadata that ask_claude_bedrock emits ({"contentType": "application/json"})
+        var responseText = stripJSONMetadata(from: bedrockResult.stdout)
 
         // Debug: log failures
         if bedrockResult.exitCode != 0 {
@@ -716,6 +717,24 @@ class CommandServer: ObservableObject {
                 connection.cancel()
             })
         }
+    }
+
+    /// Strip JSON metadata that ask_claude_bedrock emits before the actual response text.
+    /// Input: "{\n    \"contentType\": \"application/json\"\n}\nHello! How are you?"
+    /// Output: "Hello! How are you?"
+    private func stripJSONMetadata(from text: String) -> String {
+        let cleaned = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        // If it starts with "{", assume JSON metadata block followed by actual text
+        if cleaned.hasPrefix("{") {
+            // Find the closing brace and take everything after it
+            if let endBrace = cleaned.firstIndex(of: "}") {
+                let afterBrace = cleaned.index(after: endBrace)
+                if afterBrace < cleaned.endIndex {
+                    return String(cleaned[afterBrace...]).trimmingCharacters(in: .whitespacesAndNewlines)
+                }
+            }
+        }
+        return cleaned
     }
 
     private func sendResponse(_ response: String, to connection: NWConnection) {
