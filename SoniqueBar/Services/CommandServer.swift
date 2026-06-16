@@ -344,6 +344,14 @@ class CommandServer: ObservableObject {
             return
         }
 
+        // Extract device battery info if present
+        var deviceBattery: (percent: Int, isCharging: Bool)? = nil
+        if let deviceInfo = json["device"] as? [String: Any],
+           let batteryPercent = deviceInfo["battery_percent"] as? Int,
+           let isCharging = deviceInfo["is_charging"] as? Bool {
+            deviceBattery = (batteryPercent, isCharging)
+        }
+
         await MainActor.run {
             self.lastCommand = text
             self.requestCount += 1
@@ -353,7 +361,7 @@ class CommandServer: ObservableObject {
 
         // Native-first: handle common local facts/actions instantly (time, date, open
         // app, volume) with macOS native tools — no LLM, deterministic and free.
-        if let native = await NativeIntents.handle(text) {
+        if let native = await NativeIntents.handle(text, deviceBattery: deviceBattery) {
             let body = buildNDJSONBody(segmentIntoSentences(native))
             sendNDJSONResponse(body, to: connection)
             await MemoryService.shared.addExchange(user: text, assistant: native, intent: "native", actions: nil)

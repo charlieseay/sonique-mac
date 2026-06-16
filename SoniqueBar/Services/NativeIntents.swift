@@ -7,7 +7,7 @@ import EventKit
 enum NativeIntents {
 
     /// Try to answer/act on `text` natively. Returns the spoken response, or nil to defer to the LLM.
-    static func handle(_ text: String) async -> String? {
+    static func handle(_ text: String, deviceBattery: (percent: Int, isCharging: Bool)? = nil) async -> String? {
         let lower = text.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
 
         // --- Time ---
@@ -24,6 +24,22 @@ enum NativeIntents {
         // --- Day of week only ---
         if lower.matchesAny(["what day of the week", "which day is it"]) {
             return dayOfWeek()
+        }
+
+        // --- Battery: device (iOS) ---
+        if lower.matchesAny(["battery", "what's my battery", "whats my battery", "battery level",
+                             "sonique battery", "device battery", "phone battery", "ipad battery"]) {
+            if let battery = deviceBattery {
+                let chargingText = battery.isCharging ? ", and it's charging" : ""
+                return "Battery is at \(battery.percent) percent\(chargingText)."
+            }
+            // Fallback if no device info
+            return "I can't read the device battery right now."
+        }
+
+        // --- Battery: Mac ---
+        if lower.matchesAny(["mac battery", "mac mini battery", "computer battery", "laptop battery"]) {
+            return await macBattery()
         }
 
         // --- Calendar: today's events ---
@@ -79,6 +95,25 @@ enum NativeIntents {
         let f = DateFormatter()
         f.dateFormat = "EEEE"
         return "It's \(f.string(from: Date()))."
+    }
+
+    private static func macBattery() async -> String {
+        // Check if this Mac has a battery
+        let hasBattery = await shell("pmset -g batt | grep -c 'InternalBattery'")
+        if hasBattery.stdout.trimmingCharacters(in: .whitespacesAndNewlines) == "0" {
+            return "This Mac doesn't have a battery."
+        }
+
+        // Get battery percentage
+        let result = await shell("pmset -g batt | grep -Eo '\\d+%' | head -1")
+        let percent = result.stdout.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        // Check if charging
+        let chargingCheck = await shell("pmset -g batt | grep -c 'AC Power'")
+        let isCharging = chargingCheck.stdout.trimmingCharacters(in: .whitespacesAndNewlines) != "0"
+
+        let chargingText = isCharging ? ", and it's charging" : ""
+        return "Mac battery is at \(percent)\(chargingText)."
     }
 
     // MARK: - Actions (native macOS)
@@ -170,11 +205,17 @@ enum NativeIntents {
                 }
 
                 let count = reminders.count
-                let summary = count == 1 ? "You have 1 reminder: " : "You have \(count) reminders: "
-                let list = reminders.prefix(10).map { $0.title ?? "Untitled" }.joined(separator: ", ")
-                let more = count > 10 ? ", and \(count - 10) more" : ""
+                let limit = 5
 
-                continuation.resume(returning: summary + list + more + ".")
+                if count == 1 {
+                    continuation.resume(returning: "You have 1 reminder: \(reminders[0].title ?? "Untitled").")
+                } else if count <= limit {
+                    let list = reminders.map { $0.title ?? "Untitled" }.joined(separator: ", ")
+                    continuation.resume(returning: "You have \(count) reminders: \(list).")
+                } else {
+                    let list = reminders.prefix(limit).map { $0.title ?? "Untitled" }.joined(separator: ", ")
+                    continuation.resume(returning: "You have \(count) reminders. Here are the first \(limit): \(list).")
+                }
             }
         }
     }
