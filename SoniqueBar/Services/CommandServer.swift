@@ -262,30 +262,48 @@ class CommandServer: ObservableObject {
 
     private func checkClaudeMCPServers() async -> [[String: Any]]? {
         // Check if Claude CLI is available and has MCP servers
-        // Run: claude mcp list --format json
-        let result = await InfrastructureExecutor.shell("claude mcp list 2>/dev/null | grep '✓ Connected' | head -5")
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/opt/homebrew/bin/claude")
+        process.arguments = ["mcp", "list"]
 
-        guard result.exitCode == 0, !result.stdout.isEmpty else {
+        let pipe = Pipe()
+        process.standardOutput = pipe
+        process.standardError = Pipe()
+
+        do {
+            try process.run()
+            process.waitUntilExit()
+
+            let data = pipe.fileHandleForReading.readDataToEndOfFile()
+            guard let output = String(data: data, encoding: .utf8), !output.isEmpty else {
+                return nil
+            }
+
+            // Parse connected servers from output
+            var servers: [[String: Any]] = []
+            let lines = output.components(separatedBy: "\n")
+                .filter { $0.contains("Connected") && !$0.contains("Failed") }
+
+            for line in lines {
+                // Format: "slack: npx -y @modelcontextprotocol/server-slack - ✓ Connected"
+                let parts = line.components(separatedBy: ":")
+                if parts.count >= 2,
+                   let serverName = parts.first?.trimmingCharacters(in: .whitespaces),
+                   !serverName.isEmpty && !serverName.contains("Checking") {
+                    servers.append([
+                        "name": serverName,
+                        "endpoint": "claude://mcp/\(serverName)",
+                        "capabilities": ["MCP tools via Claude CLI"]
+                    ])
+                }
+            }
+
+            return servers.isEmpty ? nil : servers
+
+        } catch {
+            // Claude CLI not available or error running command
             return nil
         }
-
-        // Parse connected servers (simplified - real version would use --format json)
-        var servers: [[String: Any]] = []
-
-        // For now, just report that MCP is available via Claude CLI
-        // The actual tools will be discovered when Claude CLI is invoked
-        servers.append([
-            "name": "Claude CLI MCP Hub",
-            "endpoint": "claude://mcp",
-            "capabilities": [
-                "Slack messaging",
-                "21st.dev UI generation",
-                "Stitch MCP proxy",
-                "Additional servers as configured"
-            ]
-        ])
-
-        return servers
     }
 
     private func discoverMCPServers() async -> [[String: Any]]? {

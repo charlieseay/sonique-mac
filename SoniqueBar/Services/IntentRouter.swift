@@ -21,6 +21,15 @@ struct IntentRouter {
         case createTask(description: String)
         case createProject(name: String, description: String)
         case createNote(title: String, content: String)
+        case homeControl(action: HomeAction, device: String)
+    }
+
+    enum HomeAction {
+        case turnOn
+        case turnOff
+        case toggle
+        case setBrightness(Int)
+        case setColor(String)
     }
 
     enum ScreenshotRegion {
@@ -31,6 +40,11 @@ struct IntentRouter {
     /// Classify the user's text input
     static func classify(_ text: String) -> Intent {
         let lower = text.lowercased()
+
+        // Home control (check early - user expects instant response for lights/devices)
+        if let homeCommand = classifyHomeControl(text) {
+            return .infrastructure(command: homeCommand)
+        }
 
         // Task creation (check first - high priority)
         if (lower.contains("create") || lower.contains("add") || lower.contains("new")) &&
@@ -163,6 +177,67 @@ struct IntentRouter {
 
         return nil
     }
+
+    private static func classifyHomeControl(_ text: String) -> InfrastructureCommand? {
+        let lower = text.lowercased()
+
+        // Check for action keywords
+        var action: HomeAction?
+        if lower.contains("turn on") || lower.contains("turn the") && lower.contains("on") {
+            action = .turnOn
+        } else if lower.contains("turn off") || lower.contains("turn the") && lower.contains("off") {
+            action = .turnOff
+        } else if lower.contains("toggle") {
+            action = .toggle
+        } else if lower.contains("brightness") || lower.contains("dim") || lower.contains("bright") {
+            // Extract percentage if present
+            let words = text.components(separatedBy: .whitespaces)
+            for word in words {
+                if let num = Int(word.trimmingCharacters(in: CharacterSet(charactersIn: "%"))),
+                   num >= 0 && num <= 100 {
+                    action = .setBrightness(num)
+                    break
+                }
+            }
+            if action == nil {
+                action = .setBrightness(50) // Default to 50% if no number found
+            }
+        } else {
+            return nil // Not a home control command
+        }
+
+        guard let finalAction = action else { return nil }
+
+        // Extract device name (simplified - look for common patterns)
+        let devicePatterns = [
+            "bedroom light", "bedroom lamp", "bedroom",
+            "living room light", "living room lamp", "living room",
+            "kitchen light", "kitchen lamp", "kitchen",
+            "office light", "office lamp", "office",
+            "bathroom light", "bathroom lamp", "bathroom"
+        ]
+
+        for pattern in devicePatterns {
+            if lower.contains(pattern) {
+                // Normalize device name for Home Assistant entity IDs
+                let normalized = pattern
+                    .replacingOccurrences(of: " light", with: "")
+                    .replacingOccurrences(of: " lamp", with: "")
+                    .replacingOccurrences(of: " ", with: "_")
+                return .homeControl(action: finalAction, device: normalized)
+            }
+        }
+
+        // Fallback: extract any words that might be a device name
+        let words = lower.components(separatedBy: .whitespaces)
+            .filter { !["turn", "on", "off", "the", "my", "a", "an", "toggle", "set", "brightness", "to"].contains($0) }
+        if !words.isEmpty {
+            let device = words.joined(separator: "_")
+            return .homeControl(action: finalAction, device: device)
+        }
+
+        return nil
+    }
 }
 
 /// Executes infrastructure commands
@@ -202,6 +277,9 @@ struct InfrastructureExecutor {
 
         case .createNote(let title, let content):
             return await createNote(title, content)
+
+        case .homeControl(let action, let device):
+            return await controlHomeDevice(action: action, device: device)
         }
     }
 
@@ -546,6 +624,107 @@ struct InfrastructureExecutor {
         } catch {
             return "Failed to create note: \(error.localizedDescription)"
         }
+    }
+
+    // MARK: - Home Assistant Control
+
+    private static func controlHomeDevice(action: IntentRouter.HomeAction, device: String) async -> String {
+        // Load Home Assistant token
+        guard let tokenData = try? Data(contentsOf: URL(fileURLWithPath: "/Volumes/data/secrets/ha_token")),
+              let token = String(data: tokenData, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines) else {
+            return "Home Assistant not configured (token missing)"
+        }
+
+        // Query Home Assistant for all light entities to fuzzy match the device name
+        let entityId: String
+        if let matchedEntity = await findMatchingEntity(device: device, token: token) {
+            entityId = matchedEntity
+            print("[HomeControl] Matched '\(device)' to '\(entityId)'")
+        } else {
+            // Fallback: try the normalized name directly
+            entityId = "light.\(device)"
+            print("[HomeControl] No match for '\(device)', using '\(entityId)'")
+        }
+
+        print("[HomeControl] Action: \(action), Entity: \(entityId)")
+
+        // Determine service and data payload
+        let (service, data): (String, String)
+        switch action {
+        case .turnOn:
+            service = "light/turn_on"
+            data = "{\"entity_id\":\"\(entityId)\"}"
+        case .turnOff:
+            service = "light/turn_off"
+            data = "{\"entity_id\":\"\(entityId)\"}"
+        case .toggle:
+            service = "light/toggle"
+            data = "{\"entity_id\":\"\(entityId)\"}"
+        case .setBrightness(let pct):
+            // Home Assistant brightness is 0-255
+            let brightness = Int(Double(pct) / 100.0 * 255.0)
+            service = "light/turn_on"
+            data = "{\"entity_id\":\"\(entityId)\",\"brightness\":\(brightness)}"
+        case .setColor(let color):
+            service = "light/turn_on"
+            data = "{\"entity_id\":\"\(entityId)\",\"color_name\":\"\(color)\"}"
+        }
+
+        // Call Home Assistant REST API
+        let url = "http://homeassistant.local:8123/api/services/\(service)"
+        let command = """
+        curl -s -X POST '\(url)' \
+          -H 'Authorization: Bearer \(token)' \
+          -H 'Content-Type: application/json' \
+          -d '\(data)'
+        """
+
+        let result = await shell(command)
+
+        if result.exitCode == 0 {
+            // Check if response indicates success (Home Assistant returns array of affected entities)
+            if result.stdout.contains("entity_id") || result.stdout.contains("[") {
+                return "Done"
+            } else {
+                return "Home Assistant responded but device may not exist: \(entityId)"
+            }
+        } else {
+            return "Failed to control device: \(result.stderr)"
+        }
+    }
+
+    private static func findMatchingEntity(device: String, token: String) async -> String? {
+        // Query all light entities from Home Assistant with timeout
+        let url = "http://homeassistant.local:8123/api/states"
+        let command = """
+        timeout 2 curl -s -H 'Authorization: Bearer \(token)' '\(url)'
+        """
+
+        let result = await shell(command)
+        guard result.exitCode == 0,
+              let data = result.stdout.data(using: .utf8),
+              let json = try? JSONSerialization.jsonObject(with: data) as? [[String: Any]] else {
+            return nil
+        }
+
+        // Extract all light entity IDs
+        let lights = json.compactMap { state -> String? in
+            guard let entityId = state["entity_id"] as? String,
+                  entityId.starts(with: "light.") else {
+                return nil
+            }
+            return entityId
+        }
+
+        // Fuzzy match: find entity that contains the device keyword
+        let deviceLower = device.lowercased()
+        for light in lights {
+            if light.lowercased().contains(deviceLower) {
+                return light
+            }
+        }
+
+        return nil
     }
 
     // MARK: - Shell Helper
