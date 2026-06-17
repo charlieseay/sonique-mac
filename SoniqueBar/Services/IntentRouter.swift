@@ -97,12 +97,19 @@ struct IntentRouter {
         }
 
         // Note taking
+        // Note creation - only imperative commands, not questions about note-taking
         if (lower.contains("take a note") || lower.contains("create a note") || lower.contains("write a note")) {
-            let noteContent = text.replacingOccurrences(of: "take a note", with: "", options: .caseInsensitive)
-                                 .replacingOccurrences(of: "create a note", with: "", options: .caseInsensitive)
-                                 .replacingOccurrences(of: "write a note", with: "", options: .caseInsensitive)
-                                 .trimmingCharacters(in: .whitespacesAndNewlines)
-            return .infrastructure(command: .createNote(title: "Voice Note", content: noteContent))
+            // Skip if this is a question about note-taking rather than an actual command
+            let isQuestion = lower.contains("if ") || lower.contains("how ") || lower.contains("where ") ||
+                            lower.contains("what ") || lower.contains("when ") || lower.contains("why ") ||
+                            lower.contains("?")
+            if !isQuestion {
+                let noteContent = text.replacingOccurrences(of: "take a note", with: "", options: .caseInsensitive)
+                                     .replacingOccurrences(of: "create a note", with: "", options: .caseInsensitive)
+                                     .replacingOccurrences(of: "write a note", with: "", options: .caseInsensitive)
+                                     .trimmingCharacters(in: .whitespacesAndNewlines)
+                return .infrastructure(command: .createNote(title: "Voice Note", content: noteContent))
+            }
         }
 
         // Vault queries (MCP) - only explicit read/search commands
