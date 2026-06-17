@@ -133,6 +133,22 @@ class CommandServer: ObservableObject {
         let path = parts[1]
 
         print("[CommandServer] \(method) \(path)")
+        NSLog("[SoniqueBar] Request: \(method) \(path)")
+
+        // Write to accessible file for debugging
+        let debugLog = "[\(Date())] \(method) \(path)\n"
+        if let handle = try? FileHandle(forWritingTo: URL(fileURLWithPath: "/Users/charlieseay/soniquebar-debug.log")) {
+            handle.seekToEndOfFile()
+            handle.write(debugLog.data(using: .utf8)!)
+            try? handle.close()
+        } else {
+            try? debugLog.data(using: .utf8)?.write(to: URL(fileURLWithPath: "/Users/charlieseay/soniquebar-debug.log"))
+        }
+
+        // Also add to log entries for GET /logs to work
+        await MainActor.run {
+            Self.logEntries.append("[\(Date())] \(method) \(path)")
+        }
 
         // Route the request
         if method == "GET" && path == "/health" {
@@ -483,6 +499,10 @@ class CommandServer: ObservableObject {
     }
 
     private func handleCommandStream(_ data: Data, _ connection: NWConnection) async {
+        await MainActor.run {
+            Self.logEntries.append("[CommandServer] handleCommandStream called")
+        }
+
         guard let requestString = String(data: data, encoding: .utf8) else {
             sendResponse("HTTP/1.1 400 Bad Request\r\n\r\n", to: connection)
             return
@@ -493,8 +513,15 @@ class CommandServer: ObservableObject {
               let bodyData = components[1].data(using: .utf8),
               let json = try? JSONSerialization.jsonObject(with: bodyData) as? [String: Any],
               let text = json["text"] as? String else {
+            await MainActor.run {
+                Self.logEntries.append("[CommandServer] Missing text field")
+            }
             sendResponse("HTTP/1.1 400 Bad Request\r\n\r\n{\"error\":\"Missing 'text' field\"}", to: connection)
             return
+        }
+
+        await MainActor.run {
+            Self.logEntries.append("[CommandServer] Processing command: \(text.prefix(50))")
         }
 
         // Extract device battery info if present
@@ -626,6 +653,10 @@ class CommandServer: ObservableObject {
             let systemPromptFile = "/tmp/sonique-sys-\(UUID().uuidString).txt"
             try? userPrompt.write(toFile: userPromptFile, atomically: true, encoding: .utf8)
             try? systemInstructions.write(toFile: systemPromptFile, atomically: true, encoding: .utf8)
+
+            await MainActor.run {
+                Self.logEntries.append("[CommandServer] About to call streamClaudeResponse")
+            }
 
             // Stream Claude CLI output in real-time (token-by-token via stream-json)
             let success = await streamClaudeResponse(
@@ -919,14 +950,19 @@ class CommandServer: ObservableObject {
         process.standardOutput = outputPipe
         process.standardError = errorPipe
 
+        await MainActor.run {
+            Self.logEntries.append("[CommandServer] Starting Claude at \(claudePath)")
+        }
+
         do {
             try process.run()
+            await MainActor.run {
+                Self.logEntries.append("[CommandServer] Process started, PID: \(process.processIdentifier)")
+            }
         } catch {
-            let errMsg = "[CommandServer] Failed to start Claude CLI: \(error), path: \(claudePath)"
-            print(errMsg)
-            NSLog(errMsg)
-            // Write to accessible log file
-            try? errMsg.appending("\n").data(using: .utf8)?.write(to: URL(fileURLWithPath: "/tmp/soniquebar-error.log"), options: .atomic)
+            await MainActor.run {
+                Self.logEntries.append("[CommandServer] FAILED to start: \(error)")
+            }
             sendSentenceChunk("Sorry, I ran into an issue.", index: startIndex, to: connection)
             return false
         }
@@ -935,10 +971,9 @@ class CommandServer: ObservableObject {
         Task.detached {
             let data = errorPipe.fileHandleForReading.readDataToEndOfFile()
             if let stderr = String(data: data, encoding: .utf8), !stderr.isEmpty {
-                let msg = "[CommandServer] Claude stderr: \(stderr)"
-                print(msg)
-                NSLog(msg)
-                try? msg.appending("\n").data(using: .utf8)?.write(to: URL(fileURLWithPath: "/tmp/soniquebar-error.log"), options: .atomic)
+                await MainActor.run {
+                    Self.logEntries.append("[CommandServer] Claude stderr: \(stderr.prefix(500))")
+                }
             }
         }
 
@@ -1050,11 +1085,16 @@ class CommandServer: ObservableObject {
         process.waitUntilExit()
         let exitCode = process.terminationStatus
 
+        await MainActor.run {
+            Self.logEntries.append("[CommandServer] Claude process exited with code \(exitCode), accumulated: \(accumulatedText.prefix(100))")
+        }
+
         if exitCode != 0 {
             print("[CommandServer] Claude CLI failed with exit code \(exitCode)")
             if accumulatedText.isEmpty {
                 let msg = exitCode == 124 ? "Sorry, that took too long." : "Sorry, I ran into an issue."
                 await MainActor.run {
+                    Self.logEntries.append("[CommandServer] Sending error: \(msg)")
                     sendSentenceChunk(msg, index: chunkIndex, to: connection)
                 }
             }
