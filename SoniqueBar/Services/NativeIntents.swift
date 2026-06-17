@@ -75,9 +75,9 @@ enum NativeIntents {
 
         // --- Home Assistant light control (direct REST API) ---
         if lower.contains("bedroom light") || lower.contains("bedroom lights") {
-            if lower.matchesAny(["turn on", "turn the", "switch on"]) {
+            if lower.matchesAny(["turn on", "turn the", "switch on", " on", "light on"]) {
                 return await homeAssistantControl(entity: "light.bedroom_3", service: "turn_on")
-            } else if lower.matchesAny(["turn off", "switch off"]) {
+            } else if lower.matchesAny(["turn off", "switch off", " off", "light off"]) {
                 return await homeAssistantControl(entity: "light.bedroom_3", service: "turn_off")
             }
         }
@@ -231,10 +231,19 @@ enum NativeIntents {
     // MARK: - Home Assistant (direct REST API)
 
     private static func homeAssistantControl(entity: String, service: String) async -> String {
-        guard let tokenData = try? Data(contentsOf: URL(fileURLWithPath: "/Volumes/data/secrets/ha_token")),
+        let debugLog = { (msg: String) in
+            try? "[\(Date())] \(msg)\n".data(using: .utf8)?.write(to: URL(fileURLWithPath: "/Users/charlieseay/ha-debug.log"), options: .atomic)
+        }
+
+        debugLog("START: entity=\(entity) service=\(service)")
+
+        guard let tokenData = try? Data(contentsOf: URL(fileURLWithPath: "/Volumes/data/secrets/homepage_ha_token")),
               let token = String(data: tokenData, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines) else {
+            debugLog("Token file missing or unreadable")
             return "Home Assistant isn't configured."
         }
+
+        debugLog("Token loaded, length: \(token.count)")
 
         let domain = entity.components(separatedBy: ".").first ?? "light"
         let url = URL(string: "http://homeassistant.local:8123/api/services/\(domain)/\(service)")!
@@ -246,14 +255,25 @@ enum NativeIntents {
         let body = ["entity_id": entity]
         request.httpBody = try? JSONSerialization.data(withJSONObject: body)
 
+        debugLog("Calling \(url)")
+
         do {
-            let (_, response) = try await URLSession.shared.data(for: request)
-            if let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 {
-                return "Done."
+            let (data, response) = try await URLSession.shared.data(for: request)
+            if let httpResponse = response as? HTTPURLResponse {
+                debugLog("Response status: \(httpResponse.statusCode)")
+                if httpResponse.statusCode == 200 {
+                    return "Done."
+                } else {
+                    let responseText = String(data: data, encoding: .utf8) ?? "(no body)"
+                    debugLog("Error response: \(responseText)")
+                    return "Couldn't control that device."
+                }
             } else {
+                debugLog("Non-HTTP response")
                 return "Couldn't control that device."
             }
         } catch {
+            debugLog("Request failed: \(error)")
             return "Home Assistant isn't responding."
         }
     }

@@ -648,12 +648,6 @@ class CommandServer: ObservableObject {
             \(text)
             """
 
-            // Use temp files to avoid shell escaping hell
-            let userPromptFile = "/tmp/sonique-user-\(UUID().uuidString).txt"
-            let systemPromptFile = "/tmp/sonique-sys-\(UUID().uuidString).txt"
-            try? userPrompt.write(toFile: userPromptFile, atomically: true, encoding: .utf8)
-            try? systemInstructions.write(toFile: systemPromptFile, atomically: true, encoding: .utf8)
-
             await MainActor.run {
                 Self.logEntries.append("[CommandServer] About to call streamClaudeResponse")
             }
@@ -661,15 +655,11 @@ class CommandServer: ObservableObject {
             // Stream Claude CLI output in real-time (token-by-token via stream-json)
             let success = await streamClaudeResponse(
                 claudePath: claudePath,
-                userPromptFile: userPromptFile,
-                systemPromptFile: systemPromptFile,
+                userPrompt: userPrompt,
+                systemPrompt: systemInstructions,
                 connection: connection,
                 startIndex: 1  // index 0 was the "…" indicator
             )
-
-            // Cleanup temp files
-            try? FileManager.default.removeItem(atPath: userPromptFile)
-            try? FileManager.default.removeItem(atPath: systemPromptFile)
 
             if !success {
                 // Error already handled in streamClaudeResponse
@@ -933,15 +923,21 @@ class CommandServer: ObservableObject {
     /// and sends NDJSON chunks to the client as tokens arrive. Returns true on success.
     private func streamClaudeResponse(
         claudePath: String,
-        userPromptFile: String,
-        systemPromptFile: String,
+        userPrompt: String,
+        systemPrompt: String,
         connection: NWConnection,
         startIndex: Int
     ) async -> Bool {
-        let cmd = "cd /tmp && timeout 45 '\(claudePath)' --print --verbose --model haiku --allowedTools 'Bash' --permission-mode acceptEdits --output-format stream-json --append-system-prompt \"$(cat '\(systemPromptFile)')\" \"$(cat '\(userPromptFile)')\" 2>&1"
+        // Escape single quotes in prompts for bash heredoc
+        let escapedUser = userPrompt.replacingOccurrences(of: "'", with: "'\\''")
+        let escapedSystem = systemPrompt.replacingOccurrences(of: "'", with: "'\\''")
+
+        let cmd = """
+        timeout 45 '\(claudePath)' --print --verbose --model haiku --allowedTools 'Bash' --permission-mode acceptEdits --output-format stream-json --append-system-prompt '\(escapedSystem)' '\(escapedUser)' 2>&1
+        """
 
         await MainActor.run {
-            Self.logEntries.append("[CommandServer] Claude command: \(cmd)")
+            Self.logEntries.append("[CommandServer] Calling Claude with \(userPrompt.count) char prompt")
         }
 
         let process = Process()
