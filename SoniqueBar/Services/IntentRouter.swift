@@ -384,50 +384,44 @@ struct InfrastructureExecutor {
     // MARK: - MCP Tool Integration
 
     private static func invokeMCPTool(_ tool: String, query: String) async -> String {
-        // MCP proxy runs on localhost:3700
-        // For vault queries, search the vault (don't assume literal note name)
+        // Native vault search - just grep the markdown files directly
         if tool == "vault" {
-            // Extract search query
             let searchQuery = extractSearchQuery(from: query)
-
-            // Call vault MCP search_notes via curl
-            let payload = """
-            {
-              "method": "tools/call",
-              "params": {
-                "name": "search_notes",
-                "arguments": {
-                  "query": "\(searchQuery)"
-                }
-              }
-            }
-            """
-
-            let command = """
-            curl -s -X POST http://localhost:3700/vault \
-              -H 'Content-Type: application/json' \
-              -d '\(payload)'
-            """
-
-            let result = await shell(command)
-
-            if result.exitCode == 0 {
-                // Parse MCP response
-                if let data = result.stdout.data(using: .utf8),
-                   let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-                   let resultObj = json["result"] as? [String: Any],
-                   let content = resultObj["content"] as? [[String: Any]],
-                   let text = content.first?["text"] as? String {
-                    // Return first 500 chars
-                    let preview = String(text.prefix(500))
-                    return preview + (text.count > 500 ? "..." : "")
-                }
-            }
-
-            return "Could not search vault for '\(searchQuery)'"
+            return await searchVault(query: searchQuery)
         }
 
         return "MCP tool '\(tool)' not yet implemented"
+    }
+
+    private static func searchVault(query: String) async -> String {
+        let vaultPath = FileManager.default.homeDirectoryForCurrentUser
+            .appendingPathComponent("Library/Mobile Documents/iCloud~md~obsidian/Documents/SeaynicNet")
+
+        // Use grep to search all markdown files
+        let command = """
+        grep -ri '\(query)' '\(vaultPath.path)' --include='*.md' | head -5
+        """
+
+        let result = await shell(command)
+
+        if result.exitCode == 0 && !result.stdout.isEmpty {
+            // Parse results - show file path and matching line
+            let lines = result.stdout.components(separatedBy: "\n").filter { !$0.isEmpty }
+            var response = "Found \(lines.count) matches:\n\n"
+
+            for (index, line) in lines.prefix(3).enumerated() {
+                if let colonIndex = line.firstIndex(of: ":") {
+                    let filePath = String(line[..<colonIndex])
+                    let fileName = (filePath as NSString).lastPathComponent
+                    let content = String(line[line.index(after: colonIndex)...])
+                    response += "\(index + 1). \(fileName): \(content.prefix(100))\n"
+                }
+            }
+
+            return response
+        }
+
+        return "No notes found matching '\(query)'"
     }
 
     private static func extractSearchQuery(from query: String) -> String {
