@@ -73,12 +73,34 @@ enum NativeIntents {
             return "Muted."
         }
 
-        // --- Home Assistant light control (direct REST API) ---
+        // --- Weather ---
+        if lower.matchesAny(["weather", "what's the weather", "whats the weather", "how's the weather", "hows the weather", "temperature", "what's it like outside"]) {
+            return await getWeather()
+        }
+
+        // --- Music control (AppleScript to Music app) ---
+        if lower.matchesAny(["play music", "pause music", "stop music", "next song", "skip", "previous song"]) {
+            return await controlMusic(command: lower)
+        }
+
+        // --- Screenshot ---
+        if lower.matchesAny(["take a screenshot", "screenshot", "capture screen", "screen capture"]) {
+            return await takeScreenshot()
+        }
+
+        // --- HomeKit control via Shortcuts (silent, no Home.app UI) ---
         if lower.contains("bedroom light") || lower.contains("bedroom lights") {
             if lower.matchesAny(["turn on", "turn the", "switch on", " on", "light on"]) {
-                return await homeAssistantControl(entity: "light.bedroom_3", service: "turn_on")
+                return await controlHomeKitDevice(name: "Bedroom", action: "on")
             } else if lower.matchesAny(["turn off", "switch off", " off", "light off"]) {
-                return await homeAssistantControl(entity: "light.bedroom_3", service: "turn_off")
+                return await controlHomeKitDevice(name: "Bedroom", action: "off")
+            }
+        }
+
+        // Generic HomeKit control - extract device name and action
+        if lower.contains("turn on") || lower.contains("turn off") || lower.contains("switch on") || lower.contains("switch off") {
+            if let (device, action) = extractHomeKitIntent(from: lower) {
+                return await controlHomeKitDevice(name: device, action: action)
             }
         }
 
@@ -230,54 +252,6 @@ enum NativeIntents {
 
     // MARK: - Home Assistant (direct REST API)
 
-    private static func homeAssistantControl(entity: String, service: String) async -> String {
-        let debugLog = { (msg: String) in
-            try? "[\(Date())] \(msg)\n".data(using: .utf8)?.write(to: URL(fileURLWithPath: "/Users/charlieseay/ha-debug.log"), options: .atomic)
-        }
-
-        debugLog("START: entity=\(entity) service=\(service)")
-
-        guard let tokenData = try? Data(contentsOf: URL(fileURLWithPath: "/Volumes/data/secrets/homepage_ha_token")),
-              let token = String(data: tokenData, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines) else {
-            debugLog("Token file missing or unreadable")
-            return "Home Assistant isn't configured."
-        }
-
-        debugLog("Token loaded, length: \(token.count)")
-
-        let domain = entity.components(separatedBy: ".").first ?? "light"
-        let url = URL(string: "http://homeassistant.local:8123/api/services/\(domain)/\(service)")!
-        var request = URLRequest(url: url)
-        request.httpMethod = "POST"
-        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-
-        let body = ["entity_id": entity]
-        request.httpBody = try? JSONSerialization.data(withJSONObject: body)
-
-        debugLog("Calling \(url)")
-
-        do {
-            let (data, response) = try await URLSession.shared.data(for: request)
-            if let httpResponse = response as? HTTPURLResponse {
-                debugLog("Response status: \(httpResponse.statusCode)")
-                if httpResponse.statusCode == 200 {
-                    return "Done."
-                } else {
-                    let responseText = String(data: data, encoding: .utf8) ?? "(no body)"
-                    debugLog("Error response: \(responseText)")
-                    return "Couldn't control that device."
-                }
-            } else {
-                debugLog("Non-HTTP response")
-                return "Couldn't control that device."
-            }
-        } catch {
-            debugLog("Request failed: \(error)")
-            return "Home Assistant isn't responding."
-        }
-    }
-
     // MARK: - Shell helper
 
     private static func shell(_ command: String) async -> (stdout: String, exitCode: Int32) {
@@ -298,6 +272,83 @@ enum NativeIntents {
                 continuation.resume(returning: ("", -1))
             }
         }
+    }
+
+    // MARK: - Weather
+
+    private static func getWeather() async -> String {
+        // Use wttr.in for quick weather (no API key needed)
+        let result = await shell("curl -s 'wttr.in/?format=%l:+%C+%t+%w'")
+        if result.exitCode == 0 && !result.stdout.isEmpty {
+            return result.stdout.trimmingCharacters(in: .whitespacesAndNewlines)
+        }
+        return "Couldn't get weather"
+    }
+
+    // MARK: - Music Control
+
+    private static func controlMusic(command: String) async -> String {
+        let script: String
+        if command.contains("play") {
+            script = "tell application \"Music\" to play"
+        } else if command.contains("pause") || command.contains("stop") {
+            script = "tell application \"Music\" to pause"
+        } else if command.contains("next") || command.contains("skip") {
+            script = "tell application \"Music\" to next track"
+        } else if command.contains("previous") {
+            script = "tell application \"Music\" to previous track"
+        } else {
+            return "Music command not recognized"
+        }
+
+        let result = await shell("osascript -e '\(script)'")
+        return result.exitCode == 0 ? "Done." : "Music isn't running"
+    }
+
+    // MARK: - Screenshot
+
+    private static func takeScreenshot() async -> String {
+        let timestamp = Int(Date().timeIntervalSince1970)
+        let path = "/Users/charlieseay/Desktop/screenshot-\(timestamp).png"
+        let result = await shell("screencapture -x '\(path)'")
+        return result.exitCode == 0 ? "Screenshot saved to Desktop" : "Couldn't take screenshot"
+    }
+
+    // MARK: - HomeKit Control (via Shortcuts, silent - no Home.app opening)
+
+    private static func controlHomeKitDevice(name: String, action: String) async -> String {
+        // Use shortcuts command to control HomeKit devices silently
+        // This runs in background - Home.app does NOT open
+        let command = action == "on" ? "Turn on \(name)" : "Turn off \(name)"
+        let result = await shell("shortcuts run '\(command)' 2>&1")
+
+        if result.exitCode == 0 {
+            return "Done."
+        } else if result.stdout.contains("not found") || result.stdout.contains("doesn't exist") {
+            return "I don't see a device named '\(name)' in HomeKit."
+        } else {
+            return "Couldn't control that device."
+        }
+    }
+
+    private static func extractHomeKitIntent(from text: String) -> (device: String, action: String)? {
+        // Pattern match common device names
+        // Map to HomeKit accessory names (customize for your setup)
+        let deviceMap: [String: String] = [
+            "living room light": "Living Room",
+            "kitchen light": "Kitchen",
+            "office light": "Office",
+            "desk lamp": "Desk"
+        ]
+
+        for (keyword, deviceName) in deviceMap {
+            if text.contains(keyword) {
+                let action = text.contains("turn on") || text.contains("switch on") ? "on" : "off"
+                return (deviceName, action)
+            }
+        }
+
+        return nil
     }
 }
 
