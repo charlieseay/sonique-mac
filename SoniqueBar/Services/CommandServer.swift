@@ -922,8 +922,11 @@ class CommandServer: ObservableObject {
         do {
             try process.run()
         } catch {
-            print("[CommandServer] Failed to start Claude CLI: \(error)")
-            print("[CommandServer] Command was: cd /tmp && timeout 45 '\(claudePath)' ...")
+            let errMsg = "[CommandServer] Failed to start Claude CLI: \(error), path: \(claudePath)"
+            print(errMsg)
+            NSLog(errMsg)
+            // Write to accessible log file
+            try? errMsg.appending("\n").data(using: .utf8)?.write(to: URL(fileURLWithPath: "/tmp/soniquebar-error.log"), options: .atomic)
             sendSentenceChunk("Sorry, I ran into an issue.", index: startIndex, to: connection)
             return false
         }
@@ -932,7 +935,10 @@ class CommandServer: ObservableObject {
         Task.detached {
             let data = errorPipe.fileHandleForReading.readDataToEndOfFile()
             if let stderr = String(data: data, encoding: .utf8), !stderr.isEmpty {
-                print("[CommandServer] Claude stderr: \(stderr)")
+                let msg = "[CommandServer] Claude stderr: \(stderr)"
+                print(msg)
+                NSLog(msg)
+                try? msg.appending("\n").data(using: .utf8)?.write(to: URL(fileURLWithPath: "/tmp/soniquebar-error.log"), options: .atomic)
             }
         }
 

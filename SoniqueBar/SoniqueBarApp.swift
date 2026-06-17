@@ -1,11 +1,20 @@
 import SwiftUI
 import AppKit
+import os.log
 
 @main
 struct SoniqueBarApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
     @StateObject private var commandServer = CommandServer.shared
     @StateObject private var memoryService = MemoryService.shared
+
+    init() {
+        // Redirect stdout/stderr to a file for debugging
+        let logPath = "/tmp/soniquebar.log"
+        freopen(logPath.cString(using: .utf8), "a+", stdout)
+        freopen(logPath.cString(using: .utf8), "a+", stderr)
+        print("=== SoniqueBar started at \(Date()) ===")
+    }
 
     var body: some Scene {
         MenuBarExtra {
