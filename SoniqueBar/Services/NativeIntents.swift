@@ -73,6 +73,15 @@ enum NativeIntents {
             return "Muted."
         }
 
+        // --- Home Assistant light control (direct REST API) ---
+        if lower.contains("bedroom light") || lower.contains("bedroom lights") {
+            if lower.matchesAny(["turn on", "turn the", "switch on"]) {
+                return await homeAssistantControl(entity: "light.bedroom_3", service: "turn_on")
+            } else if lower.matchesAny(["turn off", "switch off"]) {
+                return await homeAssistantControl(entity: "light.bedroom_3", service: "turn_off")
+            }
+        }
+
         return nil  // not a native intent → defer to LLM
     }
 
@@ -216,6 +225,36 @@ enum NativeIntents {
                     continuation.resume(returning: "You have \(count) reminders. Want all of them, just today's, or something specific?")
                 }
             }
+        }
+    }
+
+    // MARK: - Home Assistant (direct REST API)
+
+    private static func homeAssistantControl(entity: String, service: String) async -> String {
+        guard let tokenData = try? Data(contentsOf: URL(fileURLWithPath: "/Volumes/data/secrets/ha_token")),
+              let token = String(data: tokenData, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines) else {
+            return "Home Assistant isn't configured."
+        }
+
+        let domain = entity.components(separatedBy: ".").first ?? "light"
+        let url = URL(string: "http://homeassistant.local:8123/api/services/\(domain)/\(service)")!
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+
+        let body = ["entity_id": entity]
+        request.httpBody = try? JSONSerialization.data(withJSONObject: body)
+
+        do {
+            let (_, response) = try await URLSession.shared.data(for: request)
+            if let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 {
+                return "Done."
+            } else {
+                return "Couldn't control that device."
+            }
+        } catch {
+            return "Home Assistant isn't responding."
         }
     }
 
