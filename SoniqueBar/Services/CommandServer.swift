@@ -938,12 +938,15 @@ class CommandServer: ObservableObject {
         connection: NWConnection,
         startIndex: Int
     ) async -> Bool {
+        let cmd = "cd /tmp && timeout 45 '\(claudePath)' --print --verbose --model haiku --allowedTools 'Bash' --permission-mode acceptEdits --output-format stream-json --append-system-prompt \"$(cat '\(systemPromptFile)')\" \"$(cat '\(userPromptFile)')\" 2>&1"
+
+        await MainActor.run {
+            Self.logEntries.append("[CommandServer] Claude command: \(cmd)")
+        }
+
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/bin/bash")
-        process.arguments = [
-            "-c",
-            "cd /tmp && timeout 45 '\(claudePath)' --print --verbose --model haiku --allowedTools 'Bash' --permission-mode acceptEdits --output-format stream-json --append-system-prompt \"$(cat '\(systemPromptFile)')\" \"$(cat '\(userPromptFile)')\" 2>&1"
-        ]
+        process.arguments = ["-c", cmd]
 
         let outputPipe = Pipe()
         let errorPipe = Pipe()
