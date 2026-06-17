@@ -915,15 +915,25 @@ class CommandServer: ObservableObject {
         ]
 
         let outputPipe = Pipe()
+        let errorPipe = Pipe()
         process.standardOutput = outputPipe
-        process.standardError = Pipe()
+        process.standardError = errorPipe
 
         do {
             try process.run()
         } catch {
             print("[CommandServer] Failed to start Claude CLI: \(error)")
+            print("[CommandServer] Command was: cd /tmp && timeout 45 '\(claudePath)' ...")
             sendSentenceChunk("Sorry, I ran into an issue.", index: startIndex, to: connection)
             return false
+        }
+
+        // Capture stderr in background
+        Task.detached {
+            let data = errorPipe.fileHandleForReading.readDataToEndOfFile()
+            if let stderr = String(data: data, encoding: .utf8), !stderr.isEmpty {
+                print("[CommandServer] Claude stderr: \(stderr)")
+            }
         }
 
         // Read output line-by-line and parse stream-json events

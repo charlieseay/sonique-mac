@@ -105,8 +105,11 @@ struct IntentRouter {
             return .infrastructure(command: .createNote(title: "Voice Note", content: noteContent))
         }
 
-        // Vault queries (MCP)
-        if lower.contains("vault") || lower.contains("note") || lower.contains("read") {
+        // Vault queries (MCP) - only explicit read/search commands
+        if (lower.contains("vault") && (lower.contains("search") || lower.contains("find") || lower.contains("read"))) ||
+           (lower.contains("read") && lower.contains("note")) ||
+           (lower.contains("find") && lower.contains("note")) ||
+           (lower.contains("search") && lower.contains("note")) {
             return .infrastructure(command: .mcpTool(tool: "vault", query: text))
         }
 
