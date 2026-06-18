@@ -163,6 +163,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // Start CommandServer
         Task { @MainActor in
             CommandServer.shared.start()
+            // TODO: Add ScreenAwarenessService.swift to Xcode project, then uncomment:
+            // ScreenAwarenessService.shared.startMonitoring()
         }
     }
 

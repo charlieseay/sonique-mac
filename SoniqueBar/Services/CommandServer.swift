@@ -907,15 +907,46 @@ class CommandServer: ObservableObject {
     /// Emit one sentence chunk as NDJSON over the open chunked response.
     private func sendSentenceChunk(_ sentence: String, index: Int, to connection: NWConnection) {
         // Sanitize control characters that would break JSON serialization
-        let sanitized = sentence
+        var sanitized = sentence
             .replacingOccurrences(of: "\n", with: " ")
             .replacingOccurrences(of: "\r", with: " ")
             .replacingOccurrences(of: "\t", with: " ")
+
+        // Strip markdown formatting that shouldn't be spoken
+        sanitized = stripMarkdownForSpeech(sanitized)
 
         if let data = try? JSONSerialization.data(withJSONObject: ["chunk": sanitized, "index": index, "is_final": false]),
            let line = String(data: data, encoding: .utf8) {
             sendChunk(line, to: connection)
         }
+    }
+
+    /// Remove markdown syntax that sounds bad when spoken aloud
+    private func stripMarkdownForSpeech(_ text: String) -> String {
+        var result = text
+
+        // Remove markdown headers (##, ###, etc.)
+        result = result.replacingOccurrences(of: #"^#{1,6}\s+"#, with: "", options: .regularExpression)
+        result = result.replacingOccurrences(of: #"\n#{1,6}\s+"#, with: "\n", options: .regularExpression)
+
+        // Remove bold/italic markers (**text**, *text*, __text__, _text_)
+        result = result.replacingOccurrences(of: #"\*\*([^\*]+)\*\*"#, with: "$1", options: .regularExpression)
+        result = result.replacingOccurrences(of: #"__([^_]+)__"#, with: "$1", options: .regularExpression)
+        result = result.replacingOccurrences(of: #"\*([^\*]+)\*"#, with: "$1", options: .regularExpression)
+        result = result.replacingOccurrences(of: #"_([^_]+)_"#, with: "$1", options: .regularExpression)
+
+        // Remove code blocks (```code```)
+        result = result.replacingOccurrences(of: #"```[^`]*```"#, with: "", options: .regularExpression)
+        result = result.replacingOccurrences(of: #"`([^`]+)`"#, with: "$1", options: .regularExpression)
+
+        // Remove links [text](url) -> just keep the text
+        result = result.replacingOccurrences(of: #"\[([^\]]+)\]\([^\)]+\)"#, with: "$1", options: .regularExpression)
+
+        // Remove list markers (-, *, •)
+        result = result.replacingOccurrences(of: #"^[\-\*•]\s+"#, with: "", options: .regularExpression)
+        result = result.replacingOccurrences(of: #"\n[\-\*•]\s+"#, with: "\n", options: .regularExpression)
+
+        return result.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
     /// Close the chunked response: send the {"done":true} line + terminal 0-chunk.

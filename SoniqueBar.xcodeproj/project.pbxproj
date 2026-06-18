@@ -406,7 +406,7 @@
 				<key>COMBINE_HIDPI_IMAGES</key>
 				<string>YES</string>
 				<key>CURRENT_PROJECT_VERSION</key>
-				<string>4</string>
+				<string>5</string>
 				<key>DEVELOPMENT_TEAM</key>
 				<string>7NSS5CJL9E</string>
 				<key>ENABLE_HARDENED_RUNTIME</key>
@@ -453,7 +453,7 @@
 				<key>COMBINE_HIDPI_IMAGES</key>
 				<string>YES</string>
 				<key>CURRENT_PROJECT_VERSION</key>
-				<string>4</string>
+				<string>5</string>
 				<key>DEVELOPMENT_TEAM</key>
 				<string>7NSS5CJL9E</string>
 				<key>ENABLE_HARDENED_RUNTIME</key>

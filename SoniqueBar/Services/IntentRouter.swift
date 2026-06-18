@@ -17,6 +17,9 @@ struct IntentRouter {
         case shellCommand(command: String)
         case openURL(url: String)
         case screenshot(region: ScreenshotRegion)
+        case describeScreen  // What's on screen right now
+        case checkEmail(query: String)  // Check Apple Mail
+        case checkCalendar(query: String)  // Check Calendar events
         case slackMessage(channel: String, text: String)
         case createTask(description: String)
         case createProject(name: String, description: String)
@@ -138,6 +141,26 @@ struct IntentRouter {
             if let url = extractURL(from: text) {
                 return .infrastructure(command: .openURL(url: url))
             }
+        }
+
+        // Email checks - Apple Mail integration
+        if (lower.contains("email") || lower.contains("mail")) &&
+           (lower.contains("check") || lower.contains("unread") || lower.contains("inbox") ||
+            lower.contains("latest") || lower.contains("recent")) {
+            return .infrastructure(command: .checkEmail(query: text))
+        }
+
+        // Calendar checks
+        if (lower.contains("calendar") || lower.contains("meeting") || lower.contains("appointment")) &&
+           (lower.contains("check") || lower.contains("today") || lower.contains("tomorrow") ||
+            lower.contains("next") || lower.contains("schedule")) {
+            return .infrastructure(command: .checkCalendar(query: text))
+        }
+
+        // Screen awareness - what's on screen right now
+        if lower.contains("what") && (lower.contains("on screen") || lower.contains("on my screen") ||
+           lower.contains("see on") || lower.contains("showing")) {
+            return .infrastructure(command: .describeScreen)
         }
 
         // Screenshots intentionally fall through to the agentic/conversational path so it
@@ -281,6 +304,15 @@ struct InfrastructureExecutor {
 
         case .screenshot(let region):
             return await captureScreenshot(region)
+
+        case .describeScreen:
+            return await describeCurrentScreen()
+
+        case .checkEmail(let query):
+            return await checkAppleMail(query)
+
+        case .checkCalendar(let query):
+            return await checkAppleCalendar(query)
 
         case .slackMessage(let channel, let text):
             return await sendToSlack(channel, text)
@@ -468,6 +500,107 @@ struct InfrastructureExecutor {
     }
 
     // MARK: - Screenshot Capture
+
+    // MARK: - Calendar Integration
+
+    private static func checkAppleCalendar(_ query: String) async -> String {
+        let lower = query.lowercased()
+        let timeframe = if lower.contains("tomorrow") {
+            "tomorrow"
+        } else if lower.contains("week") {
+            "week"
+        } else {
+            "today"
+        }
+
+        let script = """
+        tell application "Calendar"
+            set startDate to current date
+            set hours of startDate to 0
+            set minutes of startDate to 0
+            set seconds of startDate to 0
+
+            set endDate to startDate + (1 * days)
+
+            set eventList to {}
+            repeat with cal in calendars
+                set calEvents to (every event of cal whose start date ≥ startDate and start date < endDate)
+                repeat with evt in calEvents
+                    set end of eventList to {summary:(summary of evt), startDate:(start date of evt)}
+                end repeat
+            end repeat
+
+            return eventList
+        end tell
+        """
+
+        let result = await shell("osascript -e '\(script.replacingOccurrences(of: "'", with: "'\\''"))'")
+
+        if result.exitCode == 0 {
+            let output = result.stdout
+            if output.isEmpty || output == "{}" {
+                return "Your calendar is clear for \(timeframe)."
+            }
+            return "Here are your calendar events for \(timeframe): \(output)"
+        } else {
+            return "I have access to Apple Calendar via AppleScript. Error: \(result.stderr)"
+        }
+    }
+
+    // MARK: - Email Integration
+
+    private static func checkAppleMail(_ query: String) async -> String {
+        // Use AppleScript to access Apple Mail
+        let script = """
+        tell application "Mail"
+            set unreadCount to count of (messages of inbox whose read status is false)
+            set recentMessages to {}
+
+            -- Get last 5 unread messages
+            repeat with msg in (messages of inbox whose read status is false)
+                if (count of recentMessages) < 5 then
+                    set end of recentMessages to {subject:(subject of msg), sender:(sender of msg)}
+                end if
+            end repeat
+
+            return {unreadCount:unreadCount, recent:recentMessages}
+        end tell
+        """
+
+        let result = await shell("osascript -e '\(script.replacingOccurrences(of: "'", with: "'\\''"))'")
+
+        if result.exitCode == 0 {
+            let output = result.stdout
+            // Parse the AppleScript output
+            return "You have unread mail. Here's what Apple Mail shows: \(output)"
+        } else {
+            return "I have access to Apple Mail via AppleScript. Error: \(result.stderr)"
+        }
+    }
+
+    // MARK: - Screen Awareness
+
+    private static func describeCurrentScreen() async -> String {
+        // TODO: Re-enable when ScreenAwarenessService is added to Xcode project
+        // Get the latest screenshot from continuous monitoring
+        // guard let screenshotPath = await Task { @MainActor in
+        //     ScreenAwarenessService.shared.getLatestScreenshot()
+        // }.value else {
+        //     return "Screen awareness is running but no recent screenshot is available yet."
+        // }
+        // return "I can see your screen. The latest screenshot is at: \(screenshotPath)"
+
+        // For now, take a live screenshot
+        let timestamp = Int(Date().timeIntervalSince1970)
+        let path = "/tmp/sonique-screen-\(timestamp).png"
+        let result = await shell("screencapture -x '\(path)'")
+
+        if result.exitCode == 0 {
+            return "I can see your screen. Screenshot saved at: \(path)"
+        } else {
+            return "I can't capture the screen right now: \(result.stderr)"
+        }
+    }
 
     private static func captureScreenshot(_ region: IntentRouter.ScreenshotRegion) async -> String {
         // Use screencapture to save screenshot to temp location
