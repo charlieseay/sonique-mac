@@ -172,6 +172,10 @@ class CommandServer: ObservableObject {
             await handleLogFromDevice(data, connection)
         } else if method == "GET" && path == "/logs" {
             await handleGetLogs(connection)
+        } else if method == "POST" && path == "/diagnose" {
+            await handleDiagnose(data, connection)
+        } else if method == "POST" && path == "/remediate" {
+            await handleRemediate(data, connection)
         } else {
             sendResponse("HTTP/1.1 404 Not Found\r\n\r\n", to: connection)
         }
@@ -1351,5 +1355,126 @@ class CommandServer: ObservableObject {
         """
 
         sendResponse(response, to: connection)
+    }
+
+    // MARK: - Diagnostics
+
+    private func handleDiagnose(_ data: Data, _ connection: NWConnection) async {
+        // Extract JSON body
+        guard let body = extractBody(from: data),
+              let bodyData = body.data(using: .utf8) else {
+            sendResponse("HTTP/1.1 400 Bad Request\r\n\r\n", to: connection)
+            return
+        }
+
+        do {
+            let decoder = JSONDecoder()
+            decoder.dateDecodingStrategy = .iso8601
+            let snapshot = try decoder.decode(DiagnosticAgent.Snapshot.self, from: bodyData)
+
+            NSLog("[CommandServer] Received diagnostic snapshot: \(snapshot.errorType)")
+
+            // Run diagnostic analysis
+            let diagnosis = await DiagnosticAgent.diagnose(snapshot)
+
+            NSLog("[CommandServer] Diagnosis: \(diagnosis.diagnosis) (confidence: \(diagnosis.confidence))")
+
+            // Attempt auto-remediation if applicable
+            var remediationResult: RemediationEngine.RemediationResult? = nil
+            if diagnosis.remediation.autoFixable {
+                NSLog("[CommandServer] Attempting auto-remediation...")
+                remediationResult = await RemediationEngine.remediate(diagnosis: diagnosis)
+                NSLog("[CommandServer] Remediation result: \(remediationResult?.success == true ? "success" : "failed")")
+            }
+
+            // Build response
+            let encoder = JSONEncoder()
+            encoder.outputFormatting = .prettyPrinted
+            encoder.dateEncodingStrategy = .iso8601
+
+            let responseData: [String: Any] = [
+                "diagnosis": [
+                    "diagnosis": diagnosis.diagnosis,
+                    "confidence": diagnosis.confidence,
+                    "evidence": diagnosis.evidence,
+                    "rootCause": diagnosis.rootCause,
+                    "remediation": [
+                        "autoFixable": diagnosis.remediation.autoFixable,
+                        "requires": diagnosis.remediation.requires as Any,
+                        "userAction": diagnosis.remediation.userAction as Any,
+                        "workaround": diagnosis.remediation.workaround as Any,
+                        "autoFixSteps": diagnosis.remediation.autoFixSteps as Any
+                    ],
+                    "technicalDetails": diagnosis.technicalDetails as Any
+                ],
+                "remediation": remediationResult.map { result in
+                    [
+                        "success": result.success,
+                        "actionsTaken": result.actionsTaken,
+                        "message": result.message,
+                        "error": result.error as Any
+                    ]
+                } as Any
+            ]
+
+            let jsonData = try JSONSerialization.data(withJSONObject: responseData, options: .prettyPrinted)
+            let jsonString = String(data: jsonData, encoding: .utf8) ?? "{}"
+
+            let response = """
+            HTTP/1.1 200 OK\r
+            Content-Type: application/json\r
+            Content-Length: \(jsonString.utf8.count)\r
+            \r
+            \(jsonString)
+            """
+
+            sendResponse(response, to: connection)
+
+        } catch {
+            NSLog("[CommandServer] Failed to decode diagnostic snapshot: \(error)")
+            sendResponse("HTTP/1.1 400 Bad Request\r\n\r\n{\"error\":\"Invalid diagnostic snapshot\"}", to: connection)
+        }
+    }
+
+    private func handleRemediate(_ data: Data, _ connection: NWConnection) async {
+        // Extract JSON body
+        guard let body = extractBody(from: data),
+              let bodyData = body.data(using: .utf8) else {
+            sendResponse("HTTP/1.1 400 Bad Request\r\n\r\n", to: connection)
+            return
+        }
+
+        do {
+            let decoder = JSONDecoder()
+            decoder.dateDecodingStrategy = .iso8601
+            let diagnosis = try decoder.decode(DiagnosticAgent.Diagnosis.self, from: bodyData)
+
+            NSLog("[CommandServer] Received remediation request for: \(diagnosis.diagnosis)")
+
+            // Attempt remediation
+            let result = await RemediationEngine.remediate(diagnosis: diagnosis)
+
+            NSLog("[CommandServer] Remediation result: \(result.success ? "success" : "failed")")
+
+            let encoder = JSONEncoder()
+            encoder.outputFormatting = .prettyPrinted
+
+            let jsonData = try encoder.encode(result)
+            let jsonString = String(data: jsonData, encoding: .utf8) ?? "{}"
+
+            let response = """
+            HTTP/1.1 200 OK\r
+            Content-Type: application/json\r
+            Content-Length: \(jsonString.utf8.count)\r
+            \r
+            \(jsonString)
+            """
+
+            sendResponse(response, to: connection)
+
+        } catch {
+            NSLog("[CommandServer] Failed to decode diagnosis: \(error)")
+            sendResponse("HTTP/1.1 400 Bad Request\r\n\r\n{\"error\":\"Invalid diagnosis\"}", to: connection)
+        }
     }
 }

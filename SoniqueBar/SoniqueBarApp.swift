@@ -1,6 +1,7 @@
 import SwiftUI
 import AppKit
 import os.log
+import EventKit
 
 @main
 struct SoniqueBarApp: App {
@@ -160,6 +161,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // Run as menu bar app (no dock icon)
         NSApp.setActivationPolicy(.accessory)
 
+        // Request Calendar access on first launch (triggers permission prompt)
+        requestCalendarAccess()
+
         // Start CommandServer
         Task { @MainActor in
             CommandServer.shared.start()
@@ -169,6 +173,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
             // Start screen awareness (continuous screenshots every 10s)
             ScreenAwarenessService.shared.startMonitoring()
+        }
+    }
+
+    private func requestCalendarAccess() {
+        let eventStore = EKEventStore()
+        eventStore.requestFullAccessToEvents { granted, error in
+            if granted {
+                NSLog("[SoniqueBar] Calendar access granted")
+            } else {
+                NSLog("[SoniqueBar] Calendar access denied: \(error?.localizedDescription ?? "unknown")")
+            }
         }
     }
 
