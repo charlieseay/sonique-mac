@@ -21,6 +21,7 @@
 		BB000041000000000000041 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = BB000040000000000000040 /* Assets.xcassets */; };
 		D6609779DB60D83FF653537A /* LLMRouter.swift in Sources */ = {isa = PBXBuildFile; fileRef = FBB4C60EBFF0FF81DCFA31C3 /* LLMRouter.swift */; };
 		E57EF88A188B232ADF084750 /* PatternClassifier.swift in Sources */ = {isa = PBXBuildFile; fileRef = 33F5E661E0F0C2DC57DBE6B2 /* PatternClassifier.swift */; };
+		EE624D212C094E8478387D8C /* phi-3-mini-4k-instruct.Q4_K_M.gguf in Resources */ = {isa = PBXBuildFile; fileRef = B5A6BE1EFC3767B09AE71FA7 /* phi-3-mini-4k-instruct.Q4_K_M.gguf */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -35,6 +36,7 @@
 		491D3DBA27570E89FA1D8957 /* ScreenAwarenessService.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ScreenAwarenessService.swift; path = SoniqueBar/Services/ScreenAwarenessService.swift; sourceTree = "<group>"; };
 		AC1B00200000000000NI01A /* NativeIntents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SoniqueBar/Services/NativeIntents.swift; sourceTree = "<group>"; };
 		AC1B00200000000000SB01A /* SoniqueBrain.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SoniqueBar/Services/SoniqueBrain.swift; sourceTree = "<group>"; };
+		B5A6BE1EFC3767B09AE71FA7 /* phi-3-mini-4k-instruct.Q4_K_M.gguf */ = {isa = PBXFileReference; includeInIndex = 1; name = "phi-3-mini-4k-instruct.Q4_K_M.gguf"; path = "SoniqueBar/Resources/phi-3-mini-4k-instruct.Q4_K_M.gguf"; sourceTree = "<group>"; };
 		BB000004000000000000004 /* SoniqueBar.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = SoniqueBar.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		BB000014000000000000014 /* SoniqueBar.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = SoniqueBar.entitlements; sourceTree = SOURCE_ROOT; };
 		BB000016000000000000016 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; name = Info.plist; path = SoniqueBar/Resources/Info.plist; sourceTree = SOURCE_ROOT; };
@@ -137,6 +139,7 @@
 			children = (
 				BB000016000000000000016 /* Info.plist */,
 				BB000040000000000000040 /* Assets.xcassets */,
+				B5A6BE1EFC3767B09AE71FA7 /* phi-3-mini-4k-instruct.Q4_K_M.gguf */,
 			);
 			name = Resources;
 			sourceTree = "<group>";
@@ -195,6 +198,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				BB000041000000000000041 /* Assets.xcassets in Resources */,
+				EE624D212C094E8478387D8C /* phi-3-mini-4k-instruct.Q4_K_M.gguf in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

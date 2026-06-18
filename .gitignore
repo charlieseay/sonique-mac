@@ -5,3 +5,4 @@
 
 # Xcode archives / local build products
 /build/
+SoniqueBar/Resources/*.gguf
