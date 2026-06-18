@@ -171,8 +171,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             // Start background monitoring (Helmsman queue, Docker health, disk space)
             BackgroundMonitor.shared.startMonitoring()
 
-            // Screen awareness disabled - screenshots taken on-demand only
-            // ScreenAwarenessService.shared.startMonitoring()
+            // Start screen awareness (continuous visibility layer for context)
+            // Requires Screen Recording permission - grant in System Settings
+            ScreenAwarenessService.shared.startMonitoring()
         }
     }
 
