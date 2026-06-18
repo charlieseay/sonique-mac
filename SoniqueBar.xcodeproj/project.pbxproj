@@ -7,99 +7,126 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		BB000021000000000000021 = {isa = PBXBuildFile; fileRef = BB000020000000000000020; };
-		BB000023000000000000023 = {isa = PBXBuildFile; fileRef = BB000022000000000000022; };
-		BB000039000000000000039 = {isa = PBXBuildFile; fileRef = BB000038000000000000038; };
-		BB000025000000000000025 = {isa = PBXBuildFile; fileRef = BB000024000000000000024; };
-		BB000027000000000000027 = {isa = PBXBuildFile; fileRef = BB000026000000000000026; };
-		BB00003B00000000000003B = {isa = PBXBuildFile; fileRef = BB00003A00000000000003A; };
-		BB00003D00000000000003D = {isa = PBXBuildFile; fileRef = BB00003C00000000000003C; };
-		BB000029000000000000029 = {isa = PBXBuildFile; fileRef = BB000028000000000000028; };
-		BB00002D00000000000000D = {isa = PBXBuildFile; fileRef = BB00002C00000000000000C; };
-		BB00003F00000000000003F = {isa = PBXBuildFile; fileRef = BB00003E00000000000003E; };
-		BB000017000000000000017 = {isa = PBXBuildFile; fileRef = BB000016000000000000016; };
+		18385BA84319B52A11443D04 /* SoniqueBrain.swift in Sources */ = {isa = PBXBuildFile; fileRef = 26D43EF2F4A2C018D3C6F37E /* SoniqueBrain.swift */; };
+		264D4EC11A3FA30C8325D74F /* NotificationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = ECA8B2979492C18577FCABCC /* NotificationService.swift */; };
+		4452BDE94D82A0A5BC9414FE /* LabStatusService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5DEA084A43571FB8B79A50BC /* LabStatusService.swift */; };
+		5D74C487B6096180373CD53E /* LLMRouter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 42C35C4C02529432A228AC2D /* LLMRouter.swift */; };
+		90A3B6BD6E6661D7507E0A5B /* NativeIntents.swift in Sources */ = {isa = PBXBuildFile; fileRef = D7637D7CD68FFECE2DA6FAD6 /* NativeIntents.swift */; };
+		AC34493CF86AEF0058644556 /* IntentRouter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9BBEED7B61800AF727DEF5F3 /* IntentRouter.swift */; };
+		B5BF8BDA203E4FFDB514C8B1 /* MemoryService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9B1B5C4D9C6124E4C5FAC81C /* MemoryService.swift */; };
+		BB000021000000000000021 /* SoniqueBarApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB000020000000000000020 /* SoniqueBarApp.swift */; };
+		C308D4E93103213839A27FFD /* LiveScreenCapture.swift in Sources */ = {isa = PBXBuildFile; fileRef = BA21E3093DCCF2B341C15CE1 /* LiveScreenCapture.swift */; };
+		C41FF06215983DCC2D727191 /* ScreenAwarenessService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2ACBDD8A5604501BBD52BD97 /* ScreenAwarenessService.swift */; };
+		DEA28F7A7C2C8253BBF9CE70 /* RemediationEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = A81C710A77E83A08581F3989 /* RemediationEngine.swift */; };
+		E625C58534BCF80D0998318D /* PatternClassifier.swift in Sources */ = {isa = PBXBuildFile; fileRef = B53B7712B53EF849A8C15EB8 /* PatternClassifier.swift */; };
+		F5FE4AE5BCE56A7CEF27C4A8 /* DiagnosticAgent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 14DD10989B88085D88EAECBC /* DiagnosticAgent.swift */; };
+		FA925571F17B6BA9C9106F30 /* CommandServer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 51CF32BB11AD3B053074E4B1 /* CommandServer.swift */; };
+		FB4A785BC5C0C1732655A2E1 /* TaskDispatcher.swift in Sources */ = {isa = PBXBuildFile; fileRef = 52B477ED8413E4F7FC7A7216 /* TaskDispatcher.swift */; };
+		FDEB1550A3C56FEC61801B17 /* BackgroundMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = C97BFF455FB039ADE8EBB91B /* BackgroundMonitor.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
-		BB000020000000000000020 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "SoniqueBarApp.swift"; path = "SoniqueBar/SoniqueBarApp.swift"; sourceTree = SOURCE_ROOT; };
-		BB000022000000000000022 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "AssistantProfile.swift"; path = "SoniqueBar/Models/AssistantProfile.swift"; sourceTree = SOURCE_ROOT; };
-		BB000038000000000000038 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "ChatMessage.swift"; path = "SoniqueBar/Models/ChatMessage.swift"; sourceTree = SOURCE_ROOT; };
-		BB000024000000000000024 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "MacSettings.swift"; path = "SoniqueBar/Services/MacSettings.swift"; sourceTree = SOURCE_ROOT; };
-		BB000026000000000000026 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "ServerMonitor.swift"; path = "SoniqueBar/Services/ServerMonitor.swift"; sourceTree = SOURCE_ROOT; };
-		BB00003A00000000000003A = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "ChatManager.swift"; path = "SoniqueBar/Services/ChatManager.swift"; sourceTree = SOURCE_ROOT; };
-		BB00003C00000000000003C = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "SystemControlManager.swift"; path = "SoniqueBar/Services/SystemControlManager.swift"; sourceTree = SOURCE_ROOT; };
-		BB000028000000000000028 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "StatusPopover.swift"; path = "SoniqueBar/Views/StatusPopover.swift"; sourceTree = SOURCE_ROOT; };
-		BB00002C00000000000000C = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "OnboardingView.swift"; path = "SoniqueBar/Views/OnboardingView.swift"; sourceTree = SOURCE_ROOT; };
-		BB00003E00000000000003E = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "ChatView.swift"; path = "SoniqueBar/Views/ChatView.swift"; sourceTree = SOURCE_ROOT; };
-		BB000014000000000000014 = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = SoniqueBar.entitlements; sourceTree = SOURCE_ROOT; };
-		BB000016000000000000016 = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; name = Info.plist; path = SoniqueBar/Resources/Info.plist; sourceTree = SOURCE_ROOT; };
-		BB000004000000000000004 = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = SoniqueBar.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		14DD10989B88085D88EAECBC /* DiagnosticAgent.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = DiagnosticAgent.swift; path = SoniqueBar/Services/DiagnosticAgent.swift; sourceTree = "<group>"; };
+		26D43EF2F4A2C018D3C6F37E /* SoniqueBrain.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = SoniqueBrain.swift; path = SoniqueBar/Services/SoniqueBrain.swift; sourceTree = "<group>"; };
+		2ACBDD8A5604501BBD52BD97 /* ScreenAwarenessService.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ScreenAwarenessService.swift; path = SoniqueBar/Services/ScreenAwarenessService.swift; sourceTree = "<group>"; };
+		42C35C4C02529432A228AC2D /* LLMRouter.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = LLMRouter.swift; path = SoniqueBar/Services/LLMRouter.swift; sourceTree = "<group>"; };
+		51CF32BB11AD3B053074E4B1 /* CommandServer.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = CommandServer.swift; path = SoniqueBar/Services/CommandServer.swift; sourceTree = "<group>"; };
+		52B477ED8413E4F7FC7A7216 /* TaskDispatcher.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = TaskDispatcher.swift; path = SoniqueBar/Services/TaskDispatcher.swift; sourceTree = "<group>"; };
+		5DEA084A43571FB8B79A50BC /* LabStatusService.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = LabStatusService.swift; path = SoniqueBar/Services/LabStatusService.swift; sourceTree = "<group>"; };
+		9B1B5C4D9C6124E4C5FAC81C /* MemoryService.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = MemoryService.swift; path = SoniqueBar/Services/MemoryService.swift; sourceTree = "<group>"; };
+		9BBEED7B61800AF727DEF5F3 /* IntentRouter.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = IntentRouter.swift; path = SoniqueBar/Services/IntentRouter.swift; sourceTree = "<group>"; };
+		A81C710A77E83A08581F3989 /* RemediationEngine.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = RemediationEngine.swift; path = SoniqueBar/Services/RemediationEngine.swift; sourceTree = "<group>"; };
+		B53B7712B53EF849A8C15EB8 /* PatternClassifier.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = PatternClassifier.swift; path = SoniqueBar/Services/PatternClassifier.swift; sourceTree = "<group>"; };
+		BA21E3093DCCF2B341C15CE1 /* LiveScreenCapture.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = LiveScreenCapture.swift; path = SoniqueBar/Services/LiveScreenCapture.swift; sourceTree = "<group>"; };
+		BB000004000000000000004 /* SoniqueBar.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = SoniqueBar.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		BB000014000000000000014 /* SoniqueBar.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = SoniqueBar.entitlements; sourceTree = SOURCE_ROOT; };
+		BB000016000000000000016 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; name = Info.plist; path = SoniqueBar/Resources/Info.plist; sourceTree = SOURCE_ROOT; };
+		BB000020000000000000020 /* SoniqueBarApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = SoniqueBarApp.swift; path = SoniqueBar/SoniqueBarApp.swift; sourceTree = SOURCE_ROOT; };
+		C97BFF455FB039ADE8EBB91B /* BackgroundMonitor.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = BackgroundMonitor.swift; path = SoniqueBar/Services/BackgroundMonitor.swift; sourceTree = "<group>"; };
+		D7637D7CD68FFECE2DA6FAD6 /* NativeIntents.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = NativeIntents.swift; path = SoniqueBar/Services/NativeIntents.swift; sourceTree = "<group>"; };
+		ECA8B2979492C18577FCABCC /* NotificationService.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = NotificationService.swift; path = SoniqueBar/Services/NotificationService.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		BB000007000000000000007 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
 		BB000002000000000000002 = {
 			isa = PBXGroup;
 			children = (
-				BB00000F00000000000000F,
-				BB000014000000000000014,
-				BB000003000000000000003,
+				BB00000F00000000000000F /* SoniqueBar */,
+				BB000014000000000000014 /* SoniqueBar.entitlements */,
+				BB000003000000000000003 /* Products */,
+				26D43EF2F4A2C018D3C6F37E /* SoniqueBrain.swift */,
+				D7637D7CD68FFECE2DA6FAD6 /* NativeIntents.swift */,
+				9B1B5C4D9C6124E4C5FAC81C /* MemoryService.swift */,
+				14DD10989B88085D88EAECBC /* DiagnosticAgent.swift */,
+				C97BFF455FB039ADE8EBB91B /* BackgroundMonitor.swift */,
+				B53B7712B53EF849A8C15EB8 /* PatternClassifier.swift */,
+				A81C710A77E83A08581F3989 /* RemediationEngine.swift */,
+				5DEA084A43571FB8B79A50BC /* LabStatusService.swift */,
+				2ACBDD8A5604501BBD52BD97 /* ScreenAwarenessService.swift */,
+				9BBEED7B61800AF727DEF5F3 /* IntentRouter.swift */,
+				42C35C4C02529432A228AC2D /* LLMRouter.swift */,
+				ECA8B2979492C18577FCABCC /* NotificationService.swift */,
+				52B477ED8413E4F7FC7A7216 /* TaskDispatcher.swift */,
+				BA21E3093DCCF2B341C15CE1 /* LiveScreenCapture.swift */,
+				51CF32BB11AD3B053074E4B1 /* CommandServer.swift */,
 			);
 			sourceTree = "<group>";
 		};
-		BB000003000000000000003 = {
+		BB000003000000000000003 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				BB000004000000000000004,
+				BB000004000000000000004 /* SoniqueBar.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
 		};
-		BB00000F00000000000000F = {
+		BB00000F00000000000000F /* SoniqueBar */ = {
 			isa = PBXGroup;
 			children = (
-				BB000020000000000000020,
-				BB000010000000000000010,
-				BB000011000000000000011,
-				BB000012000000000000012,
-				BB000013000000000000013,
+				BB000020000000000000020 /* SoniqueBarApp.swift */,
+				BB000010000000000000010 /* Models */,
+				BB000011000000000000011 /* Services */,
+				BB000012000000000000012 /* Views */,
+				BB000013000000000000013 /* Resources */,
 			);
 			name = SoniqueBar;
 			sourceTree = "<group>";
 		};
-		BB000010000000000000010 = {
+		BB000010000000000000010 /* Models */ = {
 			isa = PBXGroup;
 			children = (
-				BB000022000000000000022,
-				BB000038000000000000038,
 			);
 			name = Models;
 			sourceTree = "<group>";
 		};
-		BB000011000000000000011 = {
+		BB000011000000000000011 /* Services */ = {
 			isa = PBXGroup;
 			children = (
-				BB000024000000000000024,
-				BB000026000000000000026,
-				BB00003A00000000000003A,
-				BB00003C00000000000003C,
 			);
 			name = Services;
 			sourceTree = "<group>";
 		};
-		BB000012000000000000012 = {
+		BB000012000000000000012 /* Views */ = {
 			isa = PBXGroup;
 			children = (
-				BB000028000000000000028,
-				BB00002C00000000000000C,
-				BB00003E00000000000003E,
 			);
 			name = Views;
 			sourceTree = "<group>";
 		};
-		BB000013000000000000013 = {
+		BB000013000000000000013 /* Resources */ = {
 			isa = PBXGroup;
 			children = (
-				BB000016000000000000016,
+				BB000016000000000000016 /* Info.plist */,
 			);
 			name = Resources;
 			sourceTree = "<group>";
@@ -107,13 +134,13 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		BB000008000000000000008 = {
+		BB000008000000000000008 /* SoniqueBar */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = BB00000C00000000000000C;
+			buildConfigurationList = BB00000C00000000000000C /* Build configuration list for PBXNativeTarget "SoniqueBar" */;
 			buildPhases = (
-				BB000005000000000000005,
-				BB000007000000000000007,
-				BB000006000000000000006,
+				BB000005000000000000005 /* Sources */,
+				BB000007000000000000007 /* Frameworks */,
+				BB000006000000000000006 /* Resources */,
 			);
 			buildRules = (
 			);
@@ -121,20 +148,20 @@
 			);
 			name = SoniqueBar;
 			productName = SoniqueBar;
-			productReference = BB000004000000000000004;
+			productReference = BB000004000000000000004 /* SoniqueBar.app */;
 			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
-		BB000001000000000000001 = {
+		BB000001000000000000001 /* Project object */ = {
 			isa = PBXProject;
 			attributes = {
 				BuildIndependentTargetsInParallel = 1;
 				LastSwiftUpdateCheck = 1600;
 				LastUpgradeCheck = 1600;
 			};
-			buildConfigurationList = BB00000B00000000000000B;
+			buildConfigurationList = BB00000B00000000000000B /* Build configuration list for PBXProject "SoniqueBar" */;
 			compatibilityVersion = "Xcode 14.0";
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
@@ -143,17 +170,17 @@
 				Base,
 			);
 			mainGroup = BB000002000000000000002;
-			productRefGroup = BB000003000000000000003;
+			productRefGroup = BB000003000000000000003 /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				BB000008000000000000008,
+				BB000008000000000000008 /* SoniqueBar */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
-		BB000006000000000000006 = {
+		BB000006000000000000006 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -163,37 +190,33 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
-		BB000005000000000000005 = {
+		BB000005000000000000005 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				BB000021000000000000021,
-				BB000023000000000000023,
-				BB000039000000000000039,
-				BB000025000000000000025,
-				BB000027000000000000027,
-				BB00003B00000000000003B,
-				BB00003D00000000000003D,
-				BB000029000000000000029,
-				BB00002D00000000000000D,
-				BB00003F00000000000003F,
+				BB000021000000000000021 /* SoniqueBarApp.swift in Sources */,
+				18385BA84319B52A11443D04 /* SoniqueBrain.swift in Sources */,
+				90A3B6BD6E6661D7507E0A5B /* NativeIntents.swift in Sources */,
+				B5BF8BDA203E4FFDB514C8B1 /* MemoryService.swift in Sources */,
+				F5FE4AE5BCE56A7CEF27C4A8 /* DiagnosticAgent.swift in Sources */,
+				FDEB1550A3C56FEC61801B17 /* BackgroundMonitor.swift in Sources */,
+				E625C58534BCF80D0998318D /* PatternClassifier.swift in Sources */,
+				DEA28F7A7C2C8253BBF9CE70 /* RemediationEngine.swift in Sources */,
+				4452BDE94D82A0A5BC9414FE /* LabStatusService.swift in Sources */,
+				C41FF06215983DCC2D727191 /* ScreenAwarenessService.swift in Sources */,
+				AC34493CF86AEF0058644556 /* IntentRouter.swift in Sources */,
+				5D74C487B6096180373CD53E /* LLMRouter.swift in Sources */,
+				264D4EC11A3FA30C8325D74F /* NotificationService.swift in Sources */,
+				FB4A785BC5C0C1732655A2E1 /* TaskDispatcher.swift in Sources */,
+				C308D4E93103213839A27FFD /* LiveScreenCapture.swift in Sources */,
+				FA925571F17B6BA9C9106F30 /* CommandServer.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
 
-/* Begin PBXFrameworksBuildPhase section */
-		BB000007000000000000007 = {
-			isa = PBXFrameworksBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-/* End PBXFrameworksBuildPhase section */
-
 /* Begin XCBuildConfiguration section */
-		BB000009000000000000009 = {
+		BB000009000000000000009 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
@@ -210,7 +233,7 @@
 			};
 			name = Debug;
 		};
-		BB00000A00000000000000A = {
+		BB00000A00000000000000A /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
@@ -220,7 +243,7 @@
 			};
 			name = Release;
 		};
-		BB00000D00000000000000D = {
+		BB00000D00000000000000D /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGN_ENTITLEMENTS = SoniqueBar.entitlements;
@@ -229,14 +252,14 @@
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
 				ENABLE_HARDENED_RUNTIME = YES;
-				INFOPLIST_FILE = "SoniqueBar/Resources/Info.plist";
+				INFOPLIST_FILE = SoniqueBar/Resources/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 13.0;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = "com.seayniclabs.soniquebar";
+				PRODUCT_BUNDLE_IDENTIFIER = com.seayniclabs.soniquebar;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = macosx;
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -244,7 +267,7 @@
 			};
 			name = Debug;
 		};
-		BB00000E00000000000000E = {
+		BB00000E00000000000000E /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGN_ENTITLEMENTS = SoniqueBar.entitlements;
@@ -253,14 +276,14 @@
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
 				ENABLE_HARDENED_RUNTIME = YES;
-				INFOPLIST_FILE = "SoniqueBar/Resources/Info.plist";
+				INFOPLIST_FILE = SoniqueBar/Resources/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 13.0;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = "com.seayniclabs.soniquebar";
+				PRODUCT_BUNDLE_IDENTIFIER = com.seayniclabs.soniquebar;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = macosx;
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -271,25 +294,25 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		BB00000B00000000000000B = {
+		BB00000B00000000000000B /* Build configuration list for PBXProject "SoniqueBar" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
-				BB000009000000000000009,
-				BB00000A00000000000000A,
+				BB000009000000000000009 /* Debug */,
+				BB00000A00000000000000A /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		BB00000C00000000000000C = {
+		BB00000C00000000000000C /* Build configuration list for PBXNativeTarget "SoniqueBar" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
-				BB00000D00000000000000D,
-				BB00000E00000000000000E,
+				BB00000D00000000000000D /* Debug */,
+				BB00000E00000000000000E /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
 	};
-	rootObject = BB000001000000000000001;
+	rootObject = BB000001000000000000001 /* Project object */;
 }

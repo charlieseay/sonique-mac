@@ -540,6 +540,10 @@ struct InfrastructureExecutor {
     private static func checkAppleCalendar(_ query: String) async -> String {
         let lower = query.lowercased()
 
+        guard #available(macOS 14.0, *) else {
+            return "Calendar access requires macOS 14 or later."
+        }
+
         // Import EventKit at the top of the file if not already
         let store = await withCheckedContinuation { continuation in
             // EKEventStore must be created on main thread for macOS

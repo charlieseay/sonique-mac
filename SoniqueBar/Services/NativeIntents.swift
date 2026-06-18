@@ -262,6 +262,10 @@ enum NativeIntents {
     // MARK: - Calendar & Reminders (native EventKit - no OAuth needed)
 
     private static func todaysCalendar() async -> String {
+        guard #available(macOS 14.0, *) else {
+            return "Calendar access requires macOS 14 or later."
+        }
+
         let store = EKEventStore()
 
         // Request access if needed
@@ -300,6 +304,10 @@ enum NativeIntents {
     }
 
     private static func showReminders() async -> String {
+        guard #available(macOS 14.0, *) else {
+            return "Reminders access requires macOS 14 or later."
+        }
+
         let store = EKEventStore()
 
         // Request access if needed

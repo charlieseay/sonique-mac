@@ -178,6 +178,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func requestCalendarAccess() {
+        guard #available(macOS 14.0, *) else {
+            NSLog("[SoniqueBar] Calendar access requires macOS 14+")
+            return
+        }
+
         let eventStore = EKEventStore()
         eventStore.requestFullAccessToEvents { granted, error in
             if granted {
