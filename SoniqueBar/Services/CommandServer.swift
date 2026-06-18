@@ -1,11 +1,14 @@
 import Foundation
 import Network
+import os.log
 
 /// Simple HTTP server for receiving commands from iOS.
 /// Handles text-based commands and routes them to infrastructure or LLM.
 @MainActor
 class CommandServer: ObservableObject {
     static let shared = CommandServer()
+
+    private let logger = Logger(subsystem: "com.seayniclabs.soniquebar", category: "CommandServer")
 
     @Published var isRunning = false
     @Published var lastCommand: String = ""
@@ -173,11 +176,14 @@ class CommandServer: ObservableObject {
     }
 
     private func handleHealth(_ connection: NWConnection) async {
+        let buildNumber = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "unknown"
+        let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "unknown"
+
         let response = """
         HTTP/1.1 200 OK\r
         Content-Type: application/json\r
         \r
-        {"status":"ok","port":\(port)}
+        {"status":"ok","port":\(port),"version":"\(version)","build":"\(buildNumber)","hasPatternClassifier":true}
         """
         sendResponse(response, to: connection)
     }
@@ -449,11 +455,16 @@ class CommandServer: ObservableObject {
     private func handleConversation(_ text: String) async -> String {
         // FAST PATH: Handle simple queries without LLM
         if text == "current_time" {
+            logger.info("⚡ FAST PATH: current_time")
             let formatter = DateFormatter()
             formatter.dateStyle = .medium
             formatter.timeStyle = .short
-            return "It's \(formatter.string(from: Date()))"
+            let response = "It's \(formatter.string(from: Date()))"
+            logger.info("⚡ Fast response: '\(response)'")
+            return response
         }
+
+        logger.info("🤖 Using LLM for: '\(text)'")
 
         // Use LLMRouter for optimal provider selection
         // (system Ollama > bundled model > network API)

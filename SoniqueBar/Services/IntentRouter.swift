@@ -1,8 +1,11 @@
 import Foundation
+import os.log
 
 /// Routes user commands to the appropriate handler.
 /// Classifies between conversational queries and infrastructure commands.
 struct IntentRouter {
+
+    private static let logger = Logger(subsystem: "com.seayniclabs.soniquebar", category: "IntentRouter")
     enum Intent {
         case conversation(text: String)
         case infrastructure(command: InfrastructureCommand)
@@ -42,26 +45,36 @@ struct IntentRouter {
 
     /// Classify the user's text input
     static func classify(_ text: String) -> Intent {
+        logger.info("🎯 Classifying input: '\(text)'")
         let lower = text.lowercased()
 
         // FAST PATH: Pattern-based classification (no LLM, <1ms)
         if let patternIntent = PatternClassifier.classify(text) {
+            logger.info("⚡ Pattern matched: \(String(describing: patternIntent))")
             switch patternIntent {
             case .checkCalendar:
+                logger.info("➡️ Routing to: checkCalendar")
                 return .infrastructure(command: .checkCalendar(query: text))
             case .checkEmail:
+                logger.info("➡️ Routing to: checkEmail")
                 return .infrastructure(command: .checkEmail(query: text))
             case .describeScreen:
+                logger.info("➡️ Routing to: describeScreen")
                 return .infrastructure(command: .describeScreen)
             case .currentTime:
                 // Handle inline without infrastructure command
+                logger.info("➡️ Routing to: fast-path current_time")
                 return .conversation(text: "current_time")
             case .systemStatus:
+                logger.info("➡️ Routing to: systemStatus")
                 return .infrastructure(command: .checkStatus(service: "lab"))
             case .stopAction:
+                logger.info("➡️ Routing to: stopAction")
                 // Handle as conversation for now
                 return .conversation(text: text)
             }
+        } else {
+            logger.info("🔄 No pattern match, continuing to full classification")
         }
 
         // Home control (check early - user expects instant response for lights/devices)
