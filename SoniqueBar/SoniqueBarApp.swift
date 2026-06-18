@@ -163,8 +163,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // Start CommandServer
         Task { @MainActor in
             CommandServer.shared.start()
-            // TODO: Add ScreenAwarenessService.swift to Xcode project, then uncomment:
-            // ScreenAwarenessService.shared.startMonitoring()
+
+            // Start background monitoring (Helmsman queue, Docker health, disk space)
+            BackgroundMonitor.shared.startMonitoring()
+
+            // Start screen awareness (continuous screenshots every 10s)
+            ScreenAwarenessService.shared.startMonitoring()
         }
     }
 

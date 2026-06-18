@@ -1,625 +1,330 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-<dict>
-	<key>archiveVersion</key>
-	<string>1</string>
-	<key>classes</key>
-	<dict/>
-	<key>objectVersion</key>
-	<string>56</string>
-	<key>objects</key>
-	<dict>
-		<key>3F3896522FC9FE150010DC4E</key>
-		<dict>
-			<key>children</key>
-			<array/>
-			<key>isa</key>
-			<string>PBXGroup</string>
-			<key>name</key>
-			<string>Recovered References</string>
-			<key>sourceTree</key>
-			<string>&lt;group&gt;</string>
-		</dict>
-		<key>3F38965D2FCA01760010DC4E</key>
-		<dict>
-			<key>children</key>
-			<array/>
-			<key>isa</key>
-			<string>PBXGroup</string>
-			<key>name</key>
-			<string>Frameworks</string>
-			<key>sourceTree</key>
-			<string>&lt;group&gt;</string>
-		</dict>
-		<key>3F38966B2FCA03E10010DC4E</key>
-		<dict>
-			<key>isa</key>
-			<string>PBXFileReference</string>
-			<key>lastKnownFileType</key>
-			<string>sourcecode.swift</string>
-			<key>name</key>
-			<string>CommandServer.swift</string>
-			<key>path</key>
-			<string>SoniqueBar/Services/CommandServer.swift</string>
-			<key>sourceTree</key>
-			<string>SOURCE_ROOT</string>
-		</dict>
-		<key>3F38966C2FCA03E10010DC4E</key>
-		<dict>
-			<key>fileRef</key>
-			<string>3F38966B2FCA03E10010DC4E</string>
-			<key>isa</key>
-			<string>PBXBuildFile</string>
-		</dict>
-		<key>3F3967C42FCA0C2300B7CE51</key>
-		<dict>
-			<key>isa</key>
-			<string>PBXFileReference</string>
-			<key>lastKnownFileType</key>
-			<string>sourcecode.swift</string>
-			<key>name</key>
-			<string>IntentRouter.swift</string>
-			<key>path</key>
-			<string>SoniqueBar/Services/IntentRouter.swift</string>
-			<key>sourceTree</key>
-			<string>SOURCE_ROOT</string>
-		</dict>
-		<key>3F3967C52FCA0C2300B7CE51</key>
-		<dict>
-			<key>fileRef</key>
-			<string>3F3967C42FCA0C2300B7CE51</string>
-			<key>isa</key>
-			<string>PBXBuildFile</string>
-		</dict>
-		<key>3F73A43D2FCE856A0057ED63</key>
-		<dict>
-			<key>isa</key>
-			<string>PBXFileReference</string>
-			<key>lastKnownFileType</key>
-			<string>sourcecode.swift</string>
-			<key>path</key>
-			<string>LabStatusService.swift</string>
-			<key>sourceTree</key>
-			<string>&lt;group&gt;</string>
-		</dict>
-		<key>3F73A43E2FCE856A0057ED63</key>
-		<dict>
-			<key>isa</key>
-			<string>PBXFileReference</string>
-			<key>lastKnownFileType</key>
-			<string>sourcecode.swift</string>
-			<key>path</key>
-			<string>MemoryService.swift</string>
-			<key>sourceTree</key>
-			<string>&lt;group&gt;</string>
-		</dict>
-		<key>3F73A43F2FCE856A0057ED63</key>
-		<dict>
-			<key>isa</key>
-			<string>PBXFileReference</string>
-			<key>lastKnownFileType</key>
-			<string>sourcecode.swift</string>
-			<key>path</key>
-			<string>TaskDispatcher.swift</string>
-			<key>sourceTree</key>
-			<string>&lt;group&gt;</string>
-		</dict>
-		<key>3F73A4402FCE856A0057ED63</key>
-		<dict>
-			<key>fileRef</key>
-			<string>3F73A43D2FCE856A0057ED63</string>
-			<key>isa</key>
-			<string>PBXBuildFile</string>
-		</dict>
-		<key>3F73A4412FCE856A0057ED63</key>
-		<dict>
-			<key>fileRef</key>
-			<string>3F73A43E2FCE856A0057ED63</string>
-			<key>isa</key>
-			<string>PBXBuildFile</string>
-		</dict>
-		<key>3F73A4422FCE856A0057ED63</key>
-		<dict>
-			<key>fileRef</key>
-			<string>3F73A43F2FCE856A0057ED63</string>
-			<key>isa</key>
-			<string>PBXBuildFile</string>
-		</dict>
-		<key>AC1B00200000000000NI01A</key>
-		<dict>
-			<key>isa</key>
-			<string>PBXFileReference</string>
-			<key>lastKnownFileType</key>
-			<string>sourcecode.swift</string>
-			<key>path</key>
-			<string>SoniqueBar/Services/NativeIntents.swift</string>
-			<key>sourceTree</key>
-			<string>&lt;group&gt;</string>
-		</dict>
-		<key>AC1B00200000000000NI01B</key>
-		<dict>
-			<key>fileRef</key>
-			<string>AC1B00200000000000NI01A</string>
-			<key>isa</key>
-			<string>PBXBuildFile</string>
-		</dict>
-		<key>AC1B00200000000000SB01A</key>
-		<dict>
-			<key>isa</key>
-			<string>PBXFileReference</string>
-			<key>lastKnownFileType</key>
-			<string>sourcecode.swift</string>
-			<key>path</key>
-			<string>SoniqueBar/Services/SoniqueBrain.swift</string>
-			<key>sourceTree</key>
-			<string>&lt;group&gt;</string>
-		</dict>
-		<key>AC1B00200000000000SB01B</key>
-		<dict>
-			<key>fileRef</key>
-			<string>AC1B00200000000000SB01A</string>
-			<key>isa</key>
-			<string>PBXBuildFile</string>
-		</dict>
-		<key>BB000001000000000000001</key>
-		<dict>
-			<key>attributes</key>
-			<dict>
-				<key>BuildIndependentTargetsInParallel</key>
-				<string>1</string>
-				<key>LastSwiftUpdateCheck</key>
-				<string>1600</string>
-				<key>LastUpgradeCheck</key>
-				<string>1600</string>
-			</dict>
-			<key>buildConfigurationList</key>
-			<string>BB00000B00000000000000B</string>
-			<key>compatibilityVersion</key>
-			<string>Xcode 14.0</string>
-			<key>developmentRegion</key>
-			<string>en</string>
-			<key>hasScannedForEncodings</key>
-			<string>0</string>
-			<key>isa</key>
-			<string>PBXProject</string>
-			<key>knownRegions</key>
-			<array>
-				<string>en</string>
-				<string>Base</string>
-			</array>
-			<key>mainGroup</key>
-			<string>BB000002000000000000002</string>
-			<key>packageReferences</key>
-			<array/>
-			<key>productRefGroup</key>
-			<string>BB000003000000000000003</string>
-			<key>projectDirPath</key>
-			<string></string>
-			<key>projectRoot</key>
-			<string></string>
-			<key>targets</key>
-			<array>
-				<string>BB000008000000000000008</string>
-			</array>
-		</dict>
-		<key>BB000002000000000000002</key>
-		<dict>
-			<key>children</key>
-			<array>
-				<string>3F73A43D2FCE856A0057ED63</string>
-				<string>3F73A43E2FCE856A0057ED63</string>
-				<string>3F73A43F2FCE856A0057ED63</string>
-				<string>BB00000F00000000000000F</string>
-				<string>BB000014000000000000014</string>
-				<string>BB000003000000000000003</string>
-				<string>3F3896522FC9FE150010DC4E</string>
-				<string>3F38965D2FCA01760010DC4E</string>
-			</array>
-			<key>isa</key>
-			<string>PBXGroup</string>
-			<key>sourceTree</key>
-			<string>&lt;group&gt;</string>
-		</dict>
-		<key>BB000003000000000000003</key>
-		<dict>
-			<key>children</key>
-			<array>
-				<string>BB000004000000000000004</string>
-			</array>
-			<key>isa</key>
-			<string>PBXGroup</string>
-			<key>name</key>
-			<string>Products</string>
-			<key>sourceTree</key>
-			<string>&lt;group&gt;</string>
-		</dict>
-		<key>BB000004000000000000004</key>
-		<dict>
-			<key>explicitFileType</key>
-			<string>wrapper.application</string>
-			<key>includeInIndex</key>
-			<string>0</string>
-			<key>isa</key>
-			<string>PBXFileReference</string>
-			<key>path</key>
-			<string>SoniqueBar.app</string>
-			<key>sourceTree</key>
-			<string>BUILT_PRODUCTS_DIR</string>
-		</dict>
-		<key>BB000005000000000000005</key>
-		<dict>
-			<key>buildActionMask</key>
-			<string>2147483647</string>
-			<key>files</key>
-			<array>
-				<string>3F3967C52FCA0C2300B7CE51</string>
-				<string>AC1B00200000000000NI01B</string>
-				<string>AC1B00200000000000SB01B</string>
-				<string>BB000021000000000000021</string>
-				<string>3F73A4402FCE856A0057ED63</string>
-				<string>3F73A4412FCE856A0057ED63</string>
-				<string>3F73A4422FCE856A0057ED63</string>
-				<string>3F38966C2FCA03E10010DC4E</string>
-			</array>
-			<key>isa</key>
-			<string>PBXSourcesBuildPhase</string>
-			<key>runOnlyForDeploymentPostprocessing</key>
-			<string>0</string>
-		</dict>
-		<key>BB000006000000000000006</key>
-		<dict>
-			<key>buildActionMask</key>
-			<string>2147483647</string>
-			<key>files</key>
-			<array>
-				<string>BB000041000000000000041</string>
-			</array>
-			<key>isa</key>
-			<string>PBXResourcesBuildPhase</string>
-			<key>runOnlyForDeploymentPostprocessing</key>
-			<string>0</string>
-		</dict>
-		<key>BB000007000000000000007</key>
-		<dict>
-			<key>buildActionMask</key>
-			<string>2147483647</string>
-			<key>files</key>
-			<array/>
-			<key>isa</key>
-			<string>PBXFrameworksBuildPhase</string>
-			<key>runOnlyForDeploymentPostprocessing</key>
-			<string>0</string>
-		</dict>
-		<key>BB000008000000000000008</key>
-		<dict>
-			<key>buildConfigurationList</key>
-			<string>BB00000C00000000000000C</string>
-			<key>buildPhases</key>
-			<array>
-				<string>BB000005000000000000005</string>
-				<string>BB000007000000000000007</string>
-				<string>BB000006000000000000006</string>
-			</array>
-			<key>buildRules</key>
-			<array/>
-			<key>dependencies</key>
-			<array/>
-			<key>isa</key>
-			<string>PBXNativeTarget</string>
-			<key>name</key>
-			<string>SoniqueBar</string>
-			<key>productName</key>
-			<string>SoniqueBar</string>
-			<key>productReference</key>
-			<string>BB000004000000000000004</string>
-			<key>productType</key>
-			<string>com.apple.product-type.application</string>
-		</dict>
-		<key>BB000009000000000000009</key>
-		<dict>
-			<key>buildSettings</key>
-			<dict>
-				<key>ALWAYS_SEARCH_USER_PATHS</key>
-				<string>NO</string>
-				<key>COPY_PHASE_STRIP</key>
-				<string>NO</string>
-				<key>DEBUG_INFORMATION_FORMAT</key>
-				<string>dwarf</string>
-				<key>GCC_OPTIMIZATION_LEVEL</key>
-				<string>0</string>
-				<key>GCC_PREPROCESSOR_DEFINITIONS</key>
-				<array>
-					<string>DEBUG=1</string>
-					<string>$(inherited)</string>
-				</array>
-				<key>ONLY_ACTIVE_ARCH</key>
-				<string>YES</string>
-				<key>SDKROOT</key>
-				<string>macosx</string>
-				<key>SWIFT_ACTIVE_COMPILATION_CONDITIONS</key>
-				<string>DEBUG $(inherited)</string>
-			</dict>
-			<key>isa</key>
-			<string>XCBuildConfiguration</string>
-			<key>name</key>
-			<string>Debug</string>
-		</dict>
-		<key>BB00000A00000000000000A</key>
-		<dict>
-			<key>buildSettings</key>
-			<dict>
-				<key>ALWAYS_SEARCH_USER_PATHS</key>
-				<string>NO</string>
-				<key>COPY_PHASE_STRIP</key>
-				<string>NO</string>
-				<key>DEBUG_INFORMATION_FORMAT</key>
-				<string>dwarf-with-dsym</string>
-				<key>SDKROOT</key>
-				<string>macosx</string>
-			</dict>
-			<key>isa</key>
-			<string>XCBuildConfiguration</string>
-			<key>name</key>
-			<string>Release</string>
-		</dict>
-		<key>BB00000B00000000000000B</key>
-		<dict>
-			<key>buildConfigurations</key>
-			<array>
-				<string>BB000009000000000000009</string>
-				<string>BB00000A00000000000000A</string>
-			</array>
-			<key>defaultConfigurationIsVisible</key>
-			<string>0</string>
-			<key>defaultConfigurationName</key>
-			<string>Release</string>
-			<key>isa</key>
-			<string>XCConfigurationList</string>
-		</dict>
-		<key>BB00000C00000000000000C</key>
-		<dict>
-			<key>buildConfigurations</key>
-			<array>
-				<string>BB00000D00000000000000D</string>
-				<string>BB00000E00000000000000E</string>
-			</array>
-			<key>defaultConfigurationIsVisible</key>
-			<string>0</string>
-			<key>defaultConfigurationName</key>
-			<string>Release</string>
-			<key>isa</key>
-			<string>XCConfigurationList</string>
-		</dict>
-		<key>BB00000D00000000000000D</key>
-		<dict>
-			<key>buildSettings</key>
-			<dict>
-				<key>ASSETCATALOG_COMPILER_APPICON_NAME</key>
-				<string>AppIcon</string>
-				<key>CODE_SIGN_ENTITLEMENTS</key>
-				<string>SoniqueBar.entitlements</string>
-				<key>CODE_SIGN_IDENTITY</key>
-				<string>Apple Development</string>
-				<key>CODE_SIGN_STYLE</key>
-				<string>Automatic</string>
-				<key>COMBINE_HIDPI_IMAGES</key>
-				<string>YES</string>
-				<key>CURRENT_PROJECT_VERSION</key>
-				<string>5</string>
-				<key>DEVELOPMENT_TEAM</key>
-				<string>7NSS5CJL9E</string>
-				<key>ENABLE_HARDENED_RUNTIME</key>
-				<string>YES</string>
-				<key>INFOPLIST_FILE</key>
-				<string>SoniqueBar/Resources/Info.plist</string>
-				<key>LD_RUNPATH_SEARCH_PATHS</key>
-				<array>
-					<string>$(inherited)</string>
-					<string>@executable_path/../Frameworks</string>
-				</array>
-				<key>MACOSX_DEPLOYMENT_TARGET</key>
-				<string>14.0</string>
-				<key>MARKETING_VERSION</key>
-				<string>1.1</string>
-				<key>PRODUCT_BUNDLE_IDENTIFIER</key>
-				<string>com.seayniclabs.soniquebar</string>
-				<key>PRODUCT_NAME</key>
-				<string>$(TARGET_NAME)</string>
-				<key>SDKROOT</key>
-				<string>macosx</string>
-				<key>SWIFT_EMIT_LOC_STRINGS</key>
-				<string>YES</string>
-				<key>SWIFT_VERSION</key>
-				<string>5.0</string>
-			</dict>
-			<key>isa</key>
-			<string>XCBuildConfiguration</string>
-			<key>name</key>
-			<string>Debug</string>
-		</dict>
-		<key>BB00000E00000000000000E</key>
-		<dict>
-			<key>buildSettings</key>
-			<dict>
-				<key>ASSETCATALOG_COMPILER_APPICON_NAME</key>
-				<string>AppIcon</string>
-				<key>CODE_SIGN_ENTITLEMENTS</key>
-				<string>SoniqueBar.entitlements</string>
-				<key>CODE_SIGN_IDENTITY</key>
-				<string>Apple Development</string>
-				<key>CODE_SIGN_STYLE</key>
-				<string>Automatic</string>
-				<key>COMBINE_HIDPI_IMAGES</key>
-				<string>YES</string>
-				<key>CURRENT_PROJECT_VERSION</key>
-				<string>5</string>
-				<key>DEVELOPMENT_TEAM</key>
-				<string>7NSS5CJL9E</string>
-				<key>ENABLE_HARDENED_RUNTIME</key>
-				<string>YES</string>
-				<key>INFOPLIST_FILE</key>
-				<string>SoniqueBar/Resources/Info.plist</string>
-				<key>LD_RUNPATH_SEARCH_PATHS</key>
-				<array>
-					<string>$(inherited)</string>
-					<string>@executable_path/../Frameworks</string>
-				</array>
-				<key>MACOSX_DEPLOYMENT_TARGET</key>
-				<string>14.0</string>
-				<key>MARKETING_VERSION</key>
-				<string>1.1</string>
-				<key>PRODUCT_BUNDLE_IDENTIFIER</key>
-				<string>com.seayniclabs.soniquebar</string>
-				<key>PRODUCT_NAME</key>
-				<string>$(TARGET_NAME)</string>
-				<key>SDKROOT</key>
-				<string>macosx</string>
-				<key>SWIFT_EMIT_LOC_STRINGS</key>
-				<string>YES</string>
-				<key>SWIFT_VERSION</key>
-				<string>5.0</string>
-			</dict>
-			<key>isa</key>
-			<string>XCBuildConfiguration</string>
-			<key>name</key>
-			<string>Release</string>
-		</dict>
-		<key>BB00000F00000000000000F</key>
-		<dict>
-			<key>children</key>
-			<array>
-				<string>BB000020000000000000020</string>
-				<string>BB000010000000000000010</string>
-				<string>BB000011000000000000011</string>
-				<string>BB000012000000000000012</string>
-				<string>BB000013000000000000013</string>
-			</array>
-			<key>isa</key>
-			<string>PBXGroup</string>
-			<key>name</key>
-			<string>SoniqueBar</string>
-			<key>sourceTree</key>
-			<string>&lt;group&gt;</string>
-		</dict>
-		<key>BB000010000000000000010</key>
-		<dict>
-			<key>children</key>
-			<array/>
-			<key>isa</key>
-			<string>PBXGroup</string>
-			<key>name</key>
-			<string>Models</string>
-			<key>sourceTree</key>
-			<string>&lt;group&gt;</string>
-		</dict>
-		<key>BB000011000000000000011</key>
-		<dict>
-			<key>children</key>
-			<array>
-				<string>3F3967C42FCA0C2300B7CE51</string>
-				<string>AC1B00200000000000NI01A</string>
-				<string>AC1B00200000000000SB01A</string>
-				<string>3F38966B2FCA03E10010DC4E</string>
-			</array>
-			<key>isa</key>
-			<string>PBXGroup</string>
-			<key>name</key>
-			<string>Services</string>
-			<key>sourceTree</key>
-			<string>&lt;group&gt;</string>
-		</dict>
-		<key>BB000012000000000000012</key>
-		<dict>
-			<key>children</key>
-			<array/>
-			<key>isa</key>
-			<string>PBXGroup</string>
-			<key>name</key>
-			<string>Views</string>
-			<key>sourceTree</key>
-			<string>&lt;group&gt;</string>
-		</dict>
-		<key>BB000013000000000000013</key>
-		<dict>
-			<key>children</key>
-			<array>
-				<string>BB000016000000000000016</string>
-				<string>BB000040000000000000040</string>
-			</array>
-			<key>isa</key>
-			<string>PBXGroup</string>
-			<key>name</key>
-			<string>Resources</string>
-			<key>sourceTree</key>
-			<string>&lt;group&gt;</string>
-		</dict>
-		<key>BB000014000000000000014</key>
-		<dict>
-			<key>isa</key>
-			<string>PBXFileReference</string>
-			<key>lastKnownFileType</key>
-			<string>text.plist.entitlements</string>
-			<key>path</key>
-			<string>SoniqueBar.entitlements</string>
-			<key>sourceTree</key>
-			<string>SOURCE_ROOT</string>
-		</dict>
-		<key>BB000016000000000000016</key>
-		<dict>
-			<key>isa</key>
-			<string>PBXFileReference</string>
-			<key>lastKnownFileType</key>
-			<string>text.plist.xml</string>
-			<key>name</key>
-			<string>Info.plist</string>
-			<key>path</key>
-			<string>SoniqueBar/Resources/Info.plist</string>
-			<key>sourceTree</key>
-			<string>SOURCE_ROOT</string>
-		</dict>
-		<key>BB000020000000000000020</key>
-		<dict>
-			<key>isa</key>
-			<string>PBXFileReference</string>
-			<key>lastKnownFileType</key>
-			<string>sourcecode.swift</string>
-			<key>name</key>
-			<string>SoniqueBarApp.swift</string>
-			<key>path</key>
-			<string>SoniqueBar/SoniqueBarApp.swift</string>
-			<key>sourceTree</key>
-			<string>SOURCE_ROOT</string>
-		</dict>
-		<key>BB000021000000000000021</key>
-		<dict>
-			<key>fileRef</key>
-			<string>BB000020000000000000020</string>
-			<key>isa</key>
-			<string>PBXBuildFile</string>
-		</dict>
-		<key>BB000040000000000000040</key>
-		<dict>
-			<key>isa</key>
-			<string>PBXFileReference</string>
-			<key>lastKnownFileType</key>
-			<string>folder.assetcatalog</string>
-			<key>name</key>
-			<string>Assets.xcassets</string>
-			<key>path</key>
-			<string>SoniqueBar/Resources/Assets.xcassets</string>
-			<key>sourceTree</key>
-			<string>SOURCE_ROOT</string>
-		</dict>
-		<key>BB000041000000000000041</key>
-		<dict>
-			<key>fileRef</key>
-			<string>BB000040000000000000040</string>
-			<key>isa</key>
-			<string>PBXBuildFile</string>
-		</dict>
-	</dict>
-	<key>rootObject</key>
-	<string>BB000001000000000000001</string>
-</dict>
-</plist>
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 56;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		1C350E48AD8318C8DCFE1A89 /* NotificationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 33516FED6F0777C57E3D4D38 /* NotificationService.swift */; };
+		3F38966C2FCA03E10010DC4E /* CommandServer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3F38966B2FCA03E10010DC4E /* CommandServer.swift */; };
+		3F3967C52FCA0C2300B7CE51 /* IntentRouter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3F3967C42FCA0C2300B7CE51 /* IntentRouter.swift */; };
+		3F73A4402FCE856A0057ED63 /* LabStatusService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3F73A43D2FCE856A0057ED63 /* LabStatusService.swift */; };
+		3F73A4412FCE856A0057ED63 /* MemoryService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3F73A43E2FCE856A0057ED63 /* MemoryService.swift */; };
+		3F73A4422FCE856A0057ED63 /* TaskDispatcher.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3F73A43F2FCE856A0057ED63 /* TaskDispatcher.swift */; };
+		A748E7CF430CDAC3EF9CD4AC /* ScreenAwarenessService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 491D3DBA27570E89FA1D8957 /* ScreenAwarenessService.swift */; };
+		AC1B00200000000000NI01B /* NativeIntents.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC1B00200000000000NI01A /* NativeIntents.swift */; };
+		AC1B00200000000000SB01B /* SoniqueBrain.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC1B00200000000000SB01A /* SoniqueBrain.swift */; };
+		AEE15A78138C2D11825DC18A /* BackgroundMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0DE143B52BBA46E47E52A8CF /* BackgroundMonitor.swift */; };
+		BB000021000000000000021 /* SoniqueBarApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB000020000000000000020 /* SoniqueBarApp.swift */; };
+		BB000041000000000000041 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = BB000040000000000000040 /* Assets.xcassets */; };
+		D6609779DB60D83FF653537A /* LLMRouter.swift in Sources */ = {isa = PBXBuildFile; fileRef = FBB4C60EBFF0FF81DCFA31C3 /* LLMRouter.swift */; };
+		E57EF88A188B232ADF084750 /* PatternClassifier.swift in Sources */ = {isa = PBXBuildFile; fileRef = 33F5E661E0F0C2DC57DBE6B2 /* PatternClassifier.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		0DE143B52BBA46E47E52A8CF /* BackgroundMonitor.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = BackgroundMonitor.swift; path = SoniqueBar/Services/BackgroundMonitor.swift; sourceTree = "<group>"; };
+		33516FED6F0777C57E3D4D38 /* NotificationService.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = NotificationService.swift; path = SoniqueBar/Services/NotificationService.swift; sourceTree = "<group>"; };
+		33F5E661E0F0C2DC57DBE6B2 /* PatternClassifier.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = PatternClassifier.swift; path = SoniqueBar/Services/PatternClassifier.swift; sourceTree = "<group>"; };
+		3F38966B2FCA03E10010DC4E /* CommandServer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = CommandServer.swift; path = SoniqueBar/Services/CommandServer.swift; sourceTree = SOURCE_ROOT; };
+		3F3967C42FCA0C2300B7CE51 /* IntentRouter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = IntentRouter.swift; path = SoniqueBar/Services/IntentRouter.swift; sourceTree = SOURCE_ROOT; };
+		3F73A43D2FCE856A0057ED63 /* LabStatusService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LabStatusService.swift; sourceTree = "<group>"; };
+		3F73A43E2FCE856A0057ED63 /* MemoryService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MemoryService.swift; sourceTree = "<group>"; };
+		3F73A43F2FCE856A0057ED63 /* TaskDispatcher.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaskDispatcher.swift; sourceTree = "<group>"; };
+		491D3DBA27570E89FA1D8957 /* ScreenAwarenessService.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ScreenAwarenessService.swift; path = SoniqueBar/Services/ScreenAwarenessService.swift; sourceTree = "<group>"; };
+		AC1B00200000000000NI01A /* NativeIntents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SoniqueBar/Services/NativeIntents.swift; sourceTree = "<group>"; };
+		AC1B00200000000000SB01A /* SoniqueBrain.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SoniqueBar/Services/SoniqueBrain.swift; sourceTree = "<group>"; };
+		BB000004000000000000004 /* SoniqueBar.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = SoniqueBar.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		BB000014000000000000014 /* SoniqueBar.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = SoniqueBar.entitlements; sourceTree = SOURCE_ROOT; };
+		BB000016000000000000016 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; name = Info.plist; path = SoniqueBar/Resources/Info.plist; sourceTree = SOURCE_ROOT; };
+		BB000020000000000000020 /* SoniqueBarApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = SoniqueBarApp.swift; path = SoniqueBar/SoniqueBarApp.swift; sourceTree = SOURCE_ROOT; };
+		BB000040000000000000040 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; name = Assets.xcassets; path = SoniqueBar/Resources/Assets.xcassets; sourceTree = SOURCE_ROOT; };
+		FBB4C60EBFF0FF81DCFA31C3 /* LLMRouter.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = LLMRouter.swift; path = SoniqueBar/Services/LLMRouter.swift; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		BB000007000000000000007 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		3F3896522FC9FE150010DC4E /* Recovered References */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			name = "Recovered References";
+			sourceTree = "<group>";
+		};
+		3F38965D2FCA01760010DC4E /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
+		BB000002000000000000002 = {
+			isa = PBXGroup;
+			children = (
+				3F73A43D2FCE856A0057ED63 /* LabStatusService.swift */,
+				3F73A43E2FCE856A0057ED63 /* MemoryService.swift */,
+				3F73A43F2FCE856A0057ED63 /* TaskDispatcher.swift */,
+				BB00000F00000000000000F /* SoniqueBar */,
+				BB000014000000000000014 /* SoniqueBar.entitlements */,
+				BB000003000000000000003 /* Products */,
+				3F3896522FC9FE150010DC4E /* Recovered References */,
+				3F38965D2FCA01760010DC4E /* Frameworks */,
+			);
+			sourceTree = "<group>";
+		};
+		BB000003000000000000003 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				BB000004000000000000004 /* SoniqueBar.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		BB00000F00000000000000F /* SoniqueBar */ = {
+			isa = PBXGroup;
+			children = (
+				BB000020000000000000020 /* SoniqueBarApp.swift */,
+				BB000010000000000000010 /* Models */,
+				BB000011000000000000011 /* Services */,
+				BB000012000000000000012 /* Views */,
+				BB000013000000000000013 /* Resources */,
+			);
+			name = SoniqueBar;
+			sourceTree = "<group>";
+		};
+		BB000010000000000000010 /* Models */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			name = Models;
+			sourceTree = "<group>";
+		};
+		BB000011000000000000011 /* Services */ = {
+			isa = PBXGroup;
+			children = (
+				3F3967C42FCA0C2300B7CE51 /* IntentRouter.swift */,
+				AC1B00200000000000NI01A /* NativeIntents.swift */,
+				AC1B00200000000000SB01A /* SoniqueBrain.swift */,
+				3F38966B2FCA03E10010DC4E /* CommandServer.swift */,
+				FBB4C60EBFF0FF81DCFA31C3 /* LLMRouter.swift */,
+				33F5E661E0F0C2DC57DBE6B2 /* PatternClassifier.swift */,
+				491D3DBA27570E89FA1D8957 /* ScreenAwarenessService.swift */,
+				33516FED6F0777C57E3D4D38 /* NotificationService.swift */,
+				0DE143B52BBA46E47E52A8CF /* BackgroundMonitor.swift */,
+			);
+			name = Services;
+			sourceTree = "<group>";
+		};
+		BB000012000000000000012 /* Views */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			name = Views;
+			sourceTree = "<group>";
+		};
+		BB000013000000000000013 /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				BB000016000000000000016 /* Info.plist */,
+				BB000040000000000000040 /* Assets.xcassets */,
+			);
+			name = Resources;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		BB000008000000000000008 /* SoniqueBar */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = BB00000C00000000000000C /* Build configuration list for PBXNativeTarget "SoniqueBar" */;
+			buildPhases = (
+				BB000005000000000000005 /* Sources */,
+				BB000007000000000000007 /* Frameworks */,
+				BB000006000000000000006 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = SoniqueBar;
+			productName = SoniqueBar;
+			productReference = BB000004000000000000004 /* SoniqueBar.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		BB000001000000000000001 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 1600;
+				LastUpgradeCheck = 1600;
+			};
+			buildConfigurationList = BB00000B00000000000000B /* Build configuration list for PBXProject "SoniqueBar" */;
+			compatibilityVersion = "Xcode 14.0";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = BB000002000000000000002;
+			productRefGroup = BB000003000000000000003 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				BB000008000000000000008 /* SoniqueBar */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		BB000006000000000000006 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				BB000041000000000000041 /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		BB000005000000000000005 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				3F3967C52FCA0C2300B7CE51 /* IntentRouter.swift in Sources */,
+				AC1B00200000000000NI01B /* NativeIntents.swift in Sources */,
+				AC1B00200000000000SB01B /* SoniqueBrain.swift in Sources */,
+				BB000021000000000000021 /* SoniqueBarApp.swift in Sources */,
+				3F73A4402FCE856A0057ED63 /* LabStatusService.swift in Sources */,
+				3F73A4412FCE856A0057ED63 /* MemoryService.swift in Sources */,
+				3F73A4422FCE856A0057ED63 /* TaskDispatcher.swift in Sources */,
+				3F38966C2FCA03E10010DC4E /* CommandServer.swift in Sources */,
+				D6609779DB60D83FF653537A /* LLMRouter.swift in Sources */,
+				E57EF88A188B232ADF084750 /* PatternClassifier.swift in Sources */,
+				A748E7CF430CDAC3EF9CD4AC /* ScreenAwarenessService.swift in Sources */,
+				1C350E48AD8318C8DCFE1A89 /* NotificationService.swift in Sources */,
+				AEE15A78138C2D11825DC18A /* BackgroundMonitor.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		BB000009000000000000009 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = macosx;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+			};
+			name = Debug;
+		};
+		BB00000A00000000000000A /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				SDKROOT = macosx;
+			};
+			name = Release;
+		};
+		BB00000D00000000000000D /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = SoniqueBar.entitlements;
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 5;
+				DEVELOPMENT_TEAM = 7NSS5CJL9E;
+				ENABLE_HARDENED_RUNTIME = YES;
+				INFOPLIST_FILE = SoniqueBar/Resources/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MARKETING_VERSION = 1.1;
+				PRODUCT_BUNDLE_IDENTIFIER = com.seayniclabs.soniquebar;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		BB00000E00000000000000E /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = SoniqueBar.entitlements;
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 5;
+				DEVELOPMENT_TEAM = 7NSS5CJL9E;
+				ENABLE_HARDENED_RUNTIME = YES;
+				INFOPLIST_FILE = SoniqueBar/Resources/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MARKETING_VERSION = 1.1;
+				PRODUCT_BUNDLE_IDENTIFIER = com.seayniclabs.soniquebar;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		BB00000B00000000000000B /* Build configuration list for PBXProject "SoniqueBar" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				BB000009000000000000009 /* Debug */,
+				BB00000A00000000000000A /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		BB00000C00000000000000C /* Build configuration list for PBXNativeTarget "SoniqueBar" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				BB00000D00000000000000D /* Debug */,
+				BB00000E00000000000000E /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = BB000001000000000000001 /* Project object */;
+}

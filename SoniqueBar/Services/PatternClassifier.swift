@@ -8,37 +8,37 @@ struct PatternClassifier {
         let lower = transcript.lowercased()
 
         // Calendar queries
-        if lower.contains(regex: /(calendar|schedule|meeting|appointment|today|tomorrow)/) {
+        if lower.matches(pattern: "(calendar|schedule|meeting|appointment|today|tomorrow)") {
             return .checkCalendar
         }
 
         // Email queries
-        if lower.contains(regex: /(email|inbox|unread|mail|message)/) {
+        if lower.matches(pattern: "(email|inbox|unread|mail|message)") {
             return .checkEmail
         }
 
         // Screen awareness
-        if lower.contains(regex: /(screen|display|showing|what('s| is) on)/) {
+        if lower.matches(pattern: "(screen|display|showing|what.s on|what is on)") {
             return .describeScreen
         }
 
         // Time/date queries
-        if lower.contains(regex: /(time|date|day|what('s| is) the)/) {
+        if lower.matches(pattern: "(time|date|day|what.s the|what is the)") {
             return .currentTime
         }
 
         // System status
-        if lower.contains(regex: /(status|health|docker|helmsman|queue)/) {
+        if lower.matches(pattern: "(status|health|docker|helmsman|queue)") {
             return .systemStatus
         }
 
         // Task creation (needs more context, defer to LLM)
-        if lower.contains(regex: /(create|add|make|new) .* (task|reminder|todo)/) {
+        if lower.matches(pattern: "(create|add|make|new).*(task|reminder|todo)") {
             return nil  // Let LLM handle context
         }
 
         // Stop/cancel commands
-        if lower.contains(regex: /^(stop|cancel|nevermind|forget it)/) {
+        if lower.matches(pattern: "^(stop|cancel|nevermind|forget it)") {
             return .stopAction
         }
 
@@ -58,7 +58,11 @@ struct PatternClassifier {
 
 // MARK: - String Regex Extension
 extension String {
-    func contains(regex pattern: Regex<Substring>) -> Bool {
-        return self.firstMatch(of: pattern) != nil
+    func matches(pattern: String) -> Bool {
+        guard let regex = try? NSRegularExpression(pattern: pattern, options: .caseInsensitive) else {
+            return false
+        }
+        let range = NSRange(location: 0, length: self.utf16.count)
+        return regex.firstMatch(in: self, options: [], range: range) != nil
     }
 }
