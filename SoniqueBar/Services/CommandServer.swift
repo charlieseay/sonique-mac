@@ -164,6 +164,8 @@ class CommandServer: ObservableObject {
             await handleCommand(data, connection)
         } else if method == "POST" && path == "/command/stream" {
             await handleCommandStream(data, connection)
+        } else if method == "POST" && path == "/conversation" {
+            await handleConversationEndpoint(data, connection)
         } else if method == "GET" && path.hasPrefix("/artifact/") {
             await handleArtifact(path, connection)
         } else if method == "POST" && path == "/log" {
@@ -373,6 +375,51 @@ class CommandServer: ObservableObject {
         } catch {
             return false
         }
+    }
+
+    private func handleConversationEndpoint(_ data: Data, _ connection: NWConnection) async {
+        // Extract JSON body from POST request
+        guard let requestString = String(data: data, encoding: .utf8) else {
+            sendResponse("HTTP/1.1 400 Bad Request\r\n\r\n", to: connection)
+            return
+        }
+
+        // Find the JSON body (after the headers)
+        let components = requestString.components(separatedBy: "\r\n\r\n")
+        guard components.count >= 2,
+              let bodyData = components[1].data(using: .utf8),
+              let json = try? JSONSerialization.jsonObject(with: bodyData) as? [String: Any],
+              let text = json["text"] as? String else {
+            sendResponse("HTTP/1.1 400 Bad Request\r\n\r\n{\"error\":\"Missing 'text' field\"}", to: connection)
+            return
+        }
+
+        // Use IntentRouter fast path then handleConversation
+        let intent = IntentRouter.classify(text)
+        let responseText: String
+
+        switch intent {
+        case .conversation(let query):
+            responseText = await handleConversation(query)
+        case .infrastructure(let command):
+            responseText = await InfrastructureExecutor.execute(command: command)
+        case .unknown(let input):
+            responseText = "I'm not sure what to do with: \(input)"
+        }
+
+        let responseJSON = """
+        {"response":"\(responseText)","timestamp":"\(ISO8601DateFormatter().string(from: Date()))"}
+        """
+
+        let response = """
+        HTTP/1.1 200 OK\r
+        Content-Type: application/json\r
+        Content-Length: \(responseJSON.utf8.count)\r
+        \r
+        \(responseJSON)
+        """
+
+        sendResponse(response, to: connection)
     }
 
     private func handleCommand(_ data: Data, _ connection: NWConnection) async {

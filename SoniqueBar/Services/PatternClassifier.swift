@@ -10,7 +10,6 @@ struct PatternClassifier {
     static func classify(_ transcript: String) -> Intent? {
         logger.info("🔍 classify called with: '\(transcript)'")
         let lower = transcript.lowercased()
-        logger.info("🔍 lowercased: '\(lower)'")
 
         // Calendar queries
         if lower.matches(pattern: "(calendar|schedule|meeting|appointment|today|tomorrow)") {
