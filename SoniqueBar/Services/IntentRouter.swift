@@ -1,5 +1,6 @@
 import Foundation
 import os.log
+import EventKit
 
 /// Routes user commands to the appropriate handler.
 /// Classifies between conversational queries and infrastructure commands.
@@ -538,76 +539,121 @@ struct InfrastructureExecutor {
 
     private static func checkAppleCalendar(_ query: String) async -> String {
         let lower = query.lowercased()
-        let timeframe = if lower.contains("tomorrow") {
-            "tomorrow"
-        } else if lower.contains("week") {
-            "week"
-        } else {
-            "today"
-        }
 
-        let script = """
-        tell application "Calendar"
-            set startDate to current date
-            set hours of startDate to 0
-            set minutes of startDate to 0
-            set seconds of startDate to 0
-
-            set endDate to startDate + (1 * days)
-
-            set eventList to {}
-            repeat with cal in calendars
-                set calEvents to (every event of cal whose start date ≥ startDate and start date < endDate)
-                repeat with evt in calEvents
-                    set end of eventList to {summary:(summary of evt), startDate:(start date of evt)}
-                end repeat
-            end repeat
-
-            return eventList
-        end tell
-        """
-
-        let result = await shell("osascript -e '\(script.replacingOccurrences(of: "'", with: "'\\''"))'")
-
-        if result.exitCode == 0 {
-            let output = result.stdout
-            if output.isEmpty || output == "{}" {
-                return "Your calendar is clear for \(timeframe)."
+        // Import EventKit at the top of the file if not already
+        let store = await withCheckedContinuation { continuation in
+            // EKEventStore must be created on main thread for macOS
+            Task { @MainActor in
+                continuation.resume(returning: EKEventStore())
             }
-            return "Here are your calendar events for \(timeframe): \(output)"
-        } else {
-            return "I have access to Apple Calendar via AppleScript. Error: \(result.stderr)"
         }
+
+        // Request access if needed
+        let granted = await withCheckedContinuation { continuation in
+            store.requestFullAccessToEvents { granted, error in
+                continuation.resume(returning: granted)
+            }
+        }
+
+        guard granted else {
+            return "I need Calendar permission. Go to System Settings → Privacy & Security → Calendars and enable SoniqueBar."
+        }
+
+        // Determine timeframe
+        let calendar = Calendar.current
+        let startDate: Date
+        let endDate: Date
+        let timeframeDesc: String
+
+        if lower.contains("tomorrow") {
+            let tomorrow = calendar.date(byAdding: .day, value: 1, to: Date())!
+            startDate = calendar.startOfDay(for: tomorrow)
+            endDate = calendar.date(byAdding: .day, value: 1, to: startDate)!
+            timeframeDesc = "tomorrow"
+        } else if lower.contains("week") {
+            startDate = calendar.startOfDay(for: Date())
+            endDate = calendar.date(byAdding: .day, value: 7, to: startDate)!
+            timeframeDesc = "this week"
+        } else {
+            startDate = calendar.startOfDay(for: Date())
+            endDate = calendar.date(byAdding: .day, value: 1, to: startDate)!
+            timeframeDesc = "today"
+        }
+
+        // Get events
+        let predicate = store.predicateForEvents(withStart: startDate, end: endDate, calendars: nil)
+        let events = store.events(matching: predicate)
+
+        if events.isEmpty {
+            return "Your calendar is clear for \(timeframeDesc)."
+        }
+
+        let formatter = DateFormatter()
+        formatter.timeStyle = .short
+
+        var summary = events.count == 1 ? "You have 1 event \(timeframeDesc): " : "You have \(events.count) events \(timeframeDesc): "
+        let eventList = events.prefix(5).map { event in
+            let timeStr = event.isAllDay ? "all day" : formatter.string(from: event.startDate)
+            return "\(event.title ?? "Untitled") at \(timeStr)"
+        }.joined(separator: ", ")
+
+        if events.count > 5 {
+            return summary + eventList + ", and \(events.count - 5) more."
+        }
+
+        return summary + eventList + "."
     }
 
     // MARK: - Email Integration
 
     private static func checkAppleMail(_ query: String) async -> String {
         // Use AppleScript to access Apple Mail
+        // Optimized: get count first, then only fetch 5 messages
         let script = """
         tell application "Mail"
             set unreadCount to count of (messages of inbox whose read status is false)
-            set recentMessages to {}
+            set recentMessages to ""
 
-            -- Get last 5 unread messages
-            repeat with msg in (messages of inbox whose read status is false)
-                if (count of recentMessages) < 5 then
-                    set end of recentMessages to {subject:(subject of msg), sender:(sender of msg)}
+            if unreadCount > 0 then
+                -- Get first 5 unread messages (more efficient than looping all)
+                set unreadList to (messages of inbox whose read status is false)
+                set msgLimit to 5
+                if (count of unreadList) < msgLimit then
+                    set msgLimit to (count of unreadList)
                 end if
-            end repeat
 
-            return {unreadCount:unreadCount, recent:recentMessages}
+                repeat with i from 1 to msgLimit
+                    set msg to item i of unreadList
+                    set msgSubject to subject of msg
+                    set msgSender to sender of msg
+                    set recentMessages to recentMessages & msgSubject & " from " & msgSender & "; "
+                end repeat
+            end if
+
+            return unreadCount & "|" & recentMessages
         end tell
         """
 
-        let result = await shell("osascript -e '\(script.replacingOccurrences(of: "'", with: "'\\''"))'")
+        let result = await shell("timeout 5 osascript -e '\(script.replacingOccurrences(of: "'", with: "'\\''"))'")
 
         if result.exitCode == 0 {
             let output = result.stdout
-            // Parse the AppleScript output
-            return "You have unread mail. Here's what Apple Mail shows: \(output)"
+            let parts = output.components(separatedBy: "|")
+            if parts.count == 2 {
+                let count = parts[0].trimmingCharacters(in: .whitespacesAndNewlines)
+                let messages = parts[1].trimmingCharacters(in: .whitespacesAndNewlines)
+
+                if count == "0" {
+                    return "You have no unread email."
+                } else if messages.isEmpty {
+                    return "You have \(count) unread messages."
+                } else {
+                    return "You have \(count) unread messages. Recent: \(messages)"
+                }
+            }
+            return "Mail check complete: \(output)"
         } else {
-            return "I have access to Apple Mail via AppleScript. Error: \(result.stderr)"
+            return "Couldn't check Mail: \(result.stderr)"
         }
     }
 
