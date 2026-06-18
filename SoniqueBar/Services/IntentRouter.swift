@@ -47,8 +47,14 @@ struct IntentRouter {
         }
 
         // Task creation (check first - high priority)
-        if (lower.contains("create") || lower.contains("add") || lower.contains("new")) &&
-           (lower.contains("task") || lower.contains("feature") || lower.contains("bug")) {
+        // Exclude phrases like "the task is already created" or "task is done"
+        let isTaskCreationRequest = (lower.contains("create") || lower.contains("add") || lower.contains("new")) &&
+                                    (lower.contains("task") || lower.contains("feature") || lower.contains("bug"))
+        let isNegation = lower.contains("already") || lower.contains("is created") ||
+                        lower.contains("is done") || lower.contains("close") ||
+                        lower.contains("delete") || lower.contains("remove")
+
+        if isTaskCreationRequest && !isNegation {
             return .infrastructure(command: .createTask(description: text))
         }
 

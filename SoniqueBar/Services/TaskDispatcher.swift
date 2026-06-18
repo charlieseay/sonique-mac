@@ -44,18 +44,52 @@ struct TaskDispatcher {
         let result = await InfrastructureExecutor.shell("ask_helmsman '\(prompt.replacingOccurrences(of: "'", with: "'\\''"))'")
 
         guard result.exitCode == 0 else {
-            print("[TaskDispatcher] Shell command failed: \(result.stderr)")
+            print("[TaskDispatcher] Shell command failed (exit \(result.exitCode)): \(result.stderr)")
+            print("[TaskDispatcher] stdout was: \(result.stdout)")
             return nil
         }
 
-        // Extract JSON from markdown code fence if present
+        print("[TaskDispatcher] Raw response: \(result.stdout)")
+
+        // Extract JSON from response - handle markdown fences, multi-line output, etc
         var jsonString = result.stdout
+
+        // Try markdown code fence first
         if let jsonStart = jsonString.range(of: "```json\n"),
            let jsonEnd = jsonString.range(of: "\n```", range: jsonStart.upperBound..<jsonString.endIndex) {
             jsonString = String(jsonString[jsonStart.upperBound..<jsonEnd.lowerBound])
         } else if let jsonStart = jsonString.range(of: "```\n"),
                   let jsonEnd = jsonString.range(of: "\n```", range: jsonStart.upperBound..<jsonString.endIndex) {
             jsonString = String(jsonString[jsonStart.upperBound..<jsonEnd.lowerBound])
+        } else {
+            // No markdown fence - find the actual task metadata JSON object
+            // Look for object with required fields: project, type, effort, description, owner
+            let lines = jsonString.components(separatedBy: .newlines)
+            var jsonLines: [String] = []
+            var inObject = false
+            var braceCount = 0
+
+            for line in lines {
+                let trimmed = line.trimmingCharacters(in: .whitespaces)
+                if trimmed.hasPrefix("{") {
+                    inObject = true
+                    braceCount = 1
+                    jsonLines = [line]
+                } else if inObject {
+                    jsonLines.append(line)
+                    braceCount += line.filter { $0 == "{" }.count
+                    braceCount -= line.filter { $0 == "}" }.count
+                    if braceCount == 0 {
+                        // Complete object found
+                        let candidate = jsonLines.joined(separator: "\n")
+                        if candidate.contains("\"type\"") && candidate.contains("\"effort\"") {
+                            jsonString = candidate
+                            break
+                        }
+                        inObject = false
+                    }
+                }
+            }
         }
 
         guard let data = jsonString.trimmingCharacters(in: .whitespacesAndNewlines).data(using: .utf8),
