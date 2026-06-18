@@ -30,7 +30,7 @@ struct PatternClassifier {
         }
 
         // Time/date queries
-        if lower.matches(pattern: "(time|date|day|what.s the|what is the)") {
+        if lower.matches(pattern: "\\b(time|date|day)\\b|what.s the (time|date|day)|what is the (time|date|day)") {
             logger.info("✅ Matched: currentTime")
             return .currentTime
         }

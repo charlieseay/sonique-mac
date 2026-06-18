@@ -98,7 +98,7 @@ class LLMRouter: ObservableObject {
         }
 
         var payload: [String: Any] = [
-            "model": "llama3.2:3b",  // Use fastest available model
+            "model": "llama3.2:3b-instruct-q4_K_M",  // Match actual installed model
             "prompt": prompt,
             "stream": false
         ]
