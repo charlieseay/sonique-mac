@@ -447,24 +447,18 @@ class CommandServer: ObservableObject {
     }
 
     private func handleConversation(_ text: String) async -> String {
-        // Voice replies must be FAST. Prefer ask_llm (routes to healthy low-latency
-        // providers — groq/cerebras, sub-second) over ask_helmsman (NVIDIA-first;
-        // when NVIDIA inference stalls it drags every reply through a 20-30s
-        // timeout+fallback chain, which makes the assistant feel hung/broken).
-        let llmBin: String
-        if await InfrastructureExecutor.shell("which ask_llm").exitCode == 0 {
-            llmBin = "ask_llm --lane fast"
-        } else if await InfrastructureExecutor.shell("which ask_helmsman").exitCode == 0 {
-            llmBin = "ask_helmsman"
-        } else {
-            // Fallback: simple time check
-            if text.lowercased().contains("time") {
-                let formatter = DateFormatter()
-                formatter.dateStyle = .none
-                formatter.timeStyle = .short
-                return "The current time is \(formatter.string(from: Date()))"
-            }
-            return "LLM not available. Check that ask_llm or ask_helmsman is in PATH."
+        // FAST PATH: Handle simple queries without LLM
+        if text == "current_time" {
+            let formatter = DateFormatter()
+            formatter.dateStyle = .medium
+            formatter.timeStyle = .short
+            return "It's \(formatter.string(from: Date()))"
+        }
+
+        // Use LLMRouter for optimal provider selection
+        // (system Ollama > bundled model > network API)
+        guard LLMRouter.shared.isReady else {
+            return "I'm still initializing. Please try again in a moment."
         }
 
         // Get context from memory
@@ -480,11 +474,36 @@ class CommandServer: ObservableObject {
         Respond directly and concisely. Use the context above to inform your response but don't reference it explicitly.
         """
 
-        // Escape for shell
-        let escapedPrompt = fullPrompt.replacingOccurrences(of: "'", with: "'\\''")
+        do {
+            let response = try await LLMRouter.shared.generate(prompt: fullPrompt)
+            return response
+        } catch {
+            // Fallback to shell-based LLM if LLMRouter fails
+            return await handleConversationFallback(text, context: context)
+        }
+    }
 
-        // Route to the chosen LLM with context, BOUND by a hard timeout so a
-        // voice reply is fast or fails gracefully (`timeout` returns 124 on expiry).
+    private func handleConversationFallback(_ text: String, context: String) async -> String {
+        // Legacy fallback: ask_llm or ask_helmsman via shell
+        let llmBin: String
+        if await InfrastructureExecutor.shell("which ask_llm").exitCode == 0 {
+            llmBin = "ask_llm --lane fast"
+        } else if await InfrastructureExecutor.shell("which ask_helmsman").exitCode == 0 {
+            llmBin = "ask_helmsman"
+        } else {
+            return "LLM not available."
+        }
+
+        let fullPrompt = """
+        \(context)
+
+        # Current Request
+        \(text)
+
+        Respond directly and concisely.
+        """
+
+        let escapedPrompt = fullPrompt.replacingOccurrences(of: "'", with: "'\\''")
         let result = await InfrastructureExecutor.shell(
             "timeout 12 \(llmBin) '\(escapedPrompt)'"
         )

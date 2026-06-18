@@ -44,6 +44,26 @@ struct IntentRouter {
     static func classify(_ text: String) -> Intent {
         let lower = text.lowercased()
 
+        // FAST PATH: Pattern-based classification (no LLM, <1ms)
+        if let patternIntent = PatternClassifier.classify(text) {
+            switch patternIntent {
+            case .checkCalendar:
+                return .infrastructure(command: .checkCalendar(query: text))
+            case .checkEmail:
+                return .infrastructure(command: .checkEmail(query: text))
+            case .describeScreen:
+                return .infrastructure(command: .describeScreen)
+            case .currentTime:
+                // Handle inline without infrastructure command
+                return .conversation(text: "current_time")
+            case .systemStatus:
+                return .infrastructure(command: .checkStatus(service: "lab"))
+            case .stopAction:
+                // Handle as conversation for now
+                return .conversation(text: text)
+            }
+        }
+
         // Home control (check early - user expects instant response for lights/devices)
         if let homeCommand = classifyHomeControl(text) {
             return .infrastructure(command: homeCommand)
