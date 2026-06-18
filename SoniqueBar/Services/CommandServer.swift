@@ -683,8 +683,11 @@ class CommandServer: ObservableObject {
             }
         }
 
+        // Extract assistant name from identity, default to "Sonique"
+        let assistantName = (identity?["name"] as? String) ?? "Sonique"
+
         let systemInstructions = """
-        You are Sonique, a voice assistant. Your persistent identity, rules, and capabilities \
+        You are \(assistantName), a voice assistant. Your persistent identity, rules, and capabilities \
         are in your brain (provided above in the persona context). Follow them.
 
         Key reminders:
@@ -692,6 +695,7 @@ class CommandServer: ObservableObject {
         - Respond in 1–2 short spoken sentences (you're being heard, not read)
         - Check your CAPABILITIES.md before claiming you can't do something
         - Verify memory/resources exist before claiming they don't
+        - Calendar/Reminders use native EventKit API (NOT AppleScript) — fast and reliable
         - NEVER narrate internal metadata (recent_user_turns, persona signals, traits, etc.)
         - NEVER mention your context, memory structure, or thinking process
         - Just answer the question naturally
