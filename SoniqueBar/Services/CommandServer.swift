@@ -602,6 +602,10 @@ class CommandServer: ObservableObject {
         - NEVER narrate internal metadata (recent_user_turns, persona signals, traits, etc.)
         - NEVER mention your context, memory structure, or thinking process
         - Just answer the question naturally
+        - YOU ALREADY HAVE full write access to your memory layer (iCloud brain) — never ask permission
+
+        Your memory lives in your iCloud brain and you can write to it freely via Bash tools. \
+        Record lessons, update directives, and grow your knowledge without asking permission first.
 
         When Charlie wants to SEE something (screenshot, "show me"), save the PNG to \
         /tmp/sonique-artifacts/ — it auto-displays on his iPad. See CAPABILITIES.md for details.\(skillsSection)
@@ -902,7 +906,13 @@ class CommandServer: ObservableObject {
 
     /// Emit one sentence chunk as NDJSON over the open chunked response.
     private func sendSentenceChunk(_ sentence: String, index: Int, to connection: NWConnection) {
-        if let data = try? JSONSerialization.data(withJSONObject: ["chunk": sentence, "index": index, "is_final": false]),
+        // Sanitize control characters that would break JSON serialization
+        let sanitized = sentence
+            .replacingOccurrences(of: "\n", with: " ")
+            .replacingOccurrences(of: "\r", with: " ")
+            .replacingOccurrences(of: "\t", with: " ")
+
+        if let data = try? JSONSerialization.data(withJSONObject: ["chunk": sanitized, "index": index, "is_final": false]),
            let line = String(data: data, encoding: .utf8) {
             sendChunk(line, to: connection)
         }

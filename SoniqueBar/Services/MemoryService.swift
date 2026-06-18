@@ -17,7 +17,7 @@ class MemoryService: ObservableObject {
     private let configFile: URL
 
     private var config: MemoryConfig
-    private let maxWorkingMemoryExchanges = 20
+    private let maxWorkingMemoryExchanges = 50  // Increased from 20 to maintain longer conversation context
 
     struct Exchange: Codable {
         let timestamp: Date

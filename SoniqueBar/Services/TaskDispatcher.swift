@@ -43,10 +43,24 @@ struct TaskDispatcher {
 
         let result = await InfrastructureExecutor.shell("ask_helmsman '\(prompt.replacingOccurrences(of: "'", with: "'\\''"))'")
 
-        guard result.exitCode == 0,
-              let data = result.stdout.data(using: .utf8),
+        guard result.exitCode == 0 else {
+            print("[TaskDispatcher] Shell command failed: \(result.stderr)")
+            return nil
+        }
+
+        // Extract JSON from markdown code fence if present
+        var jsonString = result.stdout
+        if let jsonStart = jsonString.range(of: "```json\n"),
+           let jsonEnd = jsonString.range(of: "\n```", range: jsonStart.upperBound..<jsonString.endIndex) {
+            jsonString = String(jsonString[jsonStart.upperBound..<jsonEnd.lowerBound])
+        } else if let jsonStart = jsonString.range(of: "```\n"),
+                  let jsonEnd = jsonString.range(of: "\n```", range: jsonStart.upperBound..<jsonString.endIndex) {
+            jsonString = String(jsonString[jsonStart.upperBound..<jsonEnd.lowerBound])
+        }
+
+        guard let data = jsonString.trimmingCharacters(in: .whitespacesAndNewlines).data(using: .utf8),
               let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
-            print("[TaskDispatcher] Failed to extract metadata: \(result.stderr)")
+            print("[TaskDispatcher] Failed to parse JSON from response: \(result.stdout)")
             return nil
         }
 
