@@ -213,15 +213,27 @@ class CommandServer: ObservableObject {
     }
 
     private func handleConfig(_ connection: NWConnection) async {
-        // Read ElevenLabs API key from secrets file
-        let secretPath = "/Volumes/data/secrets/elevenlabs_api_key"
+        // Read ElevenLabs API key from secrets file (try multiple locations)
+        let secretPaths = [
+            NSHomeDirectory() + "/Library/Application Support/SoniqueBar/elevenlabs_api_key",
+            "/Volumes/data/secrets/elevenlabs_api_key"
+        ]
 
-        guard let apiKey = try? String(contentsOfFile: secretPath, encoding: .utf8).trimmingCharacters(in: .whitespacesAndNewlines) else {
+        var apiKey: String?
+        for path in secretPaths {
+            if let key = try? String(contentsOfFile: path, encoding: .utf8).trimmingCharacters(in: .whitespacesAndNewlines),
+               !key.isEmpty {
+                apiKey = key
+                break
+            }
+        }
+
+        guard let apiKey = apiKey else {
             let errorResponse = """
             HTTP/1.1 500 Internal Server Error\r
             Content-Type: application/json\r
             \r
-            {"error":"Could not read ElevenLabs API key from \(secretPath)"}
+            {"error":"Could not read ElevenLabs API key from any of: \(secretPaths.joined(separator: ", "))"}
             """
             sendResponse(errorResponse, to: connection)
             return
