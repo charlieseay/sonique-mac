@@ -121,77 +121,114 @@ struct TaskDispatcher {
         let owner = metadata.owner ?? "[OPERATOR TO SUPPLY]"
 
         return """
+        ## Prior Lessons
+        Run `read-lessons \(project.lowercased())` before starting. Check for patterns related to this task type.
+
         ## Goal
         \(metadata.description)
 
         ## Context
         Project: \(project)
         Type: \(metadata.type)
-        Source: Voice command from Charlie
+        Source: Voice command from Charlie via Sonique
         \(context.isEmpty ? "" : "\nAdditional context: \(context)")
 
         ## Steps
-        [OPERATOR TO SUPPLY - or agent to determine based on goal]
+        1. Read relevant lessons for this project/domain
+        2. Investigate current state and identify exact changes needed
+        3. Implement changes following project conventions
+        4. Test changes work as expected
+        5. Commit to git with descriptive message
 
         ## Dependencies
         - Project repo must be accessible
         - Required tools/frameworks installed
-        [Add specific dependencies as needed]
+        - Any service dependencies running
 
         ## Potential Issues
-        [OPERATOR TO SUPPLY - or agent to identify during investigation]
+        - Project conventions may differ from assumptions
+        - Dependencies may need updates
+        - Related code may need refactoring for consistency
 
         ## Research Questions
-        [OPERATOR TO SUPPLY - or agent to determine what needs investigation first]
+        ```bash
+        # Verify project exists and is accessible
+        ls -la ~/Projects/\(project.lowercased()) 2>/dev/null || echo "Project not found"
+
+        # Check git status
+        cd ~/Projects/\(project.lowercased()) && git status
+
+        # Search for related code
+        grep -r "relevant_pattern" ~/Projects/\(project.lowercased())/
+        ```
 
         ## Expected Output
         \(metadata.description) - fully implemented and tested
+        - Code changes committed to git
+        - Verification commands pass
 
         ## Success
         - Feature/fix works as described
-        - Tests pass
-        - Code committed to repo
+        - Tests pass (or manual verification succeeds)
+        - Code committed to repo with descriptive message
 
         ## Verification
-        [OPERATOR TO SUPPLY - specific commands to verify the work]
+        ```bash
+        # Verify commit exists
+        cd ~/Projects/\(project.lowercased()) && git log -1 --oneline
+
+        # Run project-specific tests if available
+        # [Agent to add project-specific verification]
+        ```
 
         ## Security Review
         - No credentials in code
         - Input validation where applicable
         - No SQL injection or XSS vulnerabilities
+        - Secrets read from /Volumes/data/secrets/ if needed
 
         ## Functional Test
-        [OPERATOR TO SUPPLY - manual test steps to verify end-to-end]
+        Agent should perform end-to-end test of the implemented functionality.
+        Document test steps in completion summary.
 
         ## Recovery
         If blocked: mark as needs_human_review with diagnosis
-        If tools missing: install or escalate
+        If tools missing: install or escalate to CHARLIE
+        If unclear requirements: ask for clarification in #cael
 
         ## QA Checklist
         - [ ] Code compiles/builds
-        - [ ] Tests pass
+        - [ ] Tests pass (or manual verification successful)
         - [ ] No console errors
         - [ ] Matches requirements
+        - [ ] Committed to git
 
         ## Validation Markers
-        [OPERATOR TO SUPPLY - production signals that prove it works]
+        - Git commit SHA in completion summary
+        - Test output showing success
+        - For deployed changes: health check endpoints responding
 
         ## Rollback
-        Git revert if needed
-        [Add specific rollback steps if touching production config]
+        Git revert if needed: `cd ~/Projects/\(project.lowercased()) && git revert HEAD`
+        For production config changes: document specific rollback steps in completion.
 
         ## Scope Boundary
+        IN SCOPE:
+        - \(metadata.description)
+        - Related tests/fixes required for this change
+
         OUT OF SCOPE:
-        - Related features not explicitly requested
-        - Refactoring beyond what's needed for this change
+        - Unrelated features or refactoring
         - Documentation updates (unless critical)
+        - Performance optimization (unless part of the fix)
 
         ## Assumptions
         - Standard project setup and tooling in place
         - No breaking changes to existing functionality required
+        - Project follows established conventions
 
         ## Handoff Notes
-        This task was created via voice command. If requirements unclear, ask Charlie for clarification in #cael.
+        This task was created via voice command to Sonique. If requirements are unclear, ask Charlie for clarification in #cael or via voice.
         """
     }
 
