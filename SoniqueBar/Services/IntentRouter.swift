@@ -25,8 +25,6 @@ struct IntentRouter {
         case checkEmail(query: String)  // Check Apple Mail
         case checkCalendar(query: String)  // Check Calendar events
         case slackMessage(channel: String, text: String)
-        case createTask(description: String)
-        case createProject(name: String, description: String)
         case createNote(title: String, content: String)
         case homeControl(action: HomeAction, device: String)
         case stopAction  // Stop current operation
@@ -84,29 +82,11 @@ struct IntentRouter {
             return .infrastructure(command: homeCommand)
         }
 
-        // Task creation (check first - high priority)
-        // Exclude phrases like "the task is already created" or "task is done"
-        let isTaskCreationRequest = (lower.contains("create") || lower.contains("add") || lower.contains("new")) &&
-                                    (lower.contains("task") || lower.contains("feature") || lower.contains("bug"))
-        let isNegation = lower.contains("already") || lower.contains("is created") ||
-                        lower.contains("is done") || lower.contains("close") ||
-                        lower.contains("delete") || lower.contains("remove")
+        // Task creation: removed pattern matching - let LLM handle naturally
+        // When user says "create tasks to X", LLM will do the work directly
+        // and respond conversationally without exposing task numbers/paths
 
-        if isTaskCreationRequest && !isNegation {
-            return .infrastructure(command: .createTask(description: text))
-        }
-
-        // Project creation
-        if (lower.contains("start") || lower.contains("create") || lower.contains("new")) &&
-           lower.contains("project") {
-            // Extract project name - simple pattern for now
-            let words = text.components(separatedBy: .whitespaces)
-            if let projectIndex = words.firstIndex(where: { $0.lowercased() == "project" }),
-               projectIndex + 1 < words.count {
-                let projectName = words[projectIndex + 1]
-                return .infrastructure(command: .createProject(name: projectName, description: text))
-            }
-        }
+        // Project creation: removed pattern matching - let LLM handle naturally
 
         // Slack message to #cael
         if lower.contains("tell the team") || lower.contains("ask the team") {
@@ -352,11 +332,7 @@ struct InfrastructureExecutor {
         case .slackMessage(let channel, let text):
             return await sendToSlack(channel, text)
 
-        case .createTask(let description):
-            return await createTask(description)
-
-        case .createProject(let name, let description):
-            return await createProject(name, description)
+        // createTask and createProject removed - handled by LLM naturally
 
         case .createNote(let title, let content):
             return await createNote(title, content)
