@@ -22,6 +22,11 @@ class CommandServer: ObservableObject {
     private var cachedGoldenRules: String = ""
     private var rulesLastLoaded: Date?
 
+    // Duplicate request prevention
+    private var lastProcessedText: String = ""
+    private var lastProcessedTime: Date?
+    private let dedupeWindow: TimeInterval = 5.0  // Ignore duplicates within 5s
+
     private init() {
         setupListener()
         startHealthCheck()
@@ -599,6 +604,18 @@ class CommandServer: ObservableObject {
     }
 
     private func handleConversation(_ text: String) async -> String {
+        // DUPLICATE CHECK: Ignore identical requests within 5s window
+        if text == self.lastProcessedText,
+           let lastTime = self.lastProcessedTime,
+           Date().timeIntervalSince(lastTime) < self.dedupeWindow {
+            logger.info("🚫 DUPLICATE REQUEST ignored: '\(text)' (within \(self.dedupeWindow)s window)")
+            return ""  // Return empty - iOS will ignore and not speak
+        }
+
+        // Record this request
+        self.lastProcessedText = text
+        self.lastProcessedTime = Date()
+
         // FAST PATH: Handle simple queries without LLM
         if text == "current_time" {
             logger.info("⚡ FAST PATH: current_time")
