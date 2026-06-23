@@ -163,9 +163,10 @@ struct TaskDispatcher {
         ```
 
         ## Expected Output
-        \(metadata.description) - fully implemented and tested
-        - Code changes committed to git
-        - Verification commands pass
+        File: `[agent to determine exact paths during investigation]`
+        - Git commit with changes for: \(metadata.description)
+        - Test output or verification proof showing success
+        - Task summary documenting what was changed
 
         ## Success
         - Feature/fix works as described
