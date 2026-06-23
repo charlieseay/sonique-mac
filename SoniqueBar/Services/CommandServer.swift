@@ -610,18 +610,51 @@ class CommandServer: ObservableObject {
             return response
         }
 
-        logger.info("🤖 Using LLM for: '\(text)'")
-
-        // Use LLMRouter for optimal provider selection
-        // (system Ollama > bundled model > network API)
-        guard LLMRouter.shared.isReady else {
-            return "I'm still initializing. Please try again in a moment."
-        }
+        logger.info("🤖 Routing to appropriate LLM for: '\(text)'")
 
         // Get context from memory
         let context = await MemoryService.shared.getContextForLLM()
 
-        // Build prompt with context
+        // Detect action requests (create, run, execute, dispatch, build, etc.)
+        let lower = text.lowercased()
+        let isActionRequest = lower.contains("create") || lower.contains("run") ||
+                             lower.contains("execute") || lower.contains("dispatch") ||
+                             lower.contains("build") || lower.contains("deploy") ||
+                             lower.contains("fix") || lower.contains("update") ||
+                             lower.contains("install") || lower.contains("add")
+
+        if isActionRequest {
+            logger.info("🎯 Action request detected - routing to ask_claude")
+
+            let fullPrompt = """
+            \(context)
+
+            # Current Request
+            \(text)
+
+            You are Quinn, Charlie's voice assistant. You have access to all tools on this Mac Mini via shell commands.
+            When asked to do something, DO IT directly - don't just explain how.
+            Respond conversationally - no task numbers, file paths, or technical details unless asked.
+            """
+
+            // Use ask_claude with Haiku preference (Bedrock Haiku → subscription Haiku fallback)
+            let result = await InfrastructureExecutor.shell("ask_claude '\(fullPrompt.replacingOccurrences(of: "'", with: "'\\''"))' --prefer haiku")
+
+            guard result.exitCode == 0 else {
+                logger.error("ask_claude failed: \(result.stderr)")
+                return "I encountered an error. \(result.stderr)"
+            }
+
+            return result.stdout.trimmingCharacters(in: .whitespacesAndNewlines)
+        }
+
+        // Simple conversation - use fast local LLM (Ollama)
+        logger.info("💬 Simple conversation - using Ollama")
+
+        guard LLMRouter.shared.isReady else {
+            return "I'm still initializing. Please try again in a moment."
+        }
+
         let fullPrompt = """
         \(context)
 
