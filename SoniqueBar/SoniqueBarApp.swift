@@ -161,8 +161,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // Run as menu bar app (no dock icon)
         NSApp.setActivationPolicy(.accessory)
 
-        // Request Calendar access on first launch (triggers permission prompt)
-        requestCalendarAccess()
+        // Calendar access now handled via AppleScript (works with Full Disk Access)
+        // requestCalendarAccess() // Disabled - using AppleScript instead of EventKit
 
         // Run initialization script (validate + auto-heal)
         Task { @MainActor in

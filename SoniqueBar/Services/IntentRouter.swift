@@ -556,72 +556,84 @@ struct InfrastructureExecutor {
     private static func checkAppleCalendar(_ query: String) async -> String {
         let lower = query.lowercased()
 
-        guard #available(macOS 14.0, *) else {
-            return "Calendar access requires macOS 14 or later."
-        }
-
-        // Import EventKit at the top of the file if not already
-        let store = await withCheckedContinuation { continuation in
-            // EKEventStore must be created on main thread for macOS
-            Task { @MainActor in
-                continuation.resume(returning: EKEventStore())
-            }
-        }
-
-        // Request access if needed
-        let granted = await withCheckedContinuation { continuation in
-            store.requestFullAccessToEvents { granted, error in
-                continuation.resume(returning: granted)
-            }
-        }
-
-        guard granted else {
-            return "I need Calendar permission. Go to System Settings → Privacy & Security → Calendars and enable SoniqueBar."
-        }
-
-        // Determine timeframe
-        let calendar = Calendar.current
-        let startDate: Date
-        let endDate: Date
-        let timeframeDesc: String
-
+        // Determine timeframe for AppleScript
+        let timeframe: String
         if lower.contains("tomorrow") {
-            let tomorrow = calendar.date(byAdding: .day, value: 1, to: Date())!
-            startDate = calendar.startOfDay(for: tomorrow)
-            endDate = calendar.date(byAdding: .day, value: 1, to: startDate)!
-            timeframeDesc = "tomorrow"
+            timeframe = "tomorrow"
         } else if lower.contains("week") {
-            startDate = calendar.startOfDay(for: Date())
-            endDate = calendar.date(byAdding: .day, value: 7, to: startDate)!
-            timeframeDesc = "this week"
+            timeframe = "this week"
         } else {
-            startDate = calendar.startOfDay(for: Date())
-            endDate = calendar.date(byAdding: .day, value: 1, to: startDate)!
-            timeframeDesc = "today"
+            timeframe = "today"
         }
 
-        // Get events
-        let predicate = store.predicateForEvents(withStart: startDate, end: endDate, calendars: nil)
-        let events = store.events(matching: predicate)
+        // Use AppleScript to query Calendar (doesn't require explicit Calendar permission with Full Disk Access)
+        let script = """
+        tell application "Calendar"
+            set theDate to current date
+            set hours of theDate to 0
+            set minutes of theDate to 0
+            set seconds of theDate to 0
 
-        if events.isEmpty {
-            return "Your calendar is clear for \(timeframeDesc)."
+            set startDate to theDate
+            set endDate to theDate + (1 * days)
+
+            if "\(timeframe)" is "tomorrow" then
+                set startDate to theDate + (1 * days)
+                set endDate to theDate + (2 * days)
+            else if "\(timeframe)" is "this week" then
+                set endDate to theDate + (7 * days)
+            end if
+
+            set eventList to {}
+            repeat with cal in calendars
+                set calEvents to (every event of cal whose start date ≥ startDate and start date < endDate)
+                set eventList to eventList & calEvents
+            end repeat
+
+            if (count of eventList) is 0 then
+                return "No events"
+            end if
+
+            set output to ""
+            repeat with evt in eventList
+                set eventTitle to summary of evt
+                set eventStart to start date of evt
+                set eventStartTime to time string of eventStart
+                set output to output & eventTitle & " at " & eventStartTime & "\\n"
+            end repeat
+
+            return output
+        end tell
+        """
+
+        let result = await shell("osascript -e '\(script.replacingOccurrences(of: "'", with: "\\'"))'")
+
+        if result.exitCode != 0 {
+            return "I couldn't access your calendar: \(result.stderr)"
         }
 
-        let formatter = DateFormatter()
-        formatter.timeStyle = .short
-
-        var summary = events.count == 1 ? "You have 1 event \(timeframeDesc): " : "You have \(events.count) events \(timeframeDesc): "
-        let eventList = events.prefix(5).map { event in
-            let timeStr = event.isAllDay ? "all day" : formatter.string(from: event.startDate)
-            return "\(event.title ?? "Untitled") at \(timeStr)"
-        }.joined(separator: ", ")
-
-        if events.count > 5 {
-            return summary + eventList + ", and \(events.count - 5) more."
+        let output = result.stdout.trimmingCharacters(in: .whitespacesAndNewlines)
+        if output == "No events" {
+            return "You have no events \(timeframe)."
         }
 
-        return summary + eventList + "."
+        let events = output.components(separatedBy: "\n").filter { !$0.isEmpty }
+
+        let eventCount = events.count
+        var summary = eventCount == 1 ? "You have 1 event \(timeframe): " : "You have \(eventCount) events \(timeframe): "
+
+        // Events are already formatted as "Title at Time" from AppleScript
+        for event in events.prefix(5) {
+            summary += "\(event), "
+        }
+
+        if eventCount > 5 {
+            summary += "and \(eventCount - 5) more."
+        } else {
+            summary = String(summary.dropLast(2))  // Remove trailing ", "
+        }
+
+        return summary
     }
 
     // MARK: - Email Integration
