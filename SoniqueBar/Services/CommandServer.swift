@@ -18,14 +18,78 @@ class CommandServer: ObservableObject {
     private let port: NWEndpoint.Port = 8890
     private var healthCheckTimer: Timer?
 
+    // Cached golden rules from helmsman.db (refreshed every 15 minutes)
+    private var cachedGoldenRules: String = ""
+    private var rulesLastLoaded: Date?
+
     private init() {
         setupListener()
         startHealthCheck()
+
+        // Load rules at startup
+        Task {
+            print("[CommandServer] Loading golden rules from helmsman.db...")
+            await loadGoldenRules()
+        }
     }
 
     deinit {
         // Can't call @MainActor methods from deinit
         listener?.cancel()
+    }
+
+    // MARK: - Golden Rules Loading
+
+    /// Load golden rules from helmsman.db and format for system prompt
+    nonisolated private func loadGoldenRules() async {
+        // Check cache freshness (refresh every 15 minutes)
+        let shouldRefresh = await MainActor.run {
+            if let lastLoaded = rulesLastLoaded {
+                return Date().timeIntervalSince(lastLoaded) >= 900 // 15 minutes
+            }
+            return true // First load
+        }
+
+        guard shouldRefresh else { return }
+
+        guard let url = URL(string: "http://localhost:5682/rules?tier=golden") else {
+            NSLog("[CommandServer] Invalid rules registry URL")
+            return
+        }
+
+        do {
+            let (data, _) = try await URLSession.shared.data(from: url)
+            guard let rules = try? JSONDecoder().decode([GoldenRule].self, from: data) else {
+                NSLog("[CommandServer] Failed to decode rules")
+                return
+            }
+
+            // Format rules for system prompt
+            var formatted = "\n\n## 🏛️ GOLDEN RULES (always apply)\n\n"
+            for (index, rule) in rules.enumerated() {
+                formatted += "\(index + 1). **\(rule.title)**: \(rule.rule)\n"
+            }
+
+            await MainActor.run {
+                cachedGoldenRules = formatted
+                rulesLastLoaded = Date()
+                NSLog("[CommandServer] ✅ Loaded \(rules.count) golden rules from helmsman.db")
+            }
+        } catch {
+            NSLog("[CommandServer] ❌ Failed to load golden rules: \(error)")
+        }
+    }
+
+    /// Golden Rule model (matches helmsman.db schema)
+    private struct GoldenRule: Codable {
+        let id: Int
+        let slug: String
+        let title: String
+        let rule: String
+        let why: String
+        let tier: String
+        let scope: String
+        let tags: String
     }
 
     func start() {
@@ -705,10 +769,15 @@ class CommandServer: ObservableObject {
         // Extract assistant name from identity, default to "Sonique"
         let assistantName = (identity?["name"] as? String) ?? "Sonique"
 
+        // Refresh golden rules if stale (async, non-blocking)
+        if rulesLastLoaded == nil || Date().timeIntervalSince(rulesLastLoaded!) >= 900 {
+            Task { await loadGoldenRules() }
+        }
+
         let systemInstructions = """
         You are \(assistantName), a voice assistant. Your persistent identity, rules, and capabilities \
         are in your brain (provided above in the persona context). Follow them.
-
+        \(cachedGoldenRules)
         Key reminders:
         - USE the Bash tool to act — never say you "can't" do what the Mac can do
         - Respond in 1–2 short spoken sentences (you're being heard, not read)
