@@ -271,8 +271,25 @@ class CommandServer: ObservableObject {
             ])
         }
 
-        // Check for Claude CLI MCP servers (if available)
-        if let claudeMCPs = await checkClaudeMCPServers() {
+        // Query vault-mcp proxy for available tools (lazy-loading)
+        if await MCPProxyClient.isAvailable() {
+            let tools = await MCPProxyClient.queryAvailableTools()
+            if !tools.isEmpty {
+                mcpServers.append([
+                    "name": "MCP Proxy",
+                    "endpoint": "http://localhost:8108",
+                    "tool_count": tools.count,
+                    "capabilities": [
+                        "Lazy-loaded MCP tools",
+                        "On-demand tool discovery",
+                        "Slack, vault, filesystem, web search"
+                    ]
+                ])
+            }
+        }
+
+        // Fallback: Check for Claude CLI MCP servers (if vault-mcp unavailable)
+        if mcpServers.isEmpty, let claudeMCPs = await checkClaudeMCPServers() {
             mcpServers.append(contentsOf: claudeMCPs)
         }
 
@@ -281,7 +298,9 @@ class CommandServer: ObservableObject {
                 "time_and_calendar",
                 "system_control",
                 "web_search",
-                "vision_analysis"
+                "vision_analysis",
+                "vault_file_access",
+                "brief_templates"
             ],
             "mcp_servers": mcpServers,
             "discovered_at": ISO8601DateFormatter().string(from: Date())
