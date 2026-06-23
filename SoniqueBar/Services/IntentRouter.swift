@@ -699,8 +699,8 @@ struct InfrastructureExecutor {
                 return "Screen capture is running but no frames are available yet. Try again in a moment."
             }
 
-            // Send frame to vision model via ask_claude
-            let result = await shell("ask_claude -v '\(framePath)' 'Describe what you see on this screen in 2-3 sentences. Focus on the most important content.'")
+            // Send frame to vision model via vision-describe
+            let result = await shell("ANTHROPIC_API_KEY=$(cat /Volumes/data/secrets/anthropic_api_key) ~/.local/bin/vision-describe '\(framePath)' 'Describe what you see on this screen in 2-3 sentences. Focus on the most important content.'")
 
             if result.exitCode == 0 {
                 return result.stdout.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -711,7 +711,7 @@ struct InfrastructureExecutor {
             // Fallback for older macOS versions
             let timestamp = Int(Date().timeIntervalSince1970)
             let path = "/tmp/sonique-screen-\(timestamp).png"
-            let result = await shell("screencapture -x '\(path)' && ask_claude -v '\(path)' 'Describe what you see on this screen in 2-3 sentences.'")
+            let result = await shell("screencapture -x '\(path)' && ANTHROPIC_API_KEY=$(cat /Volumes/data/secrets/anthropic_api_key) ~/.local/bin/vision-describe '\(path)' 'Describe what you see on this screen in 2-3 sentences.'")
 
             if result.exitCode == 0 {
                 return result.stdout.trimmingCharacters(in: .whitespacesAndNewlines)
