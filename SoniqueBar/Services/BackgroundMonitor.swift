@@ -51,6 +51,7 @@ class BackgroundMonitor: ObservableObject {
             await checkHelmsmanQueue()
             await checkDockerHealth()
             await checkDiskSpace()
+            await checkClaudeHealth()
         }
     }
 
@@ -78,11 +79,26 @@ class BackgroundMonitor: ObservableObject {
 
         if result.exitCode == 0 && !result.stdout.isEmpty {
             let unhealthy = result.stdout.split(separator: "\n").map { String($0) }
-            NotificationService.shared.notify(
-                title: "Docker Health Alert",
-                message: "Unhealthy containers: \(unhealthy.joined(separator: ", "))",
-                priority: .critical
-            )
+
+            // SELF-HEAL: Restart unhealthy containers
+            for container in unhealthy {
+                print("[BackgroundMonitor] Self-healing: restarting unhealthy container \(container)")
+                let restart = await InfrastructureExecutor.shell("docker restart \(container)")
+
+                if restart.exitCode == 0 {
+                    NotificationService.shared.notify(
+                        title: "Auto-Healed: \(container)",
+                        message: "Detected unhealthy and auto-restarted",
+                        priority: .normal
+                    )
+                } else {
+                    NotificationService.shared.notify(
+                        title: "Self-Heal Failed: \(container)",
+                        message: "Could not restart unhealthy container",
+                        priority: .critical
+                    )
+                }
+            }
         }
     }
 
@@ -94,6 +110,28 @@ class BackgroundMonitor: ObservableObject {
                 NotificationService.shared.notify(
                     title: "Disk Space Critical",
                     message: "Root volume is \(percentage)% full",
+                    priority: .critical
+                )
+            }
+        }
+    }
+
+    private func checkClaudeHealth() async {
+        // Test ask_claude is working
+        let result = await InfrastructureExecutor.shell("ask_claude 'test' --prefer haiku --max-tokens 10")
+
+        if result.exitCode != 0 {
+            print("[BackgroundMonitor] ask_claude health check failed, attempting self-heal")
+
+            // Try Bedrock directly
+            let bedrock = await InfrastructureExecutor.shell("ask_claude_bedrock 'test' --lane haiku --max-tokens 10")
+
+            if bedrock.exitCode == 0 {
+                print("[BackgroundMonitor] Bedrock working, subscription likely rate-limited (normal)")
+            } else {
+                NotificationService.shared.notify(
+                    title: "Claude Integration Down",
+                    message: "Both subscription and Bedrock failing - check credentials",
                     priority: .critical
                 )
             }
