@@ -8,11 +8,19 @@ class MemoryService: ObservableObject {
     @Published var workingMemory: [Exchange] = []
     @Published var memorySizeMB: Double = 0.0
 
-    private let memoryDir = FileManager.default.homeDirectoryForCurrentUser
+    // iCloud sync directory (shared across Mac and iOS)
+    private let iCloudDir = FileManager.default.homeDirectoryForCurrentUser
+        .appendingPathComponent("Library/Mobile Documents/iCloud~com~seayniclabs~sonique/Documents/SoniqueProfiles/Desktop")
+
+    // Local cache directory (fallback if iCloud unavailable)
+    private let localDir = FileManager.default.homeDirectoryForCurrentUser
         .appendingPathComponent("Library/Application Support/SoniqueBar/memory")
 
     private let conversationsFile: URL
     private let identityFile: URL
+    private let rulesFile: URL
+    private let soulFile: URL
+    private let capabilitiesFile: URL
     private let contextFile: URL
     private let configFile: URL
 
@@ -36,10 +44,16 @@ class MemoryService: ObservableObject {
     }
 
     private init() {
-        conversationsFile = memoryDir.appendingPathComponent("conversations.jsonl")
-        identityFile = memoryDir.appendingPathComponent("identity.md")
-        contextFile = memoryDir.appendingPathComponent("context.md")
-        configFile = memoryDir.appendingPathComponent("config.json")
+        // Use iCloud for persistent identity/rules/soul (synced across devices)
+        identityFile = iCloudDir.appendingPathComponent("IDENTITY.md")
+        rulesFile = iCloudDir.appendingPathComponent("RULES.md")
+        soulFile = iCloudDir.appendingPathComponent("SOUL.md")
+        capabilitiesFile = iCloudDir.appendingPathComponent("CAPABILITIES.md")
+        conversationsFile = iCloudDir.appendingPathComponent("conversations.jsonl")
+
+        // Use local for config (device-specific settings)
+        contextFile = localDir.appendingPathComponent("context.md")
+        configFile = localDir.appendingPathComponent("config.json")
 
         // Load config
         if let data = try? Data(contentsOf: configFile),
@@ -82,11 +96,13 @@ class MemoryService: ObservableObject {
     }
 
     func getContextForLLM() -> String {
-        // Read identity and context
-        guard let identity = try? String(contentsOf: identityFile),
-              let context = try? String(contentsOf: contextFile) else {
-            return ""
-        }
+        // Read identity, rules, soul from iCloud (persistent across devices)
+        let identity = (try? String(contentsOf: identityFile)) ?? "Quinn - Charlie's voice assistant"
+        let rules = (try? String(contentsOf: rulesFile)) ?? ""
+        let soul = (try? String(contentsOf: soulFile)) ?? ""
+
+        // Read context from local cache
+        let context = (try? String(contentsOf: contextFile)) ?? ""
 
         // Format working memory
         let conversationHistory = workingMemory.map { exchange in
@@ -96,6 +112,12 @@ class MemoryService: ObservableObject {
         return """
         # Who I Am
         \(identity)
+
+        # Operating Rules
+        \(rules)
+
+        # My Purpose
+        \(soul)
 
         # Context About Charlie and Projects
         \(context)

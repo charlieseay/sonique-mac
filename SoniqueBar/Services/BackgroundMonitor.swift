@@ -52,6 +52,13 @@ class BackgroundMonitor: ObservableObject {
             await checkDockerHealth()
             await checkDiskSpace()
             await checkClaudeHealth()
+
+            // Self-diagnosis: run weekly (Sunday at midnight)
+            let calendar = Calendar.current
+            let now = Date()
+            if calendar.component(.weekday, from: now) == 1 && calendar.component(.hour, from: now) == 0 {
+                await runSelfDiagnosis()
+            }
         }
     }
 
@@ -165,6 +172,62 @@ class BackgroundMonitor: ObservableObject {
                 )
             }
         }
+    }
+
+    // MARK: - Self-Diagnosis
+
+    /// Run self-diagnosis: compare capabilities vs what Quinn should have
+    private func runSelfDiagnosis() async {
+        print("[BackgroundMonitor] Running weekly self-diagnosis...")
+
+        // Read CAPABILITIES.md
+        let capabilitiesPath = FileManager.default.homeDirectoryForCurrentUser
+            .appendingPathComponent("Library/Mobile Documents/iCloud~com~seayniclabs~sonique/Documents/SoniqueProfiles/Desktop/CAPABILITIES.md")
+
+        guard let capabilitiesContent = try? String(contentsOf: capabilitiesPath, encoding: .utf8) else {
+            print("[BackgroundMonitor] Could not read CAPABILITIES.md")
+            return
+        }
+
+        // Extract "Cannot Do Yet" section
+        let lines = capabilitiesContent.components(separatedBy: .newlines)
+        var inCannotSection = false
+        var gaps: [String] = []
+
+        for line in lines {
+            if line.contains("## What Quinn Cannot Do Yet") {
+                inCannotSection = true
+                continue
+            }
+            if inCannotSection && line.starts(with: "##") {
+                break
+            }
+            if inCannotSection && line.starts(with: "- ❌") {
+                let gap = line.replacingOccurrences(of: "- ❌ ", with: "").trimmingCharacters(in: .whitespaces)
+                gaps.append(gap)
+            }
+        }
+
+        print("[BackgroundMonitor] Found \(gaps.count) capability gaps")
+
+        // Auto-dispatch feasible gaps (limit to 3 per week to avoid overwhelming the queue)
+        let feasibleGaps = gaps.filter { gap in
+            // Only small, well-defined features
+            gap.contains("voice alerts") || gap.contains("push notifications") ||
+            gap.contains("self-diagnosis routine") || gap.contains("learn from corrections")
+        }.prefix(3)
+
+        for gap in feasibleGaps {
+            await autoDispatchTask(
+                task: "Implement Quinn capability: \(gap)",
+                project: "Sonique",
+                owner: "AIDER-GEM",
+                effort: "M",
+                context: "Self-diagnosis detected missing capability from CAPABILITIES.md. Implement this feature following existing patterns in SoniqueBar."
+            )
+        }
+
+        print("[BackgroundMonitor] Self-diagnosis complete - dispatched \(feasibleGaps.count) improvement tasks")
     }
 
     // MARK: - Auto Task Dispatch
