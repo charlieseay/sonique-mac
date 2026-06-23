@@ -603,6 +603,52 @@ class CommandServer: ObservableObject {
         return responseText
     }
 
+    /// Evaluate simple math expressions (single operation: +, -, *, /)
+    private func evaluateSimpleMath(_ text: String) -> String? {
+        // Pattern: "what is 7 plus 3" or "15 times 7" or "what's 10 + 5"
+        let lower = text.lowercased()
+            .replacingOccurrences(of: "what is ", with: "")
+            .replacingOccurrences(of: "what's ", with: "")
+            .replacingOccurrences(of: "whats ", with: "")
+
+        let operators = [
+            ("plus", "+"), ("add", "+"),
+            ("minus", "-"), ("subtract", "-"),
+            ("times", "*"), ("multiply", "*"), ("multiplied by", "*"),
+            ("divided by", "/"), ("divide", "/")
+        ]
+
+        for (word, op) in operators {
+            if lower.contains(word) || lower.contains(op) {
+                let parts = lower.components(separatedBy: CharacterSet(charactersIn: word + op + " "))
+                    .compactMap { Double($0.trimmingCharacters(in: .whitespaces)) }
+
+                guard parts.count >= 2 else { continue }
+
+                let a = parts[0]
+                let b = parts[1]
+                var result: Double = 0
+
+                switch op {
+                case "+": result = a + b
+                case "-": result = a - b
+                case "*": result = a * b
+                case "/": result = b != 0 ? a / b : 0
+                default: continue
+                }
+
+                // Return integer if whole number, else one decimal
+                if result.truncatingRemainder(dividingBy: 1) == 0 {
+                    return "\(Int(result))"
+                } else {
+                    return String(format: "%.1f", result)
+                }
+            }
+        }
+
+        return nil
+    }
+
     private func handleConversation(_ text: String) async -> String {
         // DUPLICATE CHECK: Ignore identical requests within 5s window
         if text == self.lastProcessedText,
@@ -616,15 +662,40 @@ class CommandServer: ObservableObject {
         self.lastProcessedText = text
         self.lastProcessedTime = Date()
 
-        // FAST PATH: Handle simple queries without LLM
-        if text == "current_time" {
-            logger.info("⚡ FAST PATH: current_time")
+        // FAST PATH: Handle simple queries without LLM (<50ms responses)
+        let lower = text.lowercased()
+
+        // Time queries
+        if text == "current_time" || lower.contains("what time") || lower.contains("current time") {
+            logger.info("⚡ FAST PATH: time query")
             let formatter = DateFormatter()
-            formatter.dateStyle = .medium
-            formatter.timeStyle = .short
-            let response = "It's \(formatter.string(from: Date()))"
-            logger.info("⚡ Fast response: '\(response)'")
-            return response
+            formatter.dateFormat = "h:mm a"
+            return "It's \(formatter.string(from: Date()))"
+        }
+
+        // Date queries
+        if lower.contains("what day") || lower.contains("what's the date") || lower.contains("today's date") {
+            logger.info("⚡ FAST PATH: date query")
+            let formatter = DateFormatter()
+            formatter.dateFormat = "EEEE, MMMM d"
+            return "Today is \(formatter.string(from: Date()))"
+        }
+
+        // Simple math (single operation)
+        if let mathResult = evaluateSimpleMath(text) {
+            logger.info("⚡ FAST PATH: simple math")
+            return mathResult
+        }
+
+        // System status shortcuts
+        if lower == "are you there" || lower == "hello" || lower == "hey" {
+            logger.info("⚡ FAST PATH: greeting")
+            return "I'm here. What do you need?"
+        }
+
+        if lower == "stop" || lower == "cancel" || lower == "never mind" {
+            logger.info("⚡ FAST PATH: cancel")
+            return "Okay, stopping."
         }
 
         logger.info("🤖 Routing all requests to ask_claude")
@@ -642,6 +713,7 @@ class CommandServer: ObservableObject {
         4. DO the work silently in the background, then report ONLY the outcome
         5. Keep responses to 1-2 sentences maximum
         6. Speak like a person, not a CLI tool
+        7. When Charlie asks to "create tasks", use the helmsman dispatch webhook directly (localhost:5680/webhook/task-dispatch)
 
         # Examples of CORRECT responses
         User: "Dispatch tasks to make you better"
