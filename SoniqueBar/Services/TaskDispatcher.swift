@@ -30,15 +30,21 @@ struct TaskDispatcher {
           "type": "feature" or "bug" or "chore",
           "effort": "S" or "M" or "L" or "XL",
           "description": "one-line summary",
-          "owner": "AIDER-GEM" or "nvidia-agent" or "CLAUDE" or null
+          "owner": "AIDER-GEM" or "NVIDIA-FAST" or "NVIDIA-BAL" or "CLAUDE" or "CHARLIE" or null
         }
 
         Guidelines:
-        - project: Match to known projects (StoryChat, Bridge, Helmsman, Hone, Sonique). If unclear, use null.
+        - project: Match to known projects (StoryChat, Bridge, Helmsman, Hone, Sonique, Talos). If unclear, use null.
         - type: feature = new capability, bug = fix broken, chore = maintenance
         - effort: S = <1h, M = 1-4h, L = 1-2d, XL = >2d
         - description: Brief, actionable summary
-        - owner: AIDER-GEM for code/UI, nvidia-agent for analysis, CLAUDE for design/specs. If unclear, use null.
+        - owner:
+          * AIDER-GEM = code/file editing tasks (Swift, TypeScript, Python, configs)
+          * NVIDIA-FAST = quick research, parsing logs, analysis (<30s)
+          * NVIDIA-BAL = deeper research, multi-step investigation (30s-2min)
+          * CLAUDE = complex design, architecture decisions, multi-agent coordination
+          * CHARLIE = manual tasks requiring human interaction (recording, credentials, approvals)
+          * null = unclear, operator will assign
         """
 
         let result = await InfrastructureExecutor.shell("ask_helmsman '\(prompt.replacingOccurrences(of: "'", with: "'\\''"))'")
