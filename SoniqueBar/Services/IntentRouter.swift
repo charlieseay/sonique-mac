@@ -29,6 +29,7 @@ struct IntentRouter {
         case createProject(name: String, description: String)
         case createNote(title: String, content: String)
         case homeControl(action: HomeAction, device: String)
+        case stopAction  // Stop current operation
     }
 
     enum HomeAction {
@@ -71,8 +72,7 @@ struct IntentRouter {
                 return .infrastructure(command: .checkStatus(service: "lab"))
             case .stopAction:
                 logger.info("➡️ Routing to: stopAction")
-                // Handle as conversation for now
-                return .conversation(text: text)
+                return .infrastructure(command: .stopAction)
             }
         } else {
             logger.info("🔄 No pattern match, continuing to full classification")
@@ -362,6 +362,9 @@ struct InfrastructureExecutor {
 
         case .homeControl(let action, let device):
             return await controlHomeDevice(action: action, device: device)
+
+        case .stopAction:
+            return "Okay, I've stopped."
         }
     }
 
@@ -664,25 +667,18 @@ struct InfrastructureExecutor {
     // MARK: - Screen Awareness
 
     private static func describeCurrentScreen() async -> String {
-        // TODO: Re-enable when ScreenAwarenessService is added to Xcode project
-        // Get the latest screenshot from continuous monitoring
-        // guard let screenshotPath = await Task { @MainActor in
-        //     ScreenAwarenessService.shared.getLatestScreenshot()
-        // }.value else {
-        //     return "Screen awareness is running but no recent screenshot is available yet."
-        // }
-        // return "I can see your screen. The latest screenshot is at: \(screenshotPath)"
-
-        // For now, take a live screenshot
+        // Take a live screenshot
         let timestamp = Int(Date().timeIntervalSince1970)
         let path = "/tmp/sonique-screen-\(timestamp).png"
         let result = await shell("screencapture -x '\(path)'")
 
-        if result.exitCode == 0 {
-            return "I can see your screen. Screenshot saved at: \(path)"
-        } else {
+        guard result.exitCode == 0 else {
             return "I can't capture the screen right now: \(result.stderr)"
         }
+
+        // Use LLM to describe what's on the screen (vision model)
+        // For now, return a helpful message without exposing the temp file path
+        return "I can see your screen. Taking a screenshot now, but I need vision capabilities to describe what's on it."
     }
 
     private static func captureScreenshot(_ region: IntentRouter.ScreenshotRegion) async -> String {

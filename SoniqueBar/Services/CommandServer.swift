@@ -1373,6 +1373,19 @@ class CommandServer: ObservableObject {
         sendResponse(response, to: connection)
     }
 
+    // MARK: - HTTP Helper
+
+    private func extractBody(from data: Data) -> String? {
+        guard let requestString = String(data: data, encoding: .utf8) else {
+            return nil
+        }
+        let components = requestString.components(separatedBy: "\r\n\r\n")
+        guard components.count >= 2 else {
+            return nil
+        }
+        return components[1]
+    }
+
     // MARK: - Diagnostics
 
     private func handleDiagnose(_ data: Data, _ connection: NWConnection) async {
