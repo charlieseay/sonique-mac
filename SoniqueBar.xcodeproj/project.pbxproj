@@ -10,6 +10,7 @@
 		18385BA84319B52A11443D04 /* SoniqueBrain.swift in Sources */ = {isa = PBXBuildFile; fileRef = 26D43EF2F4A2C018D3C6F37E /* SoniqueBrain.swift */; };
 		264D4EC11A3FA30C8325D74F /* NotificationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = ECA8B2979492C18577FCABCC /* NotificationService.swift */; };
 		4452BDE94D82A0A5BC9414FE /* LabStatusService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5DEA084A43571FB8B79A50BC /* LabStatusService.swift */; };
+		4B102F62A9EF98A44E5C888D /* SoniqueBar/Services/InitializationScript.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2DB66C2D5C439B8291EE9E14 /* SoniqueBar/Services/InitializationScript.swift */; };
 		5D74C487B6096180373CD53E /* LLMRouter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 42C35C4C02529432A228AC2D /* LLMRouter.swift */; };
 		90A3B6BD6E6661D7507E0A5B /* NativeIntents.swift in Sources */ = {isa = PBXBuildFile; fileRef = D7637D7CD68FFECE2DA6FAD6 /* NativeIntents.swift */; };
 		AC34493CF86AEF0058644556 /* IntentRouter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9BBEED7B61800AF727DEF5F3 /* IntentRouter.swift */; };
@@ -29,6 +30,7 @@
 		14DD10989B88085D88EAECBC /* DiagnosticAgent.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = DiagnosticAgent.swift; path = SoniqueBar/Services/DiagnosticAgent.swift; sourceTree = "<group>"; };
 		26D43EF2F4A2C018D3C6F37E /* SoniqueBrain.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = SoniqueBrain.swift; path = SoniqueBar/Services/SoniqueBrain.swift; sourceTree = "<group>"; };
 		2ACBDD8A5604501BBD52BD97 /* ScreenAwarenessService.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ScreenAwarenessService.swift; path = SoniqueBar/Services/ScreenAwarenessService.swift; sourceTree = "<group>"; };
+		2DB66C2D5C439B8291EE9E14 /* SoniqueBar/Services/InitializationScript.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SoniqueBar/Services/InitializationScript.swift; sourceTree = "<group>"; };
 		42C35C4C02529432A228AC2D /* LLMRouter.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = LLMRouter.swift; path = SoniqueBar/Services/LLMRouter.swift; sourceTree = "<group>"; };
 		51CF32BB11AD3B053074E4B1 /* CommandServer.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = CommandServer.swift; path = SoniqueBar/Services/CommandServer.swift; sourceTree = "<group>"; };
 		52B477ED8413E4F7FC7A7216 /* TaskDispatcher.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = TaskDispatcher.swift; path = SoniqueBar/Services/TaskDispatcher.swift; sourceTree = "<group>"; };
@@ -112,6 +114,7 @@
 		BB000011000000000000011 /* Services */ = {
 			isa = PBXGroup;
 			children = (
+				2DB66C2D5C439B8291EE9E14 /* SoniqueBar/Services/InitializationScript.swift */,
 			);
 			name = Services;
 			sourceTree = "<group>";
@@ -210,6 +213,7 @@
 				FB4A785BC5C0C1732655A2E1 /* TaskDispatcher.swift in Sources */,
 				C308D4E93103213839A27FFD /* LiveScreenCapture.swift in Sources */,
 				FA925571F17B6BA9C9106F30 /* CommandServer.swift in Sources */,
+				4B102F62A9EF98A44E5C888D /* SoniqueBar/Services/InitializationScript.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

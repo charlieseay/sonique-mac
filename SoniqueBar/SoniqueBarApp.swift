@@ -164,8 +164,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // Request Calendar access on first launch (triggers permission prompt)
         requestCalendarAccess()
 
-        // Start CommandServer
+        // Run initialization script (validate + auto-heal)
         Task { @MainActor in
+            let healthReport = await InitializationScript.initialize()
+
+            // Log health report
+            NSLog("[SoniqueBar] Initialization complete")
+            NSLog(healthReport.summary)
+
+            // Start CommandServer even if there are warnings (errors would have been repaired)
             CommandServer.shared.start()
 
             // Start background monitoring (Helmsman queue, Docker health, disk space)
