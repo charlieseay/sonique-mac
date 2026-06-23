@@ -178,9 +178,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             // Start background monitoring (Helmsman queue, Docker health, disk space)
             BackgroundMonitor.shared.startMonitoring()
 
-            // Start screen awareness (continuous visibility layer for context)
+            // Start live screen capture for active vision (macOS 12.3+)
             // Requires Screen Recording permission - grant in System Settings
-            ScreenAwarenessService.shared.startMonitoring()
+            if #available(macOS 12.3, *) {
+                do {
+                    try await LiveScreenCapture.shared.startCapture()
+                    NSLog("[SoniqueBar] Live screen capture started (2 FPS)")
+                } catch {
+                    NSLog("[SoniqueBar] Live screen capture failed: \(error.localizedDescription)")
+                    NSLog("[SoniqueBar] Grant Screen Recording permission in System Settings → Privacy & Security")
+                }
+            }
         }
     }
 

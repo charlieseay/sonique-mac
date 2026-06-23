@@ -30,6 +30,7 @@ struct IntentRouter {
         case createNote(title: String, content: String)
         case homeControl(action: HomeAction, device: String)
         case stopAction  // Stop current operation
+        case readVaultFile(path: String)  // Read Standards/ or other vault files
     }
 
     enum HomeAction {
@@ -365,6 +366,18 @@ struct InfrastructureExecutor {
 
         case .stopAction:
             return "Okay, I've stopped."
+
+        case .readVaultFile(let path):
+            if path.hasPrefix("Standards/") {
+                let filename = (path as NSString).lastPathComponent
+                if let content = VaultReader.readStandard(filename) {
+                    return content
+                }
+            }
+            if let content = VaultReader.readVaultFile(path) {
+                return content
+            }
+            return "File not found: \(path)"
         }
     }
 
@@ -666,19 +679,46 @@ struct InfrastructureExecutor {
 
     // MARK: - Screen Awareness
 
+    @MainActor
     private static func describeCurrentScreen() async -> String {
-        // Take a live screenshot
-        let timestamp = Int(Date().timeIntervalSince1970)
-        let path = "/tmp/sonique-screen-\(timestamp).png"
-        let result = await shell("screencapture -x '\(path)'")
+        // Use live screen capture if available (macOS 12.3+)
+        if #available(macOS 12.3, *) {
+            // Start capture if not already running
+            if !LiveScreenCapture.shared.isCapturing {
+                do {
+                    try await LiveScreenCapture.shared.startCapture()
+                    // Give it a moment to capture first frame
+                    try? await Task.sleep(nanoseconds: 600_000_000) // 600ms
+                } catch {
+                    return "I can't start screen capture right now: \(error.localizedDescription)"
+                }
+            }
 
-        guard result.exitCode == 0 else {
-            return "I can't capture the screen right now: \(result.stderr)"
+            // Get latest frame
+            guard let framePath = LiveScreenCapture.shared.getLatestFrame() else {
+                return "Screen capture is running but no frames are available yet. Try again in a moment."
+            }
+
+            // Send frame to vision model via ask_claude
+            let result = await shell("ask_claude -v '\(framePath)' 'Describe what you see on this screen in 2-3 sentences. Focus on the most important content.'")
+
+            if result.exitCode == 0 {
+                return result.stdout.trimmingCharacters(in: .whitespacesAndNewlines)
+            } else {
+                return "I can see the screen but couldn't analyze it: \(result.stderr)"
+            }
+        } else {
+            // Fallback for older macOS versions
+            let timestamp = Int(Date().timeIntervalSince1970)
+            let path = "/tmp/sonique-screen-\(timestamp).png"
+            let result = await shell("screencapture -x '\(path)' && ask_claude -v '\(path)' 'Describe what you see on this screen in 2-3 sentences.'")
+
+            if result.exitCode == 0 {
+                return result.stdout.trimmingCharacters(in: .whitespacesAndNewlines)
+            } else {
+                return "I can't capture the screen right now: \(result.stderr)"
+            }
         }
-
-        // Use LLM to describe what's on the screen (vision model)
-        // For now, return a helpful message without exposing the temp file path
-        return "I can see your screen. Taking a screenshot now, but I need vision capabilities to describe what's on it."
     }
 
     private static func captureScreenshot(_ region: IntentRouter.ScreenshotRegion) async -> String {
