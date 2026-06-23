@@ -773,7 +773,7 @@ class CommandServer: ObservableObject {
             }
 
             // Stream Claude CLI output in real-time (token-by-token via stream-json)
-            let success = await streamClaudeResponse(
+            let (success, streamedResponse) = await streamClaudeResponse(
                 claudePath: claudePath,
                 userPrompt: userPrompt,
                 systemPrompt: systemInstructions,
@@ -781,9 +781,12 @@ class CommandServer: ObservableObject {
                 startIndex: 1  // index 0 was the "…" indicator
             )
 
-            if !success {
+            // Capture the response for memory
+            responseText = streamedResponse
+
+            if !success && streamedResponse.isEmpty {
                 // Error already handled in streamClaudeResponse
-                responseText = ""  // Mark as handled
+                responseText = "Error processing request"
             }
         }
 
@@ -1084,7 +1087,7 @@ class CommandServer: ObservableObject {
         systemPrompt: String,
         connection: NWConnection,
         startIndex: Int
-    ) async -> Bool {
+    ) async -> (success: Bool, responseText: String) {
         // Escape single quotes in prompts for bash heredoc
         let escapedUser = userPrompt.replacingOccurrences(of: "'", with: "'\\''")
         let escapedSystem = systemPrompt.replacingOccurrences(of: "'", with: "'\\''")
@@ -1120,7 +1123,7 @@ class CommandServer: ObservableObject {
                 Self.logEntries.append("[CommandServer] FAILED to start: \(error)")
             }
             sendSentenceChunk("Sorry, I ran into an issue.", index: startIndex, to: connection)
-            return false
+            return (false, "")
         }
 
         // Capture stderr in background
@@ -1254,10 +1257,10 @@ class CommandServer: ObservableObject {
                     sendSentenceChunk(msg, index: chunkIndex, to: connection)
                 }
             }
-            return false
+            return (false, accumulatedText)
         }
 
-        return true
+        return (true, accumulatedText)
     }
 
     private func extractCompleteSentences(from text: String) -> ([String], String) {
