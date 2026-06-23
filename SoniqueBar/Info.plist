@@ -1,5 +1,26 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
-<dict/>
+<dict>
+	<key>NSCalendarsFullAccessUsageDescription</key>
+	<string>SoniqueBar needs access to your calendar to answer questions like "What's on my calendar today?"</string>
+	<key>NSCalendarsUsageDescription</key>
+	<string>SoniqueBar needs access to your calendar to answer questions about your schedule.</string>
+	<key>NSRemindersUsageDescription</key>
+	<string>SoniqueBar needs access to reminders to help you manage tasks via voice.</string>
+	<key>NSRemindersFullAccessUsageDescription</key>
+	<string>SoniqueBar needs full access to reminders to create, read, and update tasks.</string>
+	<key>NSContactsUsageDescription</key>
+	<string>SoniqueBar needs access to your contacts to answer questions about people.</string>
+	<key>NSAppleEventsUsageDescription</key>
+	<string>SoniqueBar needs to control other apps to execute commands like opening files or controlling HomeKit.</string>
+	<key>NSSystemAdministrationUsageDescription</key>
+	<string>SoniqueBar needs system administration access to manage Docker containers and system services.</string>
+	<key>NSScreenCaptureUsageDescription</key>
+	<string>SoniqueBar needs screen recording permission for live screen capture to answer "what's on my screen" questions.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>SoniqueBar may need microphone access for future voice features.</string>
+	<key>NSHomeKitUsageDescription</key>
+	<string>SoniqueBar needs HomeKit access to control smart home devices via voice.</string>
+</dict>
 </plist>
