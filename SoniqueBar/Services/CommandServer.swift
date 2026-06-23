@@ -610,77 +610,42 @@ class CommandServer: ObservableObject {
             return response
         }
 
-        logger.info("🤖 Routing to appropriate LLM for: '\(text)'")
+        logger.info("🤖 Routing all requests to ask_claude")
 
         // Get context from memory
         let context = await MemoryService.shared.getContextForLLM()
 
-        // Detect action requests (create, run, execute, dispatch, build, etc.)
-        let lower = text.lowercased()
-        let isActionRequest = lower.contains("create") || lower.contains("run") ||
-                             lower.contains("execute") || lower.contains("dispatch") ||
-                             lower.contains("build") || lower.contains("deploy") ||
-                             lower.contains("fix") || lower.contains("update") ||
-                             lower.contains("install") || lower.contains("add")
-
-        if isActionRequest {
-            logger.info("🎯 Action request detected - routing to ask_claude")
-
-            let fullPrompt = """
-            You are Claude Code, responding to a voice command from Charlie via his voice assistant Quinn (SoniqueBar).
-
-            # About Quinn/SoniqueBar
-            Quinn is Charlie's voice assistant (like Jarvis). You're the brain - Quinn is just the voice interface.
-            When Charlie asks Quinn to "create tasks to make you better", he means make Quinn/SoniqueBar better.
-            SoniqueBar runs on Mac Mini (192.168.0.221) with access to all local tools and services.
-
-            # Charlie's Context
-            \(context)
-
-            # Current Voice Request
-            \(text)
-
-            # Instructions
-            - DO the work directly (create tasks in helmsman.db, run commands, etc.)
-            - Respond conversationally to Charlie (he's hearing this spoken aloud)
-            - No task IDs, file paths, or technical details unless he specifically asks
-            - Keep responses brief and natural - this is voice, not chat
-            """
-
-            // Use ask_claude with Haiku preference (Bedrock Haiku → subscription Haiku fallback)
-            let result = await InfrastructureExecutor.shell("ask_claude '\(fullPrompt.replacingOccurrences(of: "'", with: "'\\''"))' --prefer haiku")
-
-            guard result.exitCode == 0 else {
-                logger.error("ask_claude failed: \(result.stderr)")
-                return "I encountered an error. \(result.stderr)"
-            }
-
-            return result.stdout.trimmingCharacters(in: .whitespacesAndNewlines)
-        }
-
-        // Simple conversation - use fast local LLM (Ollama)
-        logger.info("💬 Simple conversation - using Ollama")
-
-        guard LLMRouter.shared.isReady else {
-            return "I'm still initializing. Please try again in a moment."
-        }
-
         let fullPrompt = """
+        You are Claude Code, responding to a voice command from Charlie via his voice assistant Quinn (SoniqueBar).
+
+        # About Quinn/SoniqueBar
+        Quinn is Charlie's voice assistant (like Jarvis). You're the brain - Quinn is just the voice interface.
+        When Charlie asks Quinn to "create tasks to make you better", he means make Quinn/SoniqueBar better.
+        SoniqueBar runs on Mac Mini (192.168.0.221) with access to all local tools and services.
+
+        # Charlie's Context
         \(context)
 
-        # Current Request
+        # Current Voice Request
         \(text)
 
-        Respond directly and concisely. Use the context above to inform your response but don't reference it explicitly.
+        # Instructions
+        - DO the work directly when asked (create tasks in helmsman.db, run commands, etc.)
+        - Respond conversationally to Charlie (he's hearing this spoken aloud)
+        - No task IDs, file paths, or technical details unless he specifically asks
+        - Keep responses brief and natural - this is voice, not chat
+        - For simple questions, just answer directly - no need to overthink
         """
 
-        do {
-            let response = try await LLMRouter.shared.generate(prompt: fullPrompt)
-            return response
-        } catch {
-            // Fallback to shell-based LLM if LLMRouter fails
-            return await handleConversationFallback(text, context: context)
+        // Use ask_claude with Haiku preference (Bedrock Haiku → subscription Haiku fallback)
+        let result = await InfrastructureExecutor.shell("ask_claude '\(fullPrompt.replacingOccurrences(of: "'", with: "'\\''"))' --prefer haiku")
+
+        guard result.exitCode == 0 else {
+            logger.error("ask_claude failed: \(result.stderr)")
+            return "I encountered an error. \(result.stderr)"
         }
+
+        return result.stdout.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
     private func handleConversationFallback(_ text: String, context: String) async -> String {
