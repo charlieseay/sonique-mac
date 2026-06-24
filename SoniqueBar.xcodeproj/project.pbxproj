@@ -20,6 +20,7 @@
 		4452BDE94D82A0A5BC9414FE /* LabStatusService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5DEA084A43571FB8B79A50BC /* LabStatusService.swift */; };
 		45BB0297913A6EB0BBBBDA94 /* SystemVoiceProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1BE7105B9692C7F55E5CCDEB /* SystemVoiceProvider.swift */; };
 		4B102F62A9EF98A44E5C888D /* InitializationScript.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2DB66C2D5C439B8291EE9E14 /* InitializationScript.swift */; };
+		5DC3D2FFABFCAD03F51408E1 /* ProactiveBriefing.swift in Sources */ = {isa = PBXBuildFile; fileRef = F29D445D763F2FF764C645F4 /* ProactiveBriefing.swift */; };
 		699F52246E25BD3960DF4B5F /* OpenAITTSProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = AF3EC8D7EB97D157480347FC /* OpenAITTSProvider.swift */; };
 		7B5E48A3F8B4D03F45B17BE0 /* LLMProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4269F3E96A76428E89931AE7 /* LLMProvider.swift */; };
 		7FE241B8C18BDB08145F7053 /* GitHubConnector.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DC809DFED18B22FE2E51451 /* GitHubConnector.swift */; };
@@ -97,6 +98,7 @@
 		E9D69438EFB4687EDDF07CE9 /* DockerConnector.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = DockerConnector.swift; path = SoniqueBar/Connectors/DockerConnector.swift; sourceTree = "<group>"; };
 		ECA8B2979492C18577FCABCC /* NotificationService.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = NotificationService.swift; path = SoniqueBar/Services/NotificationService.swift; sourceTree = "<group>"; };
 		F218BBB4D9FB4B98B4D2C1FD /* DockerConnector.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = DockerConnector.swift; path = SoniqueBar/Connectors/DockerConnector.swift; sourceTree = "<group>"; };
+		F29D445D763F2FF764C645F4 /* ProactiveBriefing.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ProactiveBriefing.swift; path = SoniqueBar/Services/ProactiveBriefing.swift; sourceTree = "<group>"; };
 		F642E9115684301FB74E47CC /* PredictiveNotifications.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = PredictiveNotifications.swift; path = SoniqueBar/Services/PredictiveNotifications.swift; sourceTree = "<group>"; };
 		F66032BAA7F8170D24F8DE7D /* HelmsmanConnector.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = HelmsmanConnector.swift; path = SoniqueBar/Connectors/HelmsmanConnector.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -172,6 +174,7 @@
 				44108C6EF6E6EED12E0C7E16 /* ContextEngine.swift */,
 				34A76740C69763DBF3F46633 /* TaskDecomposer.swift */,
 				F642E9115684301FB74E47CC /* PredictiveNotifications.swift */,
+				F29D445D763F2FF764C645F4 /* ProactiveBriefing.swift */,
 			);
 			sourceTree = "<group>";
 		};
@@ -342,6 +345,7 @@
 				0A60B517FA6C5DDB1B603258 /* ContextEngine.swift in Sources */,
 				A2B52ED24306EC5B16325745 /* TaskDecomposer.swift in Sources */,
 				001CEE6BB8326459FF73D437 /* PredictiveNotifications.swift in Sources */,
+				5DC3D2FFABFCAD03F51408E1 /* ProactiveBriefing.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -382,7 +386,7 @@
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 50;
+				CURRENT_PROJECT_VERSION = 51;
 				DEVELOPMENT_TEAM = 7NSS5CJL9E;
 				ENABLE_HARDENED_RUNTIME = YES;
 				INFOPLIST_FILE = SoniqueBar/Resources/Info.plist;
@@ -407,7 +411,7 @@
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 50;
+				CURRENT_PROJECT_VERSION = 51;
 				DEVELOPMENT_TEAM = 7NSS5CJL9E;
 				ENABLE_HARDENED_RUNTIME = YES;
 				INFOPLIST_FILE = SoniqueBar/Resources/Info.plist;

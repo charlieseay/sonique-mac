@@ -752,6 +752,18 @@ class CommandServer: ObservableObject {
             return "Okay, stopping."
         }
 
+        // Morning briefing
+        if lower.contains("morning briefing") || lower.contains("brief me") || lower == "briefing" {
+            logger.info("⚡ FAST PATH: morning briefing")
+            return await ProactiveBriefing.shared.generateMorningBriefing()
+        }
+
+        // Status command
+        if lower == "status" || lower == "system status" || lower.contains("what's the status") {
+            logger.info("⚡ FAST PATH: status")
+            return await ProactiveBriefing.shared.generateMorningBriefing()
+        }
+
         // Detect model escalation requests
         let modelPreference = detectModelPreference(text: lower)
         logger.info("🤖 Routing to ask_claude (model: \(modelPreference))")
