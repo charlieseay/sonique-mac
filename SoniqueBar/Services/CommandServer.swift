@@ -27,6 +27,9 @@ class CommandServer: ObservableObject {
     private var lastProcessedTime: Date?
     private let dedupeWindow: TimeInterval = 5.0  // Ignore duplicates within 5s
 
+    // Model escalation state (auto-reverts to haiku after escalated request completes)
+    private var sessionModel: String = "haiku"
+
     private init() {
         setupListener()
         startHealthCheck()
@@ -698,7 +701,9 @@ class CommandServer: ObservableObject {
             return "Okay, stopping."
         }
 
-        logger.info("🤖 Routing all requests to ask_claude")
+        // Detect model escalation requests
+        let modelPreference = detectModelPreference(text: lower)
+        logger.info("🤖 Routing to ask_claude (model: \(modelPreference))")
 
         // Get context from memory
         let context = await MemoryService.shared.getContextForLLM()
@@ -715,6 +720,14 @@ class CommandServer: ObservableObject {
         6. Speak like a person, not a CLI tool
         7. When Charlie asks to "create tasks", use the helmsman dispatch webhook directly (localhost:5680/webhook/task-dispatch)
 
+        # Model Escalation (you have access to full Claude stack)
+        - You're currently running on \(modelPreference.uppercased())
+        - Haiku (default): Fast, conversation, simple tasks
+        - Sonnet: Complex reasoning, debugging, root cause analysis
+        - Opus: Hardest problems, architectural decisions
+        - Charlie can say "think harder" or "use sonnet" to escalate
+        - When you detect a problem you can't solve, acknowledge and suggest escalation
+
         # Examples of CORRECT responses
         User: "Dispatch tasks to make you better"
         BAD: "Done. All six capability tasks are now in Helmsman's queue."
@@ -728,6 +741,10 @@ class CommandServer: ObservableObject {
         BAD: "I've created a file at /Users/charlieseay/Documents/note.md"
         GOOD: "Done, it's saved."
 
+        User: "Why is the queue stuck?" (complex debugging)
+        YOU (if on Haiku): "That's tricky. Want me to think harder on Sonnet?"
+        YOU (if on Sonnet): "Let me trace the execution path... [diagnostic]"
+
         # Charlie's Context
         \(context)
 
@@ -737,8 +754,9 @@ class CommandServer: ObservableObject {
         # Your Response (1-2 sentences, spoken aloud, zero technical details)
         """
 
-        // Use ask_claude with Haiku preference (Bedrock Haiku → subscription Haiku fallback)
-        let result = await InfrastructureExecutor.shell("ask_claude '\(fullPrompt.replacingOccurrences(of: "'", with: "'\\''"))' --prefer haiku")
+        // Use ask_claude with detected model preference
+        let claudeCmd = "ask_claude '\(fullPrompt.replacingOccurrences(of: "'", with: "'\\''"))' --prefer \(modelPreference)"
+        let result = await InfrastructureExecutor.shell(claudeCmd)
 
         guard result.exitCode == 0 else {
             logger.error("ask_claude failed: \(result.stderr)")
@@ -746,6 +764,49 @@ class CommandServer: ObservableObject {
         }
 
         return result.stdout.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    /// Detect which Claude model to use based on user hints or complexity
+    /// Auto-reverts to Haiku after escalated request completes
+    private func detectModelPreference(text: String) -> String {
+        let lower = text.lowercased()
+
+        // Explicit model requests (sticky for session)
+        if lower.contains("use opus") || lower.contains("opus mode") {
+            sessionModel = "opus"
+            return "opus"
+        }
+        if lower.contains("use sonnet") || lower.contains("sonnet mode") {
+            sessionModel = "sonnet"
+            return "sonnet"
+        }
+        if lower.contains("use haiku") || lower.contains("haiku mode") || lower.contains("fast mode") {
+            sessionModel = "haiku"
+            return "haiku"
+        }
+
+        // One-time escalation hints (reverts to haiku after this request)
+        if lower.contains("think harder") || lower.contains("dig deeper") ||
+           lower.contains("analyze") || lower.contains("debug") {
+            // Don't update sessionModel - just use Sonnet for this one request
+            return "sonnet"
+        }
+
+        // Emergency/critical keywords (one-time Opus)
+        if lower.contains("emergency") || lower.contains("critical") ||
+           lower.contains("architecture") || lower.contains("design decision") {
+            return "opus"
+        }
+
+        // Complexity signals (one-time Sonnet)
+        if (lower.contains("why") && lower.contains("how")) ||
+           lower.contains("root cause") || lower.contains("trace") ||
+           lower.contains("investigate") {
+            return "sonnet"
+        }
+
+        // Default: use current session model (usually haiku)
+        return sessionModel
     }
 
     private func handleConversationFallback(_ text: String, context: String) async -> String {
