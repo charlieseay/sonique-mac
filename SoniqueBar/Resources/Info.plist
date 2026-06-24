@@ -19,13 +19,15 @@
 	<key>CFBundleIconName</key>
 	<string>AppIcon</string>
 	<key>CFBundleVersion</key>
-	<string>49</string>
+	<string>50</string>
 	<key>LSMinimumSystemVersion</key>
 	<string>13.0</string>
 	<key>LSUIElement</key>
 	<true/>
 	<key>NSCameraUsageDescription</key>
 	<string>Sonique uses the camera to scan a QR code from your base station for instant setup.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Sonique uses the microphone for wake word detection and voice commands.</string>
 	<key>NSPrincipalClass</key>
 	<string>NSApplication</string>
 </dict>
