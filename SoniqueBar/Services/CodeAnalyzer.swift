@@ -51,7 +51,7 @@ class CodeAnalyzer: ObservableObject {
     }
 
     /// Get the currently active file path
-    private func getActiveFile() async -> String? {
+    func getActiveFile() async -> String? {
         // Try Xcode first
         let xcodeScript = """
         tell application "System Events"

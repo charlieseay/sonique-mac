@@ -1009,6 +1009,48 @@ class CommandServer: ObservableObject {
             return "Best device for that: \(device)"
         }
 
+        // COLLABORATION: Start/stop monitoring
+        if lower.contains("start monitoring") || lower.contains("watch my screen") {
+            logger.info("⚡ COLLAB: start monitoring")
+            CollaborationEngine.shared.startMonitoring()
+            return "Monitoring started. I'll watch for issues."
+        }
+
+        if lower.contains("stop monitoring") || lower.contains("stop watching") {
+            logger.info("⚡ COLLAB: stop monitoring")
+            CollaborationEngine.shared.stopMonitoring()
+            return "Monitoring stopped"
+        }
+
+        // COLLABORATION: Enable/disable autonomous mode
+        if lower.contains("autonomous mode on") || lower.contains("enable autonomous") {
+            logger.info("⚡ COLLAB: enable autonomous")
+            CollaborationEngine.shared.enableAutonomousMode()
+            return "Autonomous mode enabled. I'll fix issues automatically."
+        }
+
+        if lower.contains("autonomous mode off") || lower.contains("disable autonomous") {
+            logger.info("⚡ COLLAB: disable autonomous")
+            CollaborationEngine.shared.disableAutonomousMode()
+            return "Autonomous mode disabled"
+        }
+
+        // COLLABORATION: Find refactoring opportunities
+        if lower.contains("refactoring opportunities") || lower.contains("code smells") {
+            logger.info("⚡ COLLAB: find refactoring")
+            return await CollaborationEngine.shared.findRefactoringOpportunities()
+        }
+
+        // COLLABORATION: Review live changes
+        if lower.contains("review my changes live") || lower.contains("check what i changed") {
+            logger.info("⚡ COLLAB: live review")
+            if let activeFile = await CodeAnalyzer.shared.getActiveFile() {
+                return await CollaborationEngine.shared.reviewLiveChanges(file: activeFile)
+            } else {
+                return "I can't see what file you're editing"
+            }
+        }
+
         // Detect model escalation requests
         let modelPreference = detectModelPreference(text: lower)
         logger.info("🤖 Routing to ask_claude (model: \(modelPreference))")

@@ -37,6 +37,7 @@
 		C0E46E5312385083CC6EF2F3 /* ConnectorRegistry.swift in Sources */ = {isa = PBXBuildFile; fileRef = 89DEBB87C22A05AAC4B97019 /* ConnectorRegistry.swift */; };
 		C308D4E93103213839A27FFD /* LiveScreenCapture.swift in Sources */ = {isa = PBXBuildFile; fileRef = BA21E3093DCCF2B341C15CE1 /* LiveScreenCapture.swift */; };
 		C41FF06215983DCC2D727191 /* ScreenAwarenessService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2ACBDD8A5604501BBD52BD97 /* ScreenAwarenessService.swift */; };
+		CB3E57C1ED2668B202D071D9 /* CollaborationEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = BAB9B315451102598DA17F92 /* CollaborationEngine.swift */; };
 		D08B685E7C01CC54EF7EC64E /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6A89362065A58C0E0D76DAC7 /* SettingsView.swift */; };
 		D0AB5C222768661355C09820 /* VaultReader.swift in Sources */ = {isa = PBXBuildFile; fileRef = B50DEF87220176D8383DABAB /* VaultReader.swift */; };
 		D0B7D3F118FF0142505C9C15 /* QuickCommands.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A864AB273BD290783ECE364 /* QuickCommands.swift */; };
@@ -96,6 +97,7 @@
 		B53B7712B53EF849A8C15EB8 /* PatternClassifier.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = PatternClassifier.swift; path = SoniqueBar/Services/PatternClassifier.swift; sourceTree = "<group>"; };
 		B7A0EA712CE68C6F0A957FC9 /* DeviceOrchestrator.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = DeviceOrchestrator.swift; path = SoniqueBar/Services/DeviceOrchestrator.swift; sourceTree = "<group>"; };
 		BA21E3093DCCF2B341C15CE1 /* LiveScreenCapture.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = LiveScreenCapture.swift; path = SoniqueBar/Services/LiveScreenCapture.swift; sourceTree = "<group>"; };
+		BAB9B315451102598DA17F92 /* CollaborationEngine.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = CollaborationEngine.swift; path = SoniqueBar/Services/CollaborationEngine.swift; sourceTree = "<group>"; };
 		BB000004000000000000004 /* SoniqueBar.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = SoniqueBar.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		BB000014000000000000014 /* SoniqueBar.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = SoniqueBar.entitlements; sourceTree = SOURCE_ROOT; };
 		BB000016000000000000016 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; name = Info.plist; path = SoniqueBar/Resources/Info.plist; sourceTree = SOURCE_ROOT; };
@@ -228,6 +230,7 @@
 				8BF434BFE91102DB98427FD3 /* HelmsmanIntegration.swift */,
 				1215CF66AFBA5EC7F4A213F7 /* CodeAnalyzer.swift */,
 				B7A0EA712CE68C6F0A957FC9 /* DeviceOrchestrator.swift */,
+				BAB9B315451102598DA17F92 /* CollaborationEngine.swift */,
 			);
 			name = Services;
 			sourceTree = "<group>";
@@ -366,6 +369,7 @@
 				F44AB9BAABB229C347FBB494 /* HelmsmanIntegration.swift in Sources */,
 				E60358D4EEE1AC559B00B834 /* CodeAnalyzer.swift in Sources */,
 				576A4E75D41FB3E23ECEFB0C /* DeviceOrchestrator.swift in Sources */,
+				CB3E57C1ED2668B202D071D9 /* CollaborationEngine.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -406,7 +410,7 @@
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 57;
+				CURRENT_PROJECT_VERSION = 58;
 				DEVELOPMENT_TEAM = 7NSS5CJL9E;
 				ENABLE_HARDENED_RUNTIME = YES;
 				INFOPLIST_FILE = SoniqueBar/Resources/Info.plist;
@@ -431,7 +435,7 @@
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 57;
+				CURRENT_PROJECT_VERSION = 58;
 				DEVELOPMENT_TEAM = 7NSS5CJL9E;
 				ENABLE_HARDENED_RUNTIME = YES;
 				INFOPLIST_FILE = SoniqueBar/Resources/Info.plist;
