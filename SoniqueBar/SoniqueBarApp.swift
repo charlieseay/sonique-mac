@@ -8,6 +8,7 @@ struct SoniqueBarApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
     @StateObject private var commandServer = CommandServer.shared
     @StateObject private var memoryService = MemoryService.shared
+    // @StateObject private var selfHealing = SelfHealingEngine.shared
 
     init() {
         // Redirect stdout/stderr to a file for debugging
@@ -62,6 +63,20 @@ struct SoniqueBarApp: App {
                         .foregroundColor(.secondary)
                 }
 
+                // Self-healing status (TODO: enable when SelfHealingEngine added to Xcode project)
+                // HStack {
+                //     Circle()
+                //         .fill(selfHealing.isHealthy ? Color.green : Color.orange)
+                //         .frame(width: 8, height: 8)
+                //     Text(selfHealing.isHealthy ? "Healthy" : "Auto-healing")
+                //         .font(.caption)
+                //     if let lastCheck = selfHealing.lastSelfCheck {
+                //         Text("(checked \(timeSince(lastCheck)))")
+                //             .font(.caption2)
+                //             .foregroundColor(.secondary)
+                //     }
+                // }
+
                 Divider()
 
                 // Actions
@@ -84,6 +99,11 @@ struct SoniqueBarApp: App {
                     Label("Clear Memory", systemImage: "trash")
                         .font(.caption)
                 }
+
+                // Button(action: runDiagnostic) {
+                //     Label("Run Full Diagnostic", systemImage: "stethoscope")
+                //         .font(.caption)
+                // }
 
                 Divider()
 
@@ -147,6 +167,28 @@ struct SoniqueBarApp: App {
             alert.runModal()
         }
     }
+
+    // private func runDiagnostic() {
+    //     Task { @MainActor in
+    //         let result = await SelfHealingEngine.shared.runFullDiagnostic()
+    //
+    //         let alert = NSAlert()
+    //         alert.messageText = "Diagnostic Complete"
+    //         alert.informativeText = result
+    //         alert.alertStyle = selfHealing.isHealthy ? .informational : .warning
+    //         alert.addButton(withTitle: "OK")
+    //         alert.runModal()
+    //     }
+    // }
+
+    private func timeSince(_ date: Date) -> String {
+        let seconds = Int(Date().timeIntervalSince(date))
+        if seconds < 60 { return "\(seconds)s ago" }
+        let minutes = seconds / 60
+        if minutes < 60 { return "\(minutes)m ago" }
+        let hours = minutes / 60
+        return "\(hours)h ago"
+    }
 }
 
 /// Handles app lifecycle and CommandServer startup
@@ -177,6 +219,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
             // Start background monitoring (Helmsman queue, Docker health, disk space)
             BackgroundMonitor.shared.startMonitoring()
+
+            // Start self-healing engine (auto-detect and fix Quinn's own issues)
+            // TODO: Add SelfHealingEngine.swift to Xcode project, then uncomment:
+            // SelfHealingEngine.shared.startSelfMonitoring()
 
             // Start live screen capture for active vision (macOS 12.3+)
             // Requires Screen Recording permission - grant in System Settings
