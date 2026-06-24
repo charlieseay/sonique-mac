@@ -100,6 +100,11 @@ struct SoniqueBarApp: App {
                         .font(.caption)
                 }
 
+                Button(action: openSettings) {
+                    Label("Settings", systemImage: "gearshape")
+                        .font(.caption)
+                }
+
                 // Button(action: runDiagnostic) {
                 //     Label("Run Full Diagnostic", systemImage: "stethoscope")
                 //         .font(.caption)
@@ -166,6 +171,21 @@ struct SoniqueBarApp: App {
             alert.addButton(withTitle: "OK")
             alert.runModal()
         }
+    }
+
+    private func openSettings() {
+        // Open Settings window
+        let settingsWindow = NSWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 800, height: 600),
+            styleMask: [.titled, .closable, .resizable],
+            backing: .buffered,
+            defer: false
+        )
+        settingsWindow.title = "Quinn Settings"
+        settingsWindow.contentView = NSHostingView(rootView: SettingsView())
+        settingsWindow.center()
+        settingsWindow.makeKeyAndOrderFront(nil)
+        NSApp.activate(ignoringOtherApps: true)
     }
 
     // private func runDiagnostic() {
