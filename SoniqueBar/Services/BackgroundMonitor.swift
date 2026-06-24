@@ -233,48 +233,19 @@ class BackgroundMonitor: ObservableObject {
     // MARK: - Auto Task Dispatch
 
     /// Automatically dispatch a task to helmsman when an issue is detected
+    /// Helmsman will create the brief - Quinn just sends the request like Charlie would
     private func autoDispatchTask(task: String, project: String, owner: String, effort: String, context: String) async {
         print("[BackgroundMonitor] AUTO-DISPATCH: \(task)")
 
-        // Create minimal brief (BackgroundMonitor tasks are diagnostic/reactive, not full builds)
-        let brief = """
-        ## Goal
-        \(task)
-
-        ## Context
-        Source: BackgroundMonitor autonomous detection
-        Project: \(project)
-        \(context)
-
-        ## Steps
-        1. Investigate the reported issue
-        2. Determine root cause
-        3. Implement fix or escalate if requires manual intervention
-        4. Verify resolution
-        5. Document outcome
-
-        ## Expected Output
-        - Root cause identified
-        - Fix implemented or reason for escalation documented
-        - Verification proof (command + output)
-
-        ## Success
-        Issue resolved and system healthy
-        """
-
-        // Dispatch via helmsman REST API
-        let escapedBrief = brief
-            .replacingOccurrences(of: "\\", with: "\\\\")
-            .replacingOccurrences(of: "\"", with: "\\\"")
-            .replacingOccurrences(of: "\n", with: "\\n")
-
+        // Send simple request to helmsman - let helmsman create the brief
+        // Quinn sends requests like Charlie would, helmsman does the dispatch work
         let payload = """
         {
           "task": "\(task.replacingOccurrences(of: "\"", with: "\\\""))",
           "owner": "\(owner)",
           "project": "\(project)",
           "effort": "\(effort)",
-          "brief_text": "\(escapedBrief)"
+          "context": "\(context.replacingOccurrences(of: "\"", with: "\\\""))"
         }
         """
 

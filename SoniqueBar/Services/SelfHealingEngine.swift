@@ -278,48 +278,17 @@ class SelfHealingEngine: ObservableObject {
         return freedMB
     }
 
+    /// Escalate to helmsman when auto-heal fails
+    /// Send simple request like Charlie would - helmsman creates the brief
     private func escalateToHelmsman(issue: String, diagnosis: String) async {
-        let brief = """
-        ## Goal
-        Fix Quinn self-healing failure: \(issue)
-
-        ## Context
+        // Build context for helmsman to create the brief
+        let context = """
         Source: Quinn's SelfHealingEngine autonomous detection
         Diagnosis: \(diagnosis)
-        Auto-heal attempted but failed
-        Requires code fix + redeploy
-
-        ## Steps
-        1. Investigate the reported issue on Mac Mini
-        2. Determine root cause and implement fix in SoniqueBar codebase
-        3. Commit and push to GitHub (feature/sidecar-packaging branch)
-        4. Run auto-deploy: `/Users/charlieseay/Projects/sonique-mac/scripts/auto-deploy.sh`
-        5. Auto-deploy will: pull code, build, update launchd, restart Quinn
-        6. Verify Quinn's health check passes after redeploy
-        7. Document fix in Quinn's CAPABILITIES.md
-
-        ## Expected Output
-        - Root cause identified and fixed in code
-        - Git commit pushed to GitHub
-        - Quinn redeployed via auto-deploy.sh (pulls, builds, restarts)
-        - Health check passing (curl http://localhost:8890/health)
-        - Prevention added to SelfHealingEngine for future
-
-        ## Success
-        Quinn auto-redeployed and self-check passes without errors
-
-        ## Automation
-        After fixing code and pushing to GitHub:
-        ```bash
-        /Users/charlieseay/Projects/sonique-mac/scripts/auto-deploy.sh
-        ```
-        This pulls latest, builds, and restarts Quinn automatically.
+        Auto-heal attempted but failed - requires code fix + redeploy
+        After fix: push to GitHub, auto-deploy will trigger automatically (github-watcher.sh monitors every 60s)
+        Health verification: curl http://localhost:8890/health
         """
-
-        let escapedBrief = brief
-            .replacingOccurrences(of: "\\", with: "\\\\")
-            .replacingOccurrences(of: "\"", with: "\\\"")
-            .replacingOccurrences(of: "\n", with: "\\n")
 
         let payload = """
         {
@@ -327,7 +296,7 @@ class SelfHealingEngine: ObservableObject {
           "owner": "CHARLIE",
           "project": "Sonique",
           "effort": "S",
-          "brief_text": "\(escapedBrief)"
+          "context": "\(context.replacingOccurrences(of: "\"", with: "\\\""))"
         }
         """
 
