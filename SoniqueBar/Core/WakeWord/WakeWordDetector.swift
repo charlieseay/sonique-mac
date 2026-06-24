@@ -43,7 +43,12 @@ enum WakeWordError: Error, LocalizedError {
 @MainActor
 class BasicWakeWordDetector: NSObject, WakeWordDetector {
     private(set) var isListening = false
-    let wakeWords = ["hey quinn", "quinn", "okay quinn"]
+
+    var wakeWords: [String] {
+        let assistantName = UserDefaults.standard.string(forKey: "quinn_name") ?? "Sonique"
+        let lowerName = assistantName.lowercased()
+        return ["hey \(lowerName)", lowerName, "okay \(lowerName)"]
+    }
 
     private var audioEngine: AVAudioEngine?
     private var recognitionRequest: AVAudioInputNode?
@@ -125,7 +130,12 @@ class BasicWakeWordDetector: NSObject, WakeWordDetector {
 /// Requires: pod 'Porcupine-iOS' or manual SDK integration
 class PorcupineWakeWordDetector: NSObject, WakeWordDetector {
     private(set) var isListening = false
-    let wakeWords = ["hey quinn", "quinn"]
+
+    var wakeWords: [String] {
+        let assistantName = UserDefaults.standard.string(forKey: "quinn_name") ?? "Sonique"
+        let lowerName = assistantName.lowercased()
+        return ["hey \(lowerName)", lowerName]
+    }
 
     private var wakeWordCallback: (@Sendable (String) -> Void)?
 
