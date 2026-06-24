@@ -21,6 +21,7 @@
 		4452BDE94D82A0A5BC9414FE /* LabStatusService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5DEA084A43571FB8B79A50BC /* LabStatusService.swift */; };
 		45BB0297913A6EB0BBBBDA94 /* SystemVoiceProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1BE7105B9692C7F55E5CCDEB /* SystemVoiceProvider.swift */; };
 		4B102F62A9EF98A44E5C888D /* InitializationScript.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2DB66C2D5C439B8291EE9E14 /* InitializationScript.swift */; };
+		576A4E75D41FB3E23ECEFB0C /* DeviceOrchestrator.swift in Sources */ = {isa = PBXBuildFile; fileRef = B7A0EA712CE68C6F0A957FC9 /* DeviceOrchestrator.swift */; };
 		5DC3D2FFABFCAD03F51408E1 /* ProactiveBriefing.swift in Sources */ = {isa = PBXBuildFile; fileRef = F29D445D763F2FF764C645F4 /* ProactiveBriefing.swift */; };
 		699F52246E25BD3960DF4B5F /* OpenAITTSProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = AF3EC8D7EB97D157480347FC /* OpenAITTSProvider.swift */; };
 		7B5E48A3F8B4D03F45B17BE0 /* LLMProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4269F3E96A76428E89931AE7 /* LLMProvider.swift */; };
@@ -93,6 +94,7 @@
 		B140E9A1CA635B15165A0C02 /* MCPProxyClient.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SoniqueBar/Services/MCPProxyClient.swift; sourceTree = "<group>"; };
 		B50DEF87220176D8383DABAB /* VaultReader.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SoniqueBar/Services/VaultReader.swift; sourceTree = "<group>"; };
 		B53B7712B53EF849A8C15EB8 /* PatternClassifier.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = PatternClassifier.swift; path = SoniqueBar/Services/PatternClassifier.swift; sourceTree = "<group>"; };
+		B7A0EA712CE68C6F0A957FC9 /* DeviceOrchestrator.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = DeviceOrchestrator.swift; path = SoniqueBar/Services/DeviceOrchestrator.swift; sourceTree = "<group>"; };
 		BA21E3093DCCF2B341C15CE1 /* LiveScreenCapture.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = LiveScreenCapture.swift; path = SoniqueBar/Services/LiveScreenCapture.swift; sourceTree = "<group>"; };
 		BB000004000000000000004 /* SoniqueBar.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = SoniqueBar.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		BB000014000000000000014 /* SoniqueBar.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = SoniqueBar.entitlements; sourceTree = SOURCE_ROOT; };
@@ -225,6 +227,7 @@
 				B140E9A1CA635B15165A0C02 /* MCPProxyClient.swift */,
 				8BF434BFE91102DB98427FD3 /* HelmsmanIntegration.swift */,
 				1215CF66AFBA5EC7F4A213F7 /* CodeAnalyzer.swift */,
+				B7A0EA712CE68C6F0A957FC9 /* DeviceOrchestrator.swift */,
 			);
 			name = Services;
 			sourceTree = "<group>";
@@ -362,6 +365,7 @@
 				D0B7D3F118FF0142505C9C15 /* QuickCommands.swift in Sources */,
 				F44AB9BAABB229C347FBB494 /* HelmsmanIntegration.swift in Sources */,
 				E60358D4EEE1AC559B00B834 /* CodeAnalyzer.swift in Sources */,
+				576A4E75D41FB3E23ECEFB0C /* DeviceOrchestrator.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -402,7 +406,7 @@
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 56;
+				CURRENT_PROJECT_VERSION = 57;
 				DEVELOPMENT_TEAM = 7NSS5CJL9E;
 				ENABLE_HARDENED_RUNTIME = YES;
 				INFOPLIST_FILE = SoniqueBar/Resources/Info.plist;
@@ -427,7 +431,7 @@
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 56;
+				CURRENT_PROJECT_VERSION = 57;
 				DEVELOPMENT_TEAM = 7NSS5CJL9E;
 				ENABLE_HARDENED_RUNTIME = YES;
 				INFOPLIST_FILE = SoniqueBar/Resources/Info.plist;

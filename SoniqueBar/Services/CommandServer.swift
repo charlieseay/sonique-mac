@@ -975,6 +975,40 @@ class CommandServer: ObservableObject {
             return await CodeAnalyzer.shared.getRecentCommits()
         }
 
+        // DEVICES: List connected devices
+        if lower.contains("connected devices") || lower.contains("available devices") || lower.contains("list devices") {
+            logger.info("⚡ DEVICES: list connected")
+            let devices = DeviceOrchestrator.shared.connectedDevices
+            if devices.isEmpty {
+                return "No other devices connected"
+            } else {
+                let formatter = DateFormatter()
+                formatter.dateStyle = .short
+                formatter.timeStyle = .short
+
+                let summaries = devices.map { device in
+                    "\(device.name) (\(device.type.rawValue)) - last seen \(formatter.string(from: device.lastSeen))"
+                }
+
+                return "\(devices.count) devices: \(summaries.joined(separator: "; "))"
+            }
+        }
+
+        // DEVICES: Route task to device
+        if lower.contains("which device") || lower.contains("what device") {
+            logger.info("⚡ DEVICES: route task")
+            // Extract task description
+            let taskDesc = text
+                .replacingOccurrences(of: "which device should ", with: "", options: .caseInsensitive)
+                .replacingOccurrences(of: "what device should ", with: "", options: .caseInsensitive)
+                .replacingOccurrences(of: "which device for ", with: "", options: .caseInsensitive)
+                .replacingOccurrences(of: "what device for ", with: "", options: .caseInsensitive)
+                .trimmingCharacters(in: .whitespaces)
+
+            let device = DeviceOrchestrator.shared.routeTask(taskDesc)
+            return "Best device for that: \(device)"
+        }
+
         // Detect model escalation requests
         let modelPreference = detectModelPreference(text: lower)
         logger.info("🤖 Routing to ask_claude (model: \(modelPreference))")
