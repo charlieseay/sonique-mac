@@ -789,6 +789,35 @@ class CommandServer: ObservableObject {
             }
         }
 
+        // Focus mode
+        if lower == "focus mode" || lower.contains("enter focus") || lower.contains("start focus") {
+            logger.info("⚡ QUICK WIN: focus mode")
+            return await QuickCommands.shared.enterFocusMode()
+        }
+
+        if lower.contains("exit focus") || lower.contains("end focus") || lower.contains("stop focus") {
+            logger.info("⚡ QUICK WIN: exit focus mode")
+            return await QuickCommands.shared.exitFocusMode()
+        }
+
+        // Wrap up
+        if lower == "wrap up" || lower.contains("end of day") || lower.contains("wrap it up") {
+            logger.info("⚡ QUICK WIN: wrap up")
+            return await QuickCommands.shared.wrapUp()
+        }
+
+        // Deep work
+        if lower.contains("deep work") || lower.contains("focus session") {
+            logger.info("⚡ QUICK WIN: deep work")
+            return await QuickCommands.shared.startDeepWork()
+        }
+
+        // Quick status (ultra-condensed)
+        if lower == "quick status" || lower == "quick check" {
+            logger.info("⚡ QUICK WIN: quick status")
+            return await QuickCommands.shared.quickStatus()
+        }
+
         // Detect model escalation requests
         let modelPreference = detectModelPreference(text: lower)
         logger.info("🤖 Routing to ask_claude (model: \(modelPreference))")
