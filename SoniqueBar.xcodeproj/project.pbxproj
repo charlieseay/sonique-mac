@@ -26,6 +26,7 @@
 		E625C58534BCF80D0998318D /* PatternClassifier.swift in Sources */ = {isa = PBXBuildFile; fileRef = B53B7712B53EF849A8C15EB8 /* PatternClassifier.swift */; };
 		E64A366A5F027A21690D16C5 /* HelmsmanConnector.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0624918F9F9BB6FB1FB7015A /* HelmsmanConnector.swift */; };
 		F207771755EE5599B4947268 /* MCPProxyClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = B140E9A1CA635B15165A0C02 /* MCPProxyClient.swift */; };
+		F4AD0C12DFD5F3E9F00A2C5D /* SlackConnector.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2546B9FDE002C7FEB191DDBC /* SlackConnector.swift */; };
 		F5FE4AE5BCE56A7CEF27C4A8 /* DiagnosticAgent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 14DD10989B88085D88EAECBC /* DiagnosticAgent.swift */; };
 		FA925571F17B6BA9C9106F30 /* CommandServer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 51CF32BB11AD3B053074E4B1 /* CommandServer.swift */; };
 		FB4A785BC5C0C1732655A2E1 /* TaskDispatcher.swift in Sources */ = {isa = PBXBuildFile; fileRef = 52B477ED8413E4F7FC7A7216 /* TaskDispatcher.swift */; };
@@ -35,6 +36,7 @@
 /* Begin PBXFileReference section */
 		0624918F9F9BB6FB1FB7015A /* HelmsmanConnector.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = HelmsmanConnector.swift; path = SoniqueBar/Connectors/HelmsmanConnector.swift; sourceTree = "<group>"; };
 		14DD10989B88085D88EAECBC /* DiagnosticAgent.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = DiagnosticAgent.swift; path = SoniqueBar/Services/DiagnosticAgent.swift; sourceTree = "<group>"; };
+		2546B9FDE002C7FEB191DDBC /* SlackConnector.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = SlackConnector.swift; path = SoniqueBar/Connectors/SlackConnector.swift; sourceTree = "<group>"; };
 		26D43EF2F4A2C018D3C6F37E /* SoniqueBrain.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = SoniqueBrain.swift; path = SoniqueBar/Services/SoniqueBrain.swift; sourceTree = "<group>"; };
 		2ACBDD8A5604501BBD52BD97 /* ScreenAwarenessService.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ScreenAwarenessService.swift; path = SoniqueBar/Services/ScreenAwarenessService.swift; sourceTree = "<group>"; };
 		2DB66C2D5C439B8291EE9E14 /* InitializationScript.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SoniqueBar/Services/InitializationScript.swift; sourceTree = "<group>"; };
@@ -124,6 +126,7 @@
 				89DEBB87C22A05AAC4B97019 /* ConnectorRegistry.swift */,
 				0624918F9F9BB6FB1FB7015A /* HelmsmanConnector.swift */,
 				F218BBB4D9FB4B98B4D2C1FD /* DockerConnector.swift */,
+				2546B9FDE002C7FEB191DDBC /* SlackConnector.swift */,
 			);
 			sourceTree = "<group>";
 		};
@@ -278,6 +281,7 @@
 				C0E46E5312385083CC6EF2F3 /* ConnectorRegistry.swift in Sources */,
 				E64A366A5F027A21690D16C5 /* HelmsmanConnector.swift in Sources */,
 				934379D9C88DBB5A7A979F18 /* DockerConnector.swift in Sources */,
+				F4AD0C12DFD5F3E9F00A2C5D /* SlackConnector.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -318,7 +322,7 @@
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 45;
+				CURRENT_PROJECT_VERSION = 46;
 				DEVELOPMENT_TEAM = 7NSS5CJL9E;
 				ENABLE_HARDENED_RUNTIME = YES;
 				INFOPLIST_FILE = SoniqueBar/Resources/Info.plist;
@@ -343,7 +347,7 @@
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 45;
+				CURRENT_PROJECT_VERSION = 46;
 				DEVELOPMENT_TEAM = 7NSS5CJL9E;
 				ENABLE_HARDENED_RUNTIME = YES;
 				INFOPLIST_FILE = SoniqueBar/Resources/Info.plist;

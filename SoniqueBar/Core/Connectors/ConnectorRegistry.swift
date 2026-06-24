@@ -193,13 +193,15 @@ class ConnectorRegistry: ObservableObject {
         // Task Management
         register(HelmsmanConnector())
 
-        // TODO: Add more built-in connectors as they're implemented
         // Development
-        // register(DockerConnector())
-        // register(GitHubConnector())
+        register(DockerConnector())
 
         // Communication
-        // register(SlackConnector())
+        register(SlackConnector())
+
+        // TODO: Add more built-in connectors as they're implemented
+        // Development
+        // register(GitHubConnector())
 
         // Home Automation
         // register(HomeKitConnector())
