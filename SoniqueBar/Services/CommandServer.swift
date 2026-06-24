@@ -719,20 +719,31 @@ class CommandServer: ObservableObject {
         // FAST PATH: Handle simple queries without LLM (<50ms responses)
         let lower = text.lowercased()
 
-        // Time queries
+        // Time queries (use device timezone from iOS)
         if text == "current_time" || lower.contains("what time") || lower.contains("current time") {
-            logger.info("⚡ FAST PATH: time query")
-            let formatter = DateFormatter()
-            formatter.dateFormat = "h:mm a"
-            return "It's \(formatter.string(from: Date()))"
+            logger.info("⚡ FAST PATH: time query (device timezone)")
+            let timeString = DeviceContext.shared.formatTime(Date())
+
+            if let location = DeviceContext.shared.location {
+                return "It's \(timeString) \(location)"
+            } else {
+                return "It's \(timeString)"
+            }
         }
 
-        // Date queries
+        // Date queries (use device timezone)
         if lower.contains("what day") || lower.contains("what's the date") || lower.contains("today's date") {
-            logger.info("⚡ FAST PATH: date query")
+            logger.info("⚡ FAST PATH: date query (device timezone)")
             let formatter = DateFormatter()
             formatter.dateFormat = "EEEE, MMMM d"
+            formatter.timeZone = DeviceContext.shared.timezone
             return "Today is \(formatter.string(from: Date()))"
+        }
+
+        // Calendar queries - route to iOS app
+        if lower.contains("calendar") || lower.contains("what's on my calendar") || lower.contains("today's schedule") {
+            logger.info("⚡ CALENDAR: routing to iOS")
+            return "To check your calendar, please ask from your iPhone or iPad where I have Calendar permission."
         }
 
         // Simple math (single operation)

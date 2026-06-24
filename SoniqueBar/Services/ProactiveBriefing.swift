@@ -57,13 +57,8 @@ class ProactiveBriefing: ObservableObject {
     }
 
     private func generateGreeting() -> String {
-        let hour = Calendar.current.component(.hour, from: Date())
-        let timeOfDay = switch hour {
-        case 5..<12: "Good morning"
-        case 12..<17: "Good afternoon"
-        case 17..<22: "Good evening"
-        default: "Hello"
-        }
+        // Use device-aware greeting (adjusts for iOS timezone)
+        let timeOfDay = DeviceContext.shared.getGreeting()
         return "\(timeOfDay), Charlie."
     }
 

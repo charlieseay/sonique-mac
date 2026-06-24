@@ -2,6 +2,8 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<key>CFBundleVersion</key>
+	<string>59</string>
 	<key>NSAppleEventsUsageDescription</key>
 	<string>SoniqueBar needs to control other apps to execute commands like opening files or controlling HomeKit.</string>
 	<key>NSCalendarsFullAccessUsageDescription</key>

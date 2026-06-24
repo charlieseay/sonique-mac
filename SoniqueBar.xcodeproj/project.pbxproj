@@ -24,6 +24,7 @@
 		576A4E75D41FB3E23ECEFB0C /* DeviceOrchestrator.swift in Sources */ = {isa = PBXBuildFile; fileRef = B7A0EA712CE68C6F0A957FC9 /* DeviceOrchestrator.swift */; };
 		5DC3D2FFABFCAD03F51408E1 /* ProactiveBriefing.swift in Sources */ = {isa = PBXBuildFile; fileRef = F29D445D763F2FF764C645F4 /* ProactiveBriefing.swift */; };
 		699F52246E25BD3960DF4B5F /* OpenAITTSProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = AF3EC8D7EB97D157480347FC /* OpenAITTSProvider.swift */; };
+		69DC4A71E4571D30DD584083 /* DeviceContext.swift in Sources */ = {isa = PBXBuildFile; fileRef = 82A75F41095561E92C9D6EB8 /* DeviceContext.swift */; };
 		7B5E48A3F8B4D03F45B17BE0 /* LLMProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4269F3E96A76428E89931AE7 /* LLMProvider.swift */; };
 		7FE241B8C18BDB08145F7053 /* GitHubConnector.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DC809DFED18B22FE2E51451 /* GitHubConnector.swift */; };
 		90A3B6BD6E6661D7507E0A5B /* NativeIntents.swift in Sources */ = {isa = PBXBuildFile; fileRef = D7637D7CD68FFECE2DA6FAD6 /* NativeIntents.swift */; };
@@ -82,6 +83,7 @@
 		6A89362065A58C0E0D76DAC7 /* SettingsView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = SettingsView.swift; path = SoniqueBar/Views/SettingsView.swift; sourceTree = "<group>"; };
 		6DC809DFED18B22FE2E51451 /* GitHubConnector.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = GitHubConnector.swift; path = SoniqueBar/Connectors/GitHubConnector.swift; sourceTree = "<group>"; };
 		6FBD7A75A1EDDC8CA45A63F3 /* ConnectorProtocol.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ConnectorProtocol.swift; path = SoniqueBar/Core/Connectors/ConnectorProtocol.swift; sourceTree = "<group>"; };
+		82A75F41095561E92C9D6EB8 /* DeviceContext.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SoniqueBar/Services/DeviceContext.swift; sourceTree = SOURCE_ROOT; };
 		89DEBB87C22A05AAC4B97019 /* ConnectorRegistry.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ConnectorRegistry.swift; path = SoniqueBar/Core/Connectors/ConnectorRegistry.swift; sourceTree = "<group>"; };
 		8A6E578671058605A9C26596 /* OpenAIProvider.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = OpenAIProvider.swift; path = SoniqueBar/Core/LLM/OpenAIProvider.swift; sourceTree = "<group>"; };
 		8BF434BFE91102DB98427FD3 /* HelmsmanIntegration.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = HelmsmanIntegration.swift; path = SoniqueBar/Services/HelmsmanIntegration.swift; sourceTree = "<group>"; };
@@ -231,6 +233,7 @@
 				1215CF66AFBA5EC7F4A213F7 /* CodeAnalyzer.swift */,
 				B7A0EA712CE68C6F0A957FC9 /* DeviceOrchestrator.swift */,
 				BAB9B315451102598DA17F92 /* CollaborationEngine.swift */,
+				82A75F41095561E92C9D6EB8 /* DeviceContext.swift */,
 			);
 			name = Services;
 			sourceTree = "<group>";
@@ -370,6 +373,7 @@
 				E60358D4EEE1AC559B00B834 /* CodeAnalyzer.swift in Sources */,
 				576A4E75D41FB3E23ECEFB0C /* DeviceOrchestrator.swift in Sources */,
 				CB3E57C1ED2668B202D071D9 /* CollaborationEngine.swift in Sources */,
+				69DC4A71E4571D30DD584083 /* DeviceContext.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
