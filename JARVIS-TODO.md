@@ -34,16 +34,26 @@
 
 ## Week 1: Connector Architecture (IN PROGRESS)
 
-### Day 1: Discovery + Protocol Design
+### Day 1: Discovery + Protocol Design (COMPLETE)
 - ✅ Audit existing code
 - ✅ Read Swift plugin patterns (studied existing protocols in codebase)
 - ✅ Create ConnectorProtocol.swift (complete with capabilities, auth, validation)
 - ✅ Create ConnectorRegistry.swift (central registry with discovery + execution)
 - ✅ Create HelmsmanConnector.swift (reference implementation)
-- ⏸️ Add files to Xcode project
-- ⏸️ Register HelmsmanConnector in registry
-- ⏸️ Build and validate
-- ⏸️ Commit with proof
+- ✅ Create DockerConnector.swift (second reference implementation)
+- ✅ Add files to Xcode project (via xcodeproj gem)
+- ✅ Register connectors in registry (HelmsmanConnector + DockerConnector)
+- ✅ Build and validate (Build 43 succeeded)
+- ✅ Initialize ConnectorRegistry in CommandServer
+- ✅ Commit with proof (commits 289fd5f, 2af06bd, fa5f6c33)
+
+### Day 1-2: Voice Integration (NEXT)
+- 🔄 Create connector execution helper in CommandServer
+- ⏸️ Update system prompt to include connector capabilities
+- ⏸️ Test voice command → connector execution
+- ⏸️ Validate: "create a task to test connectors" works
+- ⏸️ Validate: "restart the bridge container" works
+- ⏸️ Commit with validation proof
 
 ---
 

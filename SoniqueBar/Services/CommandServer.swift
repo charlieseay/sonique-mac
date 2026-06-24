@@ -39,6 +39,12 @@ class CommandServer: ObservableObject {
             print("[CommandServer] Loading golden rules from helmsman.db...")
             await loadGoldenRules()
         }
+
+        // Initialize connector registry
+        Task {
+            _ = ConnectorRegistry.shared
+            print("[CommandServer] Connector registry initialized")
+        }
     }
 
     deinit {
