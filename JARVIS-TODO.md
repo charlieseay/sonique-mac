@@ -2,8 +2,8 @@
 
 **Goal:** All Jarvis capabilities + App Store ready  
 **Timeline:** 6 weeks  
-**Current Build:** 42  
-**Session Start:** 2026-06-23 23:02
+**Current Build:** 46  
+**Session Start:** 2026-06-24 00:43
 
 ---
 
@@ -63,15 +63,33 @@ curl -X POST http://localhost:8890/command -d '{"text":"list all running contain
 
 Build 46 running with connector voice integration.
 
-### Day 2-3: More Connectors + Settings UI (NEXT)
-- ⏸️ Create HomeKit connector (lights, scenes, device states)
-- ⏸️ Create Calendar connector (today's events, create event)
-- ⏸️ Create GitHub connector (create issue, list PRs, check CI status)
-- ⏸️ Create Obsidian connector (create note, search notes)
-- ⏸️ Scaffold Settings UI (SwiftUI view)
-- ⏸️ Add connector toggle switches in Settings
-- ⏸️ Add LLM provider configuration in Settings
-- ⏸️ Test all connectors via voice
+### Day 2-3: More Connectors + Settings UI (COMPLETE)
+- ✅ Create GitHub connector (create_issue, list_prs, check_ci via gh CLI)
+- ✅ Create Obsidian connector (create_note, search_notes, append_to_note)
+- ✅ Scaffold Settings UI (4 tabs: Connectors, LLM, Voice, General)
+- ✅ Add connector toggle switches in Settings (by category)
+- ✅ Add LLM provider configuration (Claude/OpenAI/Gemini/NVIDIA)
+- ✅ Test connectors via voice (validated working)
+- ✅ Commit with validation proof (60775de, 5c5aea9)
+
+**Note:** HomeKit/Calendar moved to Sonique iOS (native framework support better on iOS).
+
+**Build 46 status:**
+- 5 working connectors (Helmsman, Docker, Slack, GitHub, Obsidian)
+- Settings UI complete and accessible from menu bar
+- All Week 1 deliverables met
+
+---
+
+##  Week 2: LLM Provider Abstraction (NEXT)
+
+### Day 1-2: Provider Protocol
+- ⏸️ Define LLMProvider protocol
+- ⏸️ Implement ClaudeProvider (ask_claude wrapper)
+- ⏸️ Implement OpenAIProvider (API integration)
+- ⏸️ Implement GeminiProvider (ask_gemini wrapper)
+- ⏸️ Create LLMRouter for model selection
+- ⏸️ Test voice commands with different providers
 - ⏸️ Commit with validation proof
 
 ---
