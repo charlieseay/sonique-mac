@@ -13,9 +13,11 @@
 		4452BDE94D82A0A5BC9414FE /* LabStatusService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5DEA084A43571FB8B79A50BC /* LabStatusService.swift */; };
 		4B102F62A9EF98A44E5C888D /* InitializationScript.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2DB66C2D5C439B8291EE9E14 /* InitializationScript.swift */; };
 		5D74C487B6096180373CD53E /* LLMRouter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 42C35C4C02529432A228AC2D /* LLMRouter.swift */; };
+		7FE241B8C18BDB08145F7053 /* GitHubConnector.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DC809DFED18B22FE2E51451 /* GitHubConnector.swift */; };
 		90A3B6BD6E6661D7507E0A5B /* NativeIntents.swift in Sources */ = {isa = PBXBuildFile; fileRef = D7637D7CD68FFECE2DA6FAD6 /* NativeIntents.swift */; };
 		934379D9C88DBB5A7A979F18 /* DockerConnector.swift in Sources */ = {isa = PBXBuildFile; fileRef = F218BBB4D9FB4B98B4D2C1FD /* DockerConnector.swift */; };
 		AC34493CF86AEF0058644556 /* IntentRouter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9BBEED7B61800AF727DEF5F3 /* IntentRouter.swift */; };
+		AD189CAF4F1E2AA7B5E4A007 /* ObsidianConnector.swift in Sources */ = {isa = PBXBuildFile; fileRef = C62A32B473E0B776E92FEEC6 /* ObsidianConnector.swift */; };
 		B5BF8BDA203E4FFDB514C8B1 /* MemoryService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9B1B5C4D9C6124E4C5FAC81C /* MemoryService.swift */; };
 		BB000021000000000000021 /* SoniqueBarApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB000020000000000000020 /* SoniqueBarApp.swift */; };
 		C0E46E5312385083CC6EF2F3 /* ConnectorRegistry.swift in Sources */ = {isa = PBXBuildFile; fileRef = 89DEBB87C22A05AAC4B97019 /* ConnectorRegistry.swift */; };
@@ -45,6 +47,7 @@
 		51CF32BB11AD3B053074E4B1 /* CommandServer.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = CommandServer.swift; path = SoniqueBar/Services/CommandServer.swift; sourceTree = "<group>"; };
 		52B477ED8413E4F7FC7A7216 /* TaskDispatcher.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = TaskDispatcher.swift; path = SoniqueBar/Services/TaskDispatcher.swift; sourceTree = "<group>"; };
 		5DEA084A43571FB8B79A50BC /* LabStatusService.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = LabStatusService.swift; path = SoniqueBar/Services/LabStatusService.swift; sourceTree = "<group>"; };
+		6DC809DFED18B22FE2E51451 /* GitHubConnector.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = GitHubConnector.swift; path = SoniqueBar/Connectors/GitHubConnector.swift; sourceTree = "<group>"; };
 		6FBD7A75A1EDDC8CA45A63F3 /* ConnectorProtocol.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ConnectorProtocol.swift; path = SoniqueBar/Core/Connectors/ConnectorProtocol.swift; sourceTree = "<group>"; };
 		89DEBB87C22A05AAC4B97019 /* ConnectorRegistry.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ConnectorRegistry.swift; path = SoniqueBar/Core/Connectors/ConnectorRegistry.swift; sourceTree = "<group>"; };
 		8DA1CC12F4BB2FB36F0223B6 /* ConnectorProtocol.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ConnectorProtocol.swift; path = SoniqueBar/Core/Connectors/ConnectorProtocol.swift; sourceTree = "<group>"; };
@@ -61,6 +64,7 @@
 		BB000014000000000000014 /* SoniqueBar.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = SoniqueBar.entitlements; sourceTree = SOURCE_ROOT; };
 		BB000016000000000000016 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; name = Info.plist; path = SoniqueBar/Resources/Info.plist; sourceTree = SOURCE_ROOT; };
 		BB000020000000000000020 /* SoniqueBarApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = SoniqueBarApp.swift; path = SoniqueBar/SoniqueBarApp.swift; sourceTree = SOURCE_ROOT; };
+		C62A32B473E0B776E92FEEC6 /* ObsidianConnector.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ObsidianConnector.swift; path = SoniqueBar/Connectors/ObsidianConnector.swift; sourceTree = "<group>"; };
 		C97BFF455FB039ADE8EBB91B /* BackgroundMonitor.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = BackgroundMonitor.swift; path = SoniqueBar/Services/BackgroundMonitor.swift; sourceTree = "<group>"; };
 		CCF42D09592DC1CC7485CAA4 /* ConnectorRegistry.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ConnectorRegistry.swift; path = SoniqueBar/Core/Connectors/ConnectorRegistry.swift; sourceTree = "<group>"; };
 		D324FE6B93757776E0B786A9 /* HelmsmanConnector.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = HelmsmanConnector.swift; sourceTree = "<group>"; };
@@ -127,6 +131,8 @@
 				0624918F9F9BB6FB1FB7015A /* HelmsmanConnector.swift */,
 				F218BBB4D9FB4B98B4D2C1FD /* DockerConnector.swift */,
 				2546B9FDE002C7FEB191DDBC /* SlackConnector.swift */,
+				6DC809DFED18B22FE2E51451 /* GitHubConnector.swift */,
+				C62A32B473E0B776E92FEEC6 /* ObsidianConnector.swift */,
 			);
 			sourceTree = "<group>";
 		};
@@ -282,6 +288,8 @@
 				E64A366A5F027A21690D16C5 /* HelmsmanConnector.swift in Sources */,
 				934379D9C88DBB5A7A979F18 /* DockerConnector.swift in Sources */,
 				F4AD0C12DFD5F3E9F00A2C5D /* SlackConnector.swift in Sources */,
+				7FE241B8C18BDB08145F7053 /* GitHubConnector.swift in Sources */,
+				AD189CAF4F1E2AA7B5E4A007 /* ObsidianConnector.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
