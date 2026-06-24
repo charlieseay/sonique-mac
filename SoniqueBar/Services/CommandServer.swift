@@ -658,6 +658,51 @@ class CommandServer: ObservableObject {
         return nil
     }
 
+    // MARK: - Connector Execution
+
+    /// Execute a connector capability
+    /// - Parameters:
+    ///   - capability: The capability name to execute
+    ///   - parameters: Parameters for the capability
+    /// - Returns: Human-readable result or error message
+    @MainActor
+    private func executeConnector(capability: String, parameters: [String: Any]) async -> String {
+        do {
+            let result = try await ConnectorRegistry.shared.execute(capability: capability, parameters: parameters)
+
+            if result.success {
+                return result.message
+            } else {
+                return "Error: \(result.message)"
+            }
+        } catch {
+            return "Failed to execute \(capability): \(error.localizedDescription)"
+        }
+    }
+
+    /// Get available connector capabilities for LLM prompt
+    @MainActor
+    private func getConnectorCapabilities() async -> String {
+        let capabilities = ConnectorRegistry.shared.allCapabilities
+
+        guard !capabilities.isEmpty else {
+            return "No connectors available"
+        }
+
+        var result = "# Available Connectors\n\n"
+        result += "When Charlie asks you to perform actions, you can use these capabilities:\n\n"
+
+        for capability in capabilities.prefix(20) { // Limit to avoid context bloat
+            if let connector = ConnectorRegistry.shared.findByCapability(capability).first {
+                result += "- **\(capability)**: \(connector.description)\n"
+            }
+        }
+
+        result += "\nTo use a capability, respond with: EXECUTE_CONNECTOR:<capability_name>:param1=value1,param2=value2\n"
+
+        return result
+    }
+
     private func handleConversation(_ text: String) async -> String {
         // DUPLICATE CHECK: Ignore identical requests within 5s window
         if text == self.lastProcessedText,
@@ -714,6 +759,9 @@ class CommandServer: ObservableObject {
         // Get context from memory
         let context = await MemoryService.shared.getContextForLLM()
 
+        // Get available connector capabilities
+        let connectorCapabilities = await getConnectorCapabilities()
+
         let fullPrompt = """
         You are Quinn, Charlie's voice assistant. You're speaking directly to him out loud.
 
@@ -734,6 +782,8 @@ class CommandServer: ObservableObject {
         - Charlie can say "think harder" or "use sonnet" to escalate
         - When you detect a problem you can't solve, acknowledge and suggest escalation
 
+        \(connectorCapabilities)
+
         # Examples of CORRECT responses
         User: "Dispatch tasks to make you better"
         BAD: "Done. All six capability tasks are now in Helmsman's queue."
@@ -750,6 +800,14 @@ class CommandServer: ObservableObject {
         User: "Why is the queue stuck?" (complex debugging)
         YOU (if on Haiku): "That's tricky. Want me to think harder on Sonnet?"
         YOU (if on Sonnet): "Let me trace the execution path... [diagnostic]"
+
+        User: "Restart the bridge container"
+        YOU: EXECUTE_CONNECTOR:restart_container:name=bridge
+        (Quinn will execute this and report outcome)
+
+        User: "Create a task to fix the login bug"
+        YOU: EXECUTE_CONNECTOR:create_task:task=Fix login bug,owner=CLAUDE,project=Hone,effort=medium
+        (Quinn will execute this and report outcome)
 
         # Charlie's Context
         \(context)
@@ -769,7 +827,45 @@ class CommandServer: ObservableObject {
             return "I encountered an error. \(result.stderr)"
         }
 
-        return result.stdout.trimmingCharacters(in: .whitespacesAndNewlines)
+        var response = result.stdout.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        // Parse for EXECUTE_CONNECTOR commands
+        if response.contains("EXECUTE_CONNECTOR:") {
+            let lines = response.components(separatedBy: "\n")
+
+            for line in lines {
+                if line.hasPrefix("EXECUTE_CONNECTOR:") {
+                    // Format: EXECUTE_CONNECTOR:capability:param1=value1,param2=value2
+                    let parts = line.dropFirst("EXECUTE_CONNECTOR:".count).components(separatedBy: ":")
+
+                    guard parts.count >= 2 else { continue }
+
+                    let capability = parts[0]
+                    let paramString = parts.count > 1 ? parts[1] : ""
+
+                    // Parse parameters
+                    var parameters: [String: Any] = [:]
+                    if !paramString.isEmpty {
+                        let paramPairs = paramString.components(separatedBy: ",")
+                        for pair in paramPairs {
+                            let kv = pair.components(separatedBy: "=")
+                            if kv.count == 2 {
+                                parameters[kv[0].trimmingCharacters(in: .whitespaces)] = kv[1].trimmingCharacters(in: .whitespaces)
+                            }
+                        }
+                    }
+
+                    // Execute the connector
+                    logger.info("🔌 Executing connector: \(capability) with params: \(parameters)")
+                    let connectorResult = await executeConnector(capability: capability, parameters: parameters)
+
+                    // Replace the EXECUTE_CONNECTOR line with the result
+                    response = response.replacingOccurrences(of: line, with: connectorResult)
+                }
+            }
+        }
+
+        return response.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
     /// Detect which Claude model to use based on user hints or complexity
