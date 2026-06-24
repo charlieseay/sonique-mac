@@ -95,6 +95,77 @@ class MemoryService: ObservableObject {
         logConversation(exchange)
     }
 
+    /// Search conversation history (simple grep-like search)
+    func searchConversations(_ query: String, limit: Int = 20) -> [Exchange] {
+        guard FileManager.default.fileExists(atPath: conversationsFile.path) else {
+            return []
+        }
+
+        do {
+            let content = try String(contentsOf: conversationsFile, encoding: .utf8)
+            let lines = content.components(separatedBy: "\n").filter { !$0.isEmpty }
+
+            let decoder = JSONDecoder()
+            decoder.dateDecodingStrategy = .iso8601
+
+            var results: [Exchange] = []
+            let lowerQuery = query.lowercased()
+
+            for line in lines.reversed() {  // Search most recent first
+                if let data = line.data(using: .utf8),
+                   let exchange = try? decoder.decode(Exchange.self, from: data) {
+                    if exchange.user.lowercased().contains(lowerQuery) ||
+                       exchange.assistant.lowercased().contains(lowerQuery) {
+                        results.append(exchange)
+                        if results.count >= limit {
+                            break
+                        }
+                    }
+                }
+            }
+
+            return results
+        } catch {
+            NSLog("[MemoryService] Failed to search conversations: \(error)")
+            return []
+        }
+    }
+
+    /// Get conversation statistics
+    func getStats() -> (total: Int, last24Hours: Int) {
+        guard FileManager.default.fileExists(atPath: conversationsFile.path) else {
+            return (0, 0)
+        }
+
+        do {
+            let content = try String(contentsOf: conversationsFile, encoding: .utf8)
+            let lines = content.components(separatedBy: "\n").filter { !$0.isEmpty }
+            let total = lines.count
+
+            let decoder = JSONDecoder()
+            decoder.dateDecodingStrategy = .iso8601
+
+            let yesterday = Date().addingTimeInterval(-24 * 3600)
+            var last24Hours = 0
+
+            for line in lines.reversed() {
+                if let data = line.data(using: .utf8),
+                   let exchange = try? decoder.decode(Exchange.self, from: data) {
+                    if exchange.timestamp >= yesterday {
+                        last24Hours += 1
+                    } else {
+                        break  // Older than 24h, stop counting
+                    }
+                }
+            }
+
+            return (total, last24Hours)
+        } catch {
+            NSLog("[MemoryService] Failed to get stats: \(error)")
+            return (0, 0)
+        }
+    }
+
     func getContextForLLM() -> String {
         // Read identity, rules, soul from iCloud (persistent across devices)
         let identity = (try? String(contentsOf: identityFile)) ?? "Quinn - Charlie's voice assistant"

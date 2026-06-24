@@ -882,6 +882,41 @@ class CommandServer: ObservableObject {
             }
         }
 
+        // MEMORY: Search conversation history
+        if lower.contains("search") && (lower.contains("conversation") || lower.contains("history")) {
+            logger.info("⚡ MEMORY: conversation search")
+            // Extract search query (after "search" or "for")
+            let searchQuery = text
+                .replacingOccurrences(of: "search conversations for ", with: "", options: .caseInsensitive)
+                .replacingOccurrences(of: "search conversation for ", with: "", options: .caseInsensitive)
+                .replacingOccurrences(of: "search history for ", with: "", options: .caseInsensitive)
+                .replacingOccurrences(of: "search for ", with: "", options: .caseInsensitive)
+                .trimmingCharacters(in: .whitespaces)
+
+            let results = MemoryService.shared.searchConversations(searchQuery, limit: 5)
+            if results.isEmpty {
+                return "I couldn't find any conversations about \(searchQuery)"
+            } else {
+                let formatter = DateFormatter()
+                formatter.dateStyle = .short
+                formatter.timeStyle = .short
+
+                let summaries = results.prefix(3).map { result in
+                    "\(formatter.string(from: result.timestamp)): \(result.user)"
+                }
+
+                return "Found \(results.count) conversations. Most recent: \(summaries.joined(separator: "; "))"
+            }
+        }
+
+        // MEMORY: Get conversation stats
+        if lower.contains("conversation stats") || lower.contains("memory stats") || lower == "stats" {
+            logger.info("⚡ MEMORY: conversation stats")
+            let stats = MemoryService.shared.getStats()
+
+            return "\(stats.total) total conversations. \(stats.last24Hours) in the last 24 hours."
+        }
+
         // Detect model escalation requests
         let modelPreference = detectModelPreference(text: lower)
         logger.info("🤖 Routing to ask_claude (model: \(modelPreference))")
