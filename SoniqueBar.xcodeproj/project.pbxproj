@@ -11,9 +11,11 @@
 		1881C1520BF67D21DF55C1A8 /* ClaudeProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3F0668D7EEC87E1153D21227 /* ClaudeProvider.swift */; };
 		1AD19CE1583BB6AB023E4600 /* OpenAIProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A6E578671058605A9C26596 /* OpenAIProvider.swift */; };
 		1F562FA7EE5941452A626D0C /* GeminiProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1948ADF6DE9AACE09BC5CD81 /* GeminiProvider.swift */; };
+		254F3561CB8267264B60031F /* WakeWordDetector.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2C4E5A282CDA1E14DBCBE807 /* WakeWordDetector.swift */; };
 		264D4EC11A3FA30C8325D74F /* NotificationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = ECA8B2979492C18577FCABCC /* NotificationService.swift */; };
 		3960D5DE91A3ED4AAD6FAA1F /* ElevenLabsProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3AC9F3F6AA46FC83CD719332 /* ElevenLabsProvider.swift */; };
 		3C756A0AC0647EBC6CE22FF8 /* ConnectorProtocol.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6FBD7A75A1EDDC8CA45A63F3 /* ConnectorProtocol.swift */; };
+		3ECE9D93FCBC39CFCE809F21 /* ProactiveAlerts.swift in Sources */ = {isa = PBXBuildFile; fileRef = 49FE74108402517A06BEA4F8 /* ProactiveAlerts.swift */; };
 		4452BDE94D82A0A5BC9414FE /* LabStatusService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5DEA084A43571FB8B79A50BC /* LabStatusService.swift */; };
 		45BB0297913A6EB0BBBBDA94 /* SystemVoiceProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1BE7105B9692C7F55E5CCDEB /* SystemVoiceProvider.swift */; };
 		4B102F62A9EF98A44E5C888D /* InitializationScript.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2DB66C2D5C439B8291EE9E14 /* InitializationScript.swift */; };
@@ -52,12 +54,14 @@
 		2546B9FDE002C7FEB191DDBC /* SlackConnector.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = SlackConnector.swift; path = SoniqueBar/Connectors/SlackConnector.swift; sourceTree = "<group>"; };
 		26D43EF2F4A2C018D3C6F37E /* SoniqueBrain.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = SoniqueBrain.swift; path = SoniqueBar/Services/SoniqueBrain.swift; sourceTree = "<group>"; };
 		2ACBDD8A5604501BBD52BD97 /* ScreenAwarenessService.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ScreenAwarenessService.swift; path = SoniqueBar/Services/ScreenAwarenessService.swift; sourceTree = "<group>"; };
+		2C4E5A282CDA1E14DBCBE807 /* WakeWordDetector.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = WakeWordDetector.swift; path = SoniqueBar/Core/WakeWord/WakeWordDetector.swift; sourceTree = "<group>"; };
 		2DB66C2D5C439B8291EE9E14 /* InitializationScript.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SoniqueBar/Services/InitializationScript.swift; sourceTree = "<group>"; };
 		3AC9F3F6AA46FC83CD719332 /* ElevenLabsProvider.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ElevenLabsProvider.swift; path = SoniqueBar/Core/Voice/ElevenLabsProvider.swift; sourceTree = "<group>"; };
 		3F0668D7EEC87E1153D21227 /* ClaudeProvider.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ClaudeProvider.swift; path = SoniqueBar/Core/LLM/ClaudeProvider.swift; sourceTree = "<group>"; };
 		4269F3E96A76428E89931AE7 /* LLMProvider.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = LLMProvider.swift; path = SoniqueBar/Core/LLM/LLMProvider.swift; sourceTree = "<group>"; };
 		48B8F20B305375C0346D76A6 /* ConnectorRegistry.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ConnectorRegistry.swift; sourceTree = "<group>"; };
 		494F35B4BE46B07DF2067516 /* VoiceProvider.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = VoiceProvider.swift; path = SoniqueBar/Core/Voice/VoiceProvider.swift; sourceTree = "<group>"; };
+		49FE74108402517A06BEA4F8 /* ProactiveAlerts.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ProactiveAlerts.swift; path = SoniqueBar/Services/ProactiveAlerts.swift; sourceTree = "<group>"; };
 		51CF32BB11AD3B053074E4B1 /* CommandServer.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = CommandServer.swift; path = SoniqueBar/Services/CommandServer.swift; sourceTree = "<group>"; };
 		52B477ED8413E4F7FC7A7216 /* TaskDispatcher.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = TaskDispatcher.swift; path = SoniqueBar/Services/TaskDispatcher.swift; sourceTree = "<group>"; };
 		5DEA084A43571FB8B79A50BC /* LabStatusService.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = LabStatusService.swift; path = SoniqueBar/Services/LabStatusService.swift; sourceTree = "<group>"; };
@@ -160,6 +164,8 @@
 				3AC9F3F6AA46FC83CD719332 /* ElevenLabsProvider.swift */,
 				AF3EC8D7EB97D157480347FC /* OpenAITTSProvider.swift */,
 				1BE7105B9692C7F55E5CCDEB /* SystemVoiceProvider.swift */,
+				2C4E5A282CDA1E14DBCBE807 /* WakeWordDetector.swift */,
+				49FE74108402517A06BEA4F8 /* ProactiveAlerts.swift */,
 			);
 			sourceTree = "<group>";
 		};
@@ -326,6 +332,8 @@
 				3960D5DE91A3ED4AAD6FAA1F /* ElevenLabsProvider.swift in Sources */,
 				699F52246E25BD3960DF4B5F /* OpenAITTSProvider.swift in Sources */,
 				45BB0297913A6EB0BBBBDA94 /* SystemVoiceProvider.swift in Sources */,
+				254F3561CB8267264B60031F /* WakeWordDetector.swift in Sources */,
+				3ECE9D93FCBC39CFCE809F21 /* ProactiveAlerts.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
