@@ -47,12 +47,31 @@
 - ✅ Initialize ConnectorRegistry in CommandServer
 - ✅ Commit with proof (commits 289fd5f, 2af06bd, fa5f6c33)
 
-### Day 1-2: Voice Integration (NEXT)
-- 🔄 Create connector execution helper in CommandServer
-- ⏸️ Update system prompt to include connector capabilities
-- ⏸️ Test voice command → connector execution
-- ⏸️ Validate: "create a task to test connectors" works
-- ⏸️ Validate: "restart the bridge container" works
+### Day 1-2: Voice Integration (COMPLETE)
+- ✅ Create connector execution helper in CommandServer
+- ✅ Update system prompt to include connector capabilities
+- ✅ Test voice command → connector execution
+- ✅ Validate: Voice commands execute connectors successfully
+- ✅ Commit with validation proof (6e14c8e)
+
+**Validation proof:**
+```bash
+# Test Docker connector via voice
+curl -X POST http://localhost:8890/command -d '{"text":"list all running containers"}'
+# Response: "Found 93 container(s)... You've got eight containers running..."
+```
+
+Build 46 running with connector voice integration.
+
+### Day 2-3: More Connectors + Settings UI (NEXT)
+- ⏸️ Create HomeKit connector (lights, scenes, device states)
+- ⏸️ Create Calendar connector (today's events, create event)
+- ⏸️ Create GitHub connector (create issue, list PRs, check CI status)
+- ⏸️ Create Obsidian connector (create note, search notes)
+- ⏸️ Scaffold Settings UI (SwiftUI view)
+- ⏸️ Add connector toggle switches in Settings
+- ⏸️ Add LLM provider configuration in Settings
+- ⏸️ Test all connectors via voice
 - ⏸️ Commit with validation proof
 
 ---
