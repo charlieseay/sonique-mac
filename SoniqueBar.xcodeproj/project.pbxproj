@@ -16,6 +16,7 @@
 		254F3561CB8267264B60031F /* WakeWordDetector.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2C4E5A282CDA1E14DBCBE807 /* WakeWordDetector.swift */; };
 		264D4EC11A3FA30C8325D74F /* NotificationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = ECA8B2979492C18577FCABCC /* NotificationService.swift */; };
 		3960D5DE91A3ED4AAD6FAA1F /* ElevenLabsProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3AC9F3F6AA46FC83CD719332 /* ElevenLabsProvider.swift */; };
+		3A121A1AADE60097A524D566 /* ScreenAnalyzer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0124CD7F67920420B794B684 /* ScreenAnalyzer.swift */; };
 		3C756A0AC0647EBC6CE22FF8 /* ConnectorProtocol.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6FBD7A75A1EDDC8CA45A63F3 /* ConnectorProtocol.swift */; };
 		4452BDE94D82A0A5BC9414FE /* LabStatusService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5DEA084A43571FB8B79A50BC /* LabStatusService.swift */; };
 		45BB0297913A6EB0BBBBDA94 /* SystemVoiceProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1BE7105B9692C7F55E5CCDEB /* SystemVoiceProvider.swift */; };
@@ -50,6 +51,7 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		0124CD7F67920420B794B684 /* ScreenAnalyzer.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ScreenAnalyzer.swift; path = SoniqueBar/Services/ScreenAnalyzer.swift; sourceTree = "<group>"; };
 		0624918F9F9BB6FB1FB7015A /* HelmsmanConnector.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = HelmsmanConnector.swift; path = SoniqueBar/Connectors/HelmsmanConnector.swift; sourceTree = "<group>"; };
 		14DD10989B88085D88EAECBC /* DiagnosticAgent.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = DiagnosticAgent.swift; path = SoniqueBar/Services/DiagnosticAgent.swift; sourceTree = "<group>"; };
 		1948ADF6DE9AACE09BC5CD81 /* GeminiProvider.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = GeminiProvider.swift; path = SoniqueBar/Core/LLM/GeminiProvider.swift; sourceTree = "<group>"; };
@@ -175,6 +177,7 @@
 				34A76740C69763DBF3F46633 /* TaskDecomposer.swift */,
 				F642E9115684301FB74E47CC /* PredictiveNotifications.swift */,
 				F29D445D763F2FF764C645F4 /* ProactiveBriefing.swift */,
+				0124CD7F67920420B794B684 /* ScreenAnalyzer.swift */,
 			);
 			sourceTree = "<group>";
 		};
@@ -346,6 +349,7 @@
 				A2B52ED24306EC5B16325745 /* TaskDecomposer.swift in Sources */,
 				001CEE6BB8326459FF73D437 /* PredictiveNotifications.swift in Sources */,
 				5DC3D2FFABFCAD03F51408E1 /* ProactiveBriefing.swift in Sources */,
+				3A121A1AADE60097A524D566 /* ScreenAnalyzer.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -386,7 +390,7 @@
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 51;
+				CURRENT_PROJECT_VERSION = 52;
 				DEVELOPMENT_TEAM = 7NSS5CJL9E;
 				ENABLE_HARDENED_RUNTIME = YES;
 				INFOPLIST_FILE = SoniqueBar/Resources/Info.plist;
@@ -411,7 +415,7 @@
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 51;
+				CURRENT_PROJECT_VERSION = 52;
 				DEVELOPMENT_TEAM = 7NSS5CJL9E;
 				ENABLE_HARDENED_RUNTIME = YES;
 				INFOPLIST_FILE = SoniqueBar/Resources/Info.plist;

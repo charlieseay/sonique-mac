@@ -764,6 +764,31 @@ class CommandServer: ObservableObject {
             return await ProactiveBriefing.shared.generateMorningBriefing()
         }
 
+        // Screenshot analysis
+        if lower.contains("what's on my screen") || lower.contains("analyze my screen") ||
+           lower.contains("what's this error") || lower.contains("screenshot") {
+            logger.info("⚡ VISION: screen analysis")
+            do {
+                let query = lower.contains("error") ? "Identify any errors or issues on this screen and suggest fixes" : nil
+                let analysis = try await ScreenAnalyzer.shared.analyzeScreen(query: query)
+                return analysis
+            } catch {
+                return "I couldn't capture or analyze the screen: \(error.localizedDescription)"
+            }
+        }
+
+        // OCR / Read text
+        if lower.contains("read my screen") || lower.contains("what does it say") || lower == "read this" {
+            logger.info("⚡ OCR: text extraction")
+            do {
+                _ = try await ScreenAnalyzer.shared.captureScreen()
+                let text = try await ScreenAnalyzer.shared.extractText()
+                return text.isEmpty ? "I don't see any text on the screen" : text
+            } catch {
+                return "I couldn't read the screen: \(error.localizedDescription)"
+            }
+        }
+
         // Detect model escalation requests
         let modelPreference = detectModelPreference(text: lower)
         logger.info("🤖 Routing to ask_claude (model: \(modelPreference))")
