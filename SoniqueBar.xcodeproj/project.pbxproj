@@ -8,11 +8,14 @@
 
 /* Begin PBXBuildFile section */
 		18385BA84319B52A11443D04 /* SoniqueBrain.swift in Sources */ = {isa = PBXBuildFile; fileRef = 26D43EF2F4A2C018D3C6F37E /* SoniqueBrain.swift */; };
+		1881C1520BF67D21DF55C1A8 /* ClaudeProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3F0668D7EEC87E1153D21227 /* ClaudeProvider.swift */; };
+		1AD19CE1583BB6AB023E4600 /* OpenAIProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A6E578671058605A9C26596 /* OpenAIProvider.swift */; };
+		1F562FA7EE5941452A626D0C /* GeminiProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1948ADF6DE9AACE09BC5CD81 /* GeminiProvider.swift */; };
 		264D4EC11A3FA30C8325D74F /* NotificationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = ECA8B2979492C18577FCABCC /* NotificationService.swift */; };
 		3C756A0AC0647EBC6CE22FF8 /* ConnectorProtocol.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6FBD7A75A1EDDC8CA45A63F3 /* ConnectorProtocol.swift */; };
 		4452BDE94D82A0A5BC9414FE /* LabStatusService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5DEA084A43571FB8B79A50BC /* LabStatusService.swift */; };
 		4B102F62A9EF98A44E5C888D /* InitializationScript.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2DB66C2D5C439B8291EE9E14 /* InitializationScript.swift */; };
-		5D74C487B6096180373CD53E /* LLMRouter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 42C35C4C02529432A228AC2D /* LLMRouter.swift */; };
+		7B5E48A3F8B4D03F45B17BE0 /* LLMProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4269F3E96A76428E89931AE7 /* LLMProvider.swift */; };
 		7FE241B8C18BDB08145F7053 /* GitHubConnector.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DC809DFED18B22FE2E51451 /* GitHubConnector.swift */; };
 		90A3B6BD6E6661D7507E0A5B /* NativeIntents.swift in Sources */ = {isa = PBXBuildFile; fileRef = D7637D7CD68FFECE2DA6FAD6 /* NativeIntents.swift */; };
 		934379D9C88DBB5A7A979F18 /* DockerConnector.swift in Sources */ = {isa = PBXBuildFile; fileRef = F218BBB4D9FB4B98B4D2C1FD /* DockerConnector.swift */; };
@@ -31,6 +34,7 @@
 		F207771755EE5599B4947268 /* MCPProxyClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = B140E9A1CA635B15165A0C02 /* MCPProxyClient.swift */; };
 		F4AD0C12DFD5F3E9F00A2C5D /* SlackConnector.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2546B9FDE002C7FEB191DDBC /* SlackConnector.swift */; };
 		F5FE4AE5BCE56A7CEF27C4A8 /* DiagnosticAgent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 14DD10989B88085D88EAECBC /* DiagnosticAgent.swift */; };
+		F845AB412F437944A72BFE21 /* NVIDIAProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 62EDE6B3A6B2D265A95368B2 /* NVIDIAProvider.swift */; };
 		FA925571F17B6BA9C9106F30 /* CommandServer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 51CF32BB11AD3B053074E4B1 /* CommandServer.swift */; };
 		FB4A785BC5C0C1732655A2E1 /* TaskDispatcher.swift in Sources */ = {isa = PBXBuildFile; fileRef = 52B477ED8413E4F7FC7A7216 /* TaskDispatcher.swift */; };
 		FDEB1550A3C56FEC61801B17 /* BackgroundMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = C97BFF455FB039ADE8EBB91B /* BackgroundMonitor.swift */; };
@@ -39,19 +43,23 @@
 /* Begin PBXFileReference section */
 		0624918F9F9BB6FB1FB7015A /* HelmsmanConnector.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = HelmsmanConnector.swift; path = SoniqueBar/Connectors/HelmsmanConnector.swift; sourceTree = "<group>"; };
 		14DD10989B88085D88EAECBC /* DiagnosticAgent.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = DiagnosticAgent.swift; path = SoniqueBar/Services/DiagnosticAgent.swift; sourceTree = "<group>"; };
+		1948ADF6DE9AACE09BC5CD81 /* GeminiProvider.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = GeminiProvider.swift; path = SoniqueBar/Core/LLM/GeminiProvider.swift; sourceTree = "<group>"; };
 		2546B9FDE002C7FEB191DDBC /* SlackConnector.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = SlackConnector.swift; path = SoniqueBar/Connectors/SlackConnector.swift; sourceTree = "<group>"; };
 		26D43EF2F4A2C018D3C6F37E /* SoniqueBrain.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = SoniqueBrain.swift; path = SoniqueBar/Services/SoniqueBrain.swift; sourceTree = "<group>"; };
 		2ACBDD8A5604501BBD52BD97 /* ScreenAwarenessService.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ScreenAwarenessService.swift; path = SoniqueBar/Services/ScreenAwarenessService.swift; sourceTree = "<group>"; };
 		2DB66C2D5C439B8291EE9E14 /* InitializationScript.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SoniqueBar/Services/InitializationScript.swift; sourceTree = "<group>"; };
-		42C35C4C02529432A228AC2D /* LLMRouter.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = LLMRouter.swift; path = SoniqueBar/Services/LLMRouter.swift; sourceTree = "<group>"; };
+		3F0668D7EEC87E1153D21227 /* ClaudeProvider.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ClaudeProvider.swift; path = SoniqueBar/Core/LLM/ClaudeProvider.swift; sourceTree = "<group>"; };
+		4269F3E96A76428E89931AE7 /* LLMProvider.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = LLMProvider.swift; path = SoniqueBar/Core/LLM/LLMProvider.swift; sourceTree = "<group>"; };
 		48B8F20B305375C0346D76A6 /* ConnectorRegistry.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ConnectorRegistry.swift; sourceTree = "<group>"; };
 		51CF32BB11AD3B053074E4B1 /* CommandServer.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = CommandServer.swift; path = SoniqueBar/Services/CommandServer.swift; sourceTree = "<group>"; };
 		52B477ED8413E4F7FC7A7216 /* TaskDispatcher.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = TaskDispatcher.swift; path = SoniqueBar/Services/TaskDispatcher.swift; sourceTree = "<group>"; };
 		5DEA084A43571FB8B79A50BC /* LabStatusService.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = LabStatusService.swift; path = SoniqueBar/Services/LabStatusService.swift; sourceTree = "<group>"; };
+		62EDE6B3A6B2D265A95368B2 /* NVIDIAProvider.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = NVIDIAProvider.swift; path = SoniqueBar/Core/LLM/NVIDIAProvider.swift; sourceTree = "<group>"; };
 		6A89362065A58C0E0D76DAC7 /* SettingsView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = SettingsView.swift; path = SoniqueBar/Views/SettingsView.swift; sourceTree = "<group>"; };
 		6DC809DFED18B22FE2E51451 /* GitHubConnector.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = GitHubConnector.swift; path = SoniqueBar/Connectors/GitHubConnector.swift; sourceTree = "<group>"; };
 		6FBD7A75A1EDDC8CA45A63F3 /* ConnectorProtocol.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ConnectorProtocol.swift; path = SoniqueBar/Core/Connectors/ConnectorProtocol.swift; sourceTree = "<group>"; };
 		89DEBB87C22A05AAC4B97019 /* ConnectorRegistry.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ConnectorRegistry.swift; path = SoniqueBar/Core/Connectors/ConnectorRegistry.swift; sourceTree = "<group>"; };
+		8A6E578671058605A9C26596 /* OpenAIProvider.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = OpenAIProvider.swift; path = SoniqueBar/Core/LLM/OpenAIProvider.swift; sourceTree = "<group>"; };
 		8DA1CC12F4BB2FB36F0223B6 /* ConnectorProtocol.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ConnectorProtocol.swift; path = SoniqueBar/Core/Connectors/ConnectorProtocol.swift; sourceTree = "<group>"; };
 		9B1B5C4D9C6124E4C5FAC81C /* MemoryService.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = MemoryService.swift; path = SoniqueBar/Services/MemoryService.swift; sourceTree = "<group>"; };
 		9BBEED7B61800AF727DEF5F3 /* IntentRouter.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = IntentRouter.swift; path = SoniqueBar/Services/IntentRouter.swift; sourceTree = "<group>"; };
@@ -123,7 +131,6 @@
 				5DEA084A43571FB8B79A50BC /* LabStatusService.swift */,
 				2ACBDD8A5604501BBD52BD97 /* ScreenAwarenessService.swift */,
 				9BBEED7B61800AF727DEF5F3 /* IntentRouter.swift */,
-				42C35C4C02529432A228AC2D /* LLMRouter.swift */,
 				ECA8B2979492C18577FCABCC /* NotificationService.swift */,
 				52B477ED8413E4F7FC7A7216 /* TaskDispatcher.swift */,
 				BA21E3093DCCF2B341C15CE1 /* LiveScreenCapture.swift */,
@@ -136,6 +143,11 @@
 				6DC809DFED18B22FE2E51451 /* GitHubConnector.swift */,
 				C62A32B473E0B776E92FEEC6 /* ObsidianConnector.swift */,
 				6A89362065A58C0E0D76DAC7 /* SettingsView.swift */,
+				4269F3E96A76428E89931AE7 /* LLMProvider.swift */,
+				3F0668D7EEC87E1153D21227 /* ClaudeProvider.swift */,
+				1948ADF6DE9AACE09BC5CD81 /* GeminiProvider.swift */,
+				8A6E578671058605A9C26596 /* OpenAIProvider.swift */,
+				62EDE6B3A6B2D265A95368B2 /* NVIDIAProvider.swift */,
 			);
 			sourceTree = "<group>";
 		};
@@ -278,7 +290,6 @@
 				4452BDE94D82A0A5BC9414FE /* LabStatusService.swift in Sources */,
 				C41FF06215983DCC2D727191 /* ScreenAwarenessService.swift in Sources */,
 				AC34493CF86AEF0058644556 /* IntentRouter.swift in Sources */,
-				5D74C487B6096180373CD53E /* LLMRouter.swift in Sources */,
 				264D4EC11A3FA30C8325D74F /* NotificationService.swift in Sources */,
 				FB4A785BC5C0C1732655A2E1 /* TaskDispatcher.swift in Sources */,
 				C308D4E93103213839A27FFD /* LiveScreenCapture.swift in Sources */,
@@ -294,6 +305,11 @@
 				7FE241B8C18BDB08145F7053 /* GitHubConnector.swift in Sources */,
 				AD189CAF4F1E2AA7B5E4A007 /* ObsidianConnector.swift in Sources */,
 				D08B685E7C01CC54EF7EC64E /* SettingsView.swift in Sources */,
+				7B5E48A3F8B4D03F45B17BE0 /* LLMProvider.swift in Sources */,
+				1881C1520BF67D21DF55C1A8 /* ClaudeProvider.swift in Sources */,
+				1F562FA7EE5941452A626D0C /* GeminiProvider.swift in Sources */,
+				1AD19CE1583BB6AB023E4600 /* OpenAIProvider.swift in Sources */,
+				F845AB412F437944A72BFE21 /* NVIDIAProvider.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -334,7 +350,7 @@
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 47;
+				CURRENT_PROJECT_VERSION = 48;
 				DEVELOPMENT_TEAM = 7NSS5CJL9E;
 				ENABLE_HARDENED_RUNTIME = YES;
 				INFOPLIST_FILE = SoniqueBar/Resources/Info.plist;
@@ -359,7 +375,7 @@
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 47;
+				CURRENT_PROJECT_VERSION = 48;
 				DEVELOPMENT_TEAM = 7NSS5CJL9E;
 				ENABLE_HARDENED_RUNTIME = YES;
 				INFOPLIST_FILE = SoniqueBar/Resources/Info.plist;
