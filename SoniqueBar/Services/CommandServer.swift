@@ -917,6 +917,64 @@ class CommandServer: ObservableObject {
             return "\(stats.total) total conversations. \(stats.last24Hours) in the last 24 hours."
         }
 
+        // CODE: Analyze visible code
+        if lower.contains("analyze this code") || lower.contains("what does this code do") || lower.contains("explain this code") {
+            logger.info("⚡ CODE: analyze visible")
+            return await CodeAnalyzer.shared.analyzeVisibleCode()
+        }
+
+        // CODE: Find symbol definition
+        if lower.contains("find") && (lower.contains("definition") || lower.contains("declaration")) {
+            logger.info("⚡ CODE: find symbol")
+            // Extract symbol name (after "find" and before "definition"/"declaration")
+            let symbol = text
+                .replacingOccurrences(of: "find definition of ", with: "", options: .caseInsensitive)
+                .replacingOccurrences(of: "find declaration of ", with: "", options: .caseInsensitive)
+                .replacingOccurrences(of: "find ", with: "", options: .caseInsensitive)
+                .replacingOccurrences(of: " definition", with: "", options: .caseInsensitive)
+                .replacingOccurrences(of: " declaration", with: "", options: .caseInsensitive)
+                .trimmingCharacters(in: .whitespaces)
+
+            return await CodeAnalyzer.shared.findSymbol(symbol)
+        }
+
+        // CODE: Find symbol usages
+        if lower.contains("where is") && lower.contains("used") {
+            logger.info("⚡ CODE: find usages")
+            // Extract symbol name
+            let symbol = text
+                .replacingOccurrences(of: "where is ", with: "", options: .caseInsensitive)
+                .replacingOccurrences(of: " used", with: "", options: .caseInsensitive)
+                .trimmingCharacters(in: .whitespaces)
+
+            return await CodeAnalyzer.shared.findUsages(symbol)
+        }
+
+        // GIT: Review uncommitted changes
+        if lower.contains("review my changes") || lower.contains("review diff") || lower.contains("check my code") {
+            logger.info("⚡ GIT: review diff")
+            return await CodeAnalyzer.shared.reviewDiff()
+        }
+
+        // GIT: Get current branch
+        if lower.contains("what branch") || lower.contains("current branch") {
+            logger.info("⚡ GIT: current branch")
+            let branch = await CodeAnalyzer.shared.getCurrentBranch()
+            return "You're on branch \(branch)"
+        }
+
+        // GIT: Get uncommitted changes
+        if lower.contains("uncommitted changes") || lower.contains("what changed") {
+            logger.info("⚡ GIT: uncommitted changes")
+            return await CodeAnalyzer.shared.getUncommittedChanges()
+        }
+
+        // GIT: Recent commits
+        if lower.contains("recent commits") || lower.contains("last commits") {
+            logger.info("⚡ GIT: recent commits")
+            return await CodeAnalyzer.shared.getRecentCommits()
+        }
+
         // Detect model escalation requests
         let modelPreference = detectModelPreference(text: lower)
         logger.info("🤖 Routing to ask_claude (model: \(modelPreference))")
