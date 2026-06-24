@@ -190,14 +190,24 @@ class ConnectorRegistry: ObservableObject {
 
     /// Register all built-in connectors
     private func registerBuiltInConnectors() async {
-        // Built-in connectors will be registered here as we create them
-        // Example:
-        // register(HelmsmanConnector())
+        // Task Management
+        register(HelmsmanConnector())
+
+        // TODO: Add more built-in connectors as they're implemented
+        // Development
         // register(DockerConnector())
+        // register(GitHubConnector())
+
+        // Communication
         // register(SlackConnector())
+
+        // Home Automation
         // register(HomeKitConnector())
 
-        print("[ConnectorRegistry] Built-in connectors registered")
+        // Knowledge
+        // register(ObsidianConnector())
+
+        print("[ConnectorRegistry] Built-in connectors registered: \(connectors.count) total")
     }
 }
 
