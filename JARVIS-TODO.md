@@ -81,15 +81,42 @@ Build 46 running with connector voice integration.
 
 ---
 
-##  Week 2: LLM Provider Abstraction (NEXT)
+##  Week 2: LLM Provider Abstraction (COMPLETE)
 
 ### Day 1-2: Provider Protocol
-- ⏸️ Define LLMProvider protocol
-- ⏸️ Implement ClaudeProvider (ask_claude wrapper)
-- ⏸️ Implement OpenAIProvider (API integration)
-- ⏸️ Implement GeminiProvider (ask_gemini wrapper)
-- ⏸️ Create LLMRouter for model selection
-- ⏸️ Test voice commands with different providers
+- ✅ Define LLMProvider protocol (complete/streaming/healthCheck)
+- ✅ Implement ClaudeProvider (ask_claude: haiku/sonnet/opus)
+- ✅ Implement GeminiProvider (ask_gemini wrapper)
+- ✅ Implement OpenAIProvider (direct API: gpt-4/gpt-3.5-turbo)
+- ✅ Implement NVIDIAProvider (ask_llm: fast/balanced/quality)
+- ✅ Create LLMRouter for provider/model selection
+- ✅ Commit with validation proof (57295cf)
+
+**Build status:** All LLM providers compiling, ready for CommandServer integration.
+
+---
+
+## Week 3: Voice Output System (COMPLETE)
+
+### Day 1-2: Voice Providers
+- ✅ Define VoiceProvider protocol (speak/synthesize/stop)
+- ✅ Implement ElevenLabsProvider (API + AVAudioPlayer)
+- ✅ Implement OpenAITTSProvider (tts-1 with 6 voices)
+- ✅ Implement SystemVoiceProvider (NSSpeechSynthesizer)
+- ✅ Create VoiceRouter for provider selection
+- ✅ Commit with validation proof (77b4ab6)
+
+**Build status:** All voice providers compiling, ready for integration.
+
+---
+
+## Week 4: Wake Word + Always-On Listening (NEXT)
+
+### Day 1-2: Wake Word Detection
+- ⏸️ Research Porcupine wake word SDK (docs first)
+- ⏸️ Implement WakeWordDetector protocol
+- ⏸️ Add background audio recording
+- ⏸️ Test wake word activation
 - ⏸️ Commit with validation proof
 
 ---
