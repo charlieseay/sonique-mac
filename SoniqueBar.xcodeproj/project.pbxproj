@@ -43,6 +43,7 @@
 		E625C58534BCF80D0998318D /* PatternClassifier.swift in Sources */ = {isa = PBXBuildFile; fileRef = B53B7712B53EF849A8C15EB8 /* PatternClassifier.swift */; };
 		E64A366A5F027A21690D16C5 /* HelmsmanConnector.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0624918F9F9BB6FB1FB7015A /* HelmsmanConnector.swift */; };
 		F207771755EE5599B4947268 /* MCPProxyClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = B140E9A1CA635B15165A0C02 /* MCPProxyClient.swift */; };
+		F44AB9BAABB229C347FBB494 /* HelmsmanIntegration.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8BF434BFE91102DB98427FD3 /* HelmsmanIntegration.swift */; };
 		F4AD0C12DFD5F3E9F00A2C5D /* SlackConnector.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2546B9FDE002C7FEB191DDBC /* SlackConnector.swift */; };
 		F5FE4AE5BCE56A7CEF27C4A8 /* DiagnosticAgent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 14DD10989B88085D88EAECBC /* DiagnosticAgent.swift */; };
 		F845AB412F437944A72BFE21 /* NVIDIAProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 62EDE6B3A6B2D265A95368B2 /* NVIDIAProvider.swift */; };
@@ -79,6 +80,7 @@
 		6FBD7A75A1EDDC8CA45A63F3 /* ConnectorProtocol.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ConnectorProtocol.swift; path = SoniqueBar/Core/Connectors/ConnectorProtocol.swift; sourceTree = "<group>"; };
 		89DEBB87C22A05AAC4B97019 /* ConnectorRegistry.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ConnectorRegistry.swift; path = SoniqueBar/Core/Connectors/ConnectorRegistry.swift; sourceTree = "<group>"; };
 		8A6E578671058605A9C26596 /* OpenAIProvider.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = OpenAIProvider.swift; path = SoniqueBar/Core/LLM/OpenAIProvider.swift; sourceTree = "<group>"; };
+		8BF434BFE91102DB98427FD3 /* HelmsmanIntegration.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = HelmsmanIntegration.swift; path = SoniqueBar/Services/HelmsmanIntegration.swift; sourceTree = "<group>"; };
 		8DA1CC12F4BB2FB36F0223B6 /* ConnectorProtocol.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ConnectorProtocol.swift; path = SoniqueBar/Core/Connectors/ConnectorProtocol.swift; sourceTree = "<group>"; };
 		9B1B5C4D9C6124E4C5FAC81C /* MemoryService.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = MemoryService.swift; path = SoniqueBar/Services/MemoryService.swift; sourceTree = "<group>"; };
 		9BBEED7B61800AF727DEF5F3 /* IntentRouter.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = IntentRouter.swift; path = SoniqueBar/Services/IntentRouter.swift; sourceTree = "<group>"; };
@@ -219,6 +221,7 @@
 				2DB66C2D5C439B8291EE9E14 /* InitializationScript.swift */,
 				B50DEF87220176D8383DABAB /* VaultReader.swift */,
 				B140E9A1CA635B15165A0C02 /* MCPProxyClient.swift */,
+				8BF434BFE91102DB98427FD3 /* HelmsmanIntegration.swift */,
 			);
 			name = Services;
 			sourceTree = "<group>";
@@ -354,6 +357,7 @@
 				5DC3D2FFABFCAD03F51408E1 /* ProactiveBriefing.swift in Sources */,
 				3A121A1AADE60097A524D566 /* ScreenAnalyzer.swift in Sources */,
 				D0B7D3F118FF0142505C9C15 /* QuickCommands.swift in Sources */,
+				F44AB9BAABB229C347FBB494 /* HelmsmanIntegration.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -394,7 +398,7 @@
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 53;
+				CURRENT_PROJECT_VERSION = 54;
 				DEVELOPMENT_TEAM = 7NSS5CJL9E;
 				ENABLE_HARDENED_RUNTIME = YES;
 				INFOPLIST_FILE = SoniqueBar/Resources/Info.plist;
@@ -419,7 +423,7 @@
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 53;
+				CURRENT_PROJECT_VERSION = 54;
 				DEVELOPMENT_TEAM = 7NSS5CJL9E;
 				ENABLE_HARDENED_RUNTIME = YES;
 				INFOPLIST_FILE = SoniqueBar/Resources/Info.plist;

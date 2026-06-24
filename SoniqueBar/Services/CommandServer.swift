@@ -818,6 +818,70 @@ class CommandServer: ObservableObject {
             return await QuickCommands.shared.quickStatus()
         }
 
+        // HELMSMAN INTEGRATION: Task queries
+        if lower.contains("how many tasks") || lower.contains("pending tasks") || lower.contains("task status") {
+            logger.info("⚡ HELMSMAN: task status")
+            do {
+                return try await HelmsmanIntegration.shared.getTaskStatusSummary()
+            } catch {
+                return "I couldn't reach Helmsman: \(error.localizedDescription)"
+            }
+        }
+
+        // HELMSMAN INTEGRATION: Create task via voice
+        if lower.contains("create task") || lower.contains("add task") || lower.contains("new task") {
+            logger.info("⚡ HELMSMAN: create task")
+            // Extract task description (after "create task" or similar)
+            let taskDescription = text
+                .replacingOccurrences(of: "create task ", with: "", options: .caseInsensitive)
+                .replacingOccurrences(of: "add task ", with: "", options: .caseInsensitive)
+                .replacingOccurrences(of: "new task ", with: "", options: .caseInsensitive)
+                .replacingOccurrences(of: "to ", with: "", options: .caseInsensitive)
+                .trimmingCharacters(in: .whitespaces)
+
+            do {
+                let result = try await HelmsmanIntegration.shared.dispatchTask(description: taskDescription)
+                // Return user-friendly response, not task numbers
+                return "Task created and dispatched"
+            } catch {
+                return "I couldn't create that task: \(error.localizedDescription)"
+            }
+        }
+
+        // HELMSMAN INTEGRATION: Mark task complete
+        if lower.contains("mark complete") || lower.contains("task done") || lower.contains("completed task") {
+            logger.info("⚡ HELMSMAN: mark complete")
+            // Extract task description
+            let taskDescription = text
+                .replacingOccurrences(of: "mark complete ", with: "", options: .caseInsensitive)
+                .replacingOccurrences(of: "task done ", with: "", options: .caseInsensitive)
+                .replacingOccurrences(of: "completed task ", with: "", options: .caseInsensitive)
+                .replacingOccurrences(of: "mark ", with: "", options: .caseInsensitive)
+                .replacingOccurrences(of: " complete", with: "", options: .caseInsensitive)
+                .replacingOccurrences(of: " done", with: "", options: .caseInsensitive)
+                .trimmingCharacters(in: .whitespaces)
+
+            do {
+                return try await HelmsmanIntegration.shared.completeTaskByDescription(taskDescription)
+            } catch {
+                return "I couldn't find that task: \(error.localizedDescription)"
+            }
+        }
+
+        // HELMSMAN INTEGRATION: Next task suggestion
+        if lower.contains("what should i work on") || lower.contains("next task") || lower.contains("what's next") {
+            logger.info("⚡ HELMSMAN: next task")
+            do {
+                if let suggestion = try await HelmsmanIntegration.shared.suggestNextTask() {
+                    return suggestion
+                } else {
+                    return "You're all caught up. No pending tasks."
+                }
+            } catch {
+                return "I couldn't check your tasks: \(error.localizedDescription)"
+            }
+        }
+
         // Detect model escalation requests
         let modelPreference = detectModelPreference(text: lower)
         logger.info("🤖 Routing to ask_claude (model: \(modelPreference))")
