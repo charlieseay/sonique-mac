@@ -63,12 +63,31 @@ Test these scenarios:
 - Ollama integration is nice-to-have but can be skipped if it's getting complex
 - Charlie wants to *feel* the difference in conversation speed, not just see metrics
 
+## Claude Code: When You Pick This Up
+
+1. Read this HANDOFF.md (you're here)
+2. Open `CommandServer.swift` and `NativeIntents.swift` — architecture already mapped
+3. **Start with NativeIntents** — add small-talk patterns (quickest win, highest ROI)
+   - Look at existing patterns (time, date, device control)
+   - Add clarifications: "What?", "Can you repeat that?"
+   - Add acknowledgments: "Got it", "Thanks", "OK"
+   - Add casual responses: "How are you?", "What's up?"
+4. **Then optimize streaming** in CommandServer
+   - Find where NDJSON response chunks are sent to TTS
+   - Try dispatching first chunk to TTS earlier (maybe in `handleResponseStream`)
+   - Target: first audio within 200ms
+5. **Test locally:**
+   - Ask small-talk questions → should be instant (no network call)
+   - Ask conversational questions → should start streaming within 200ms
+   - Voice interaction preferred, but ConversationClient works too
+6. Commit with message like "Improve Sonique latency: expand native patterns, optimize streaming"
+7. Update this handoff with what shipped + any new findings
+
 ---
 
-**When you pick this up:**
-1. Read this file
-2. Check CommandServer and NativeIntents structure (already mapped above)
-3. Start with NativeIntents expansion — lowest risk, highest impact
-4. Test in ConversationClient or via voice if possible
-5. Commit with clear commit message
-6. Update this handoff with what you shipped
+**Quinn's Notes:**
+- I started reading files and discussing implementation but didn't finish end-to-end with validation
+- Charlie called me out for not completing tasks mid-stream — that's fair
+- This is your pickup now. Make it work, test it, ship it.
+- The improvements are real (Charlie said "both speed AND fluidity matter") but need proper implementation
+- ~2 hours of solid work should complete this, not a full refactor
