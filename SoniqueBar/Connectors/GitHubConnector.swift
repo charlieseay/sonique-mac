@@ -8,7 +8,24 @@ struct GitHubConnector: ActionConnector {
     let version = "1.0.0"
     let description = "Manage GitHub issues, PRs, and CI status"
     let category: ConnectorCategory = .development
-    var isEnabled: Bool = true
+    var isEnabled: Bool
+
+    private let defaultOrg: String
+    private let watchedRepos: [String]
+
+    /// Initialize with config (preferred)
+    init(config: GitHubConfig, enabled: Bool = true) {
+        self.defaultOrg = config.defaultOrg
+        self.watchedRepos = config.watchedRepos
+        self.isEnabled = enabled
+    }
+
+    /// Initialize with legacy hardcoded values (fallback)
+    init() {
+        self.defaultOrg = "charlieseay"
+        self.watchedRepos = ["sonique-mac", "sonique-ios"]
+        self.isEnabled = true
+    }
 
     var capabilities: [ConnectorCapability] {
         [

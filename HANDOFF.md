@@ -1,100 +1,142 @@
-# Sonique Latency Improvements — Handoff
+# Sonique Platform-Ready — Handoff
 
-**Date:** 2026-06-25  
-**Owner:** Quinn → Claude Code  
-**Status:** MOSTLY COMPLETE ✅
+**Date:** 2026-06-25 15:20 CT  
+**Session:** Claude Code continuous implementation  
+**Status:** Phase 2 Complete ✅ — Config Wired
 
-## Objective
+## What Just Shipped (Build 65)
 
-Improve Sonique conversation latency by:
-1. **Stream partial responses to TTS faster** — start playing audio within 200ms even if full response takes longer
-2. **Expand native pattern-matching** — answer small talk locally without LLM calls (clarifications, acknowledgments, casual responses)
-3. **Integrate Ollama** — use local inference for simple conversational queries instead of network API
+### Platform-Ready Foundation COMPLETE
 
-## Current State
+✅ **Config layer wired into all connectors** — backward compatible with our setup  
+✅ **All connectors accept both config and legacy constructors**  
+✅ **Generic labels shipped** (user sees "Task Management" not "Helmsman")  
+✅ **Build validated incrementally** (no breakage)
 
-**Architecture mapped:**
-- `CommandServer.swift` — response streaming partially implemented, can be optimized
-- `NativeIntents.swift` — currently handles time/date/device control, can expand to small talk
-- TTS streaming is in place but not fully optimized for partial/chunked responses
-- Ollama not running locally (verified), but integration path is clear
+## Implementation Summary
 
-**What's DONE:**
-- ✅ Small talk patterns added to NativeIntents (June 17 commit dac0712)
-- ✅ Comprehensive native intents: greetings, acknowledgments, clarifications, thanks
-- ✅ Streaming already optimized in CommandServer
-- ✅ OllamaService.swift created with health check and fast-path methods
+### Files Modified (Build 65)
 
-**What's NOT done:**
-- ⏳ Ollama not wired into CommandServer (optional - Ollama not running locally anyway)
-- ⏳ End-to-end latency testing (need device testing)
+**Config Types Added:**
+- `ConnectorRegistry.swift` — Added HelmsmanConfig, SlackConfig, ObsidianConfig, DockerConfig, GitHubConfig structs
 
-## Files to Touch
+**Connectors Updated (All 5):**
+1. **HelmsmanConnector.swift**
+   - `init(config: HelmsmanConfig, enabled: Bool)` — reads apiURL + webhookURL from config
+   - `init()` — fallback to hardcoded localhost:5682
+   - Labels: "Task Management" (generic)
 
-1. `CommandServer.swift` — Add Ollama check, optimize streaming timing
-2. `NativeIntents.swift` — Expand pattern set for small talk
-3. `OllamaService.swift` — New file for Ollama integration (optional if Ollama stays offline)
+2. **SlackConnector.swift**
+   - `init(config: SlackConfig, enabled: Bool)` — reads defaultChannel + botTokenPath
+   - `init()` — fallback to #cael + /Volumes/data/secrets/slack_bot_token
+   - Label: "Slack" (already generic)
 
-## Implementation Checklist
+3. **ObsidianConnector.swift**
+   - `init(config: ObsidianConfig, enabled: Bool)` — reads vaultPath + defaultFolder
+   - `init()` — fallback to ~/Library/.../SeaynicNet vault
+   - Label: "Obsidian" (already generic)
 
-- ✅ Add small talk patterns to NativeIntents (done June 17)
-  - ✅ Greetings: "hey", "hello", "hi" → random responses
-  - ✅ How are you: "how are you", "how's it going" → "Running smoothly. You?"
-  - ✅ Thanks: "thanks", "thank you", "appreciate it" → "Happy to help."
-  - ✅ Acknowledgments: "got it", "okay", "yes", "no" → "Got it." / "Understood."
-  - ✅ Clarifications: "what", "why", "tell me more" → contextual prompts
-  - ✅ Busy check: "are you busy" → "Just standing by for your commands."
-- ✅ CommandServer streaming already optimized (reads line-by-line, sends immediately)
-- ✅ OllamaService created with health check and generate methods
-- ⏳ Wire Ollama into CommandServer (skip - Ollama not running locally)
-- ⏳ Test conversation flow for snappiness (needs device testing)
-- ⏳ Measure latency before/after (needs device testing)
+4. **DockerConnector.swift**
+   - `init(config: DockerConfig, enabled: Bool)` — reads socket path
+   - `init()` — fallback to /var/run/docker.sock
+   - Label: "Docker Management" (already generic)
 
-## Validation
+5. **GitHubConnector.swift**
+   - `init(config: GitHubConfig, enabled: Bool)` — reads defaultOrg + watchedRepos
+   - `init()` — fallback to charlieseay org
+   - Label: "GitHub" (already generic)
 
-Test these scenarios:
-1. **Quick question:** "What time is it?" → Should be instant (native fast-path)
-2. **Small talk:** "How are you?" → Should be local pattern, no LLM call, <100ms
-3. **Conversational:** "What should I do about X?" → Should stream first sentence within 200ms
-4. **Ollama (if running):** Simple questions should use local inference instead of Bedrock
+### Architecture Pattern
 
-## Blockers
+```swift
+// Example: HelmsmanConnector
+struct HelmsmanConnector: ActionConnector {
+    private let endpoint: String
+    private let queryEndpoint: String
+    var isEnabled: Bool
 
-- Helmsman webhook 404 on task dispatch (workflow not active) — not critical for this work
+    // NEW: Config-driven (preferred)
+    init(config: HelmsmanConfig, enabled: Bool = true) {
+        self.endpoint = config.webhookURL
+        self.queryEndpoint = config.apiURL
+        self.isEnabled = enabled
+    }
 
-## Notes
+    // LEGACY: Fallback (backward compatible)
+    init() {
+        self.endpoint = "http://localhost:5680/webhook/task-dispatch"
+        self.queryEndpoint = "http://localhost:5682"
+        self.isEnabled = true
+    }
+}
+```
 
-- ✅ **Implementation mostly complete** - Small talk patterns and streaming already done
-- ⏳ **Ollama is optional** - OllamaService created for future use (customers who want local LLM)
-- ⏳ **Testing needs device** - Latency measurements require voice testing on Mac/iPhone
-- Charlie wants to *feel* the difference in conversation speed, not just see metrics
-- Quick wins already shipped: native patterns handle most small talk with zero LLM calls
+**Current Usage:** ConnectorRegistry calls `init()` for all connectors (legacy mode)  
+**Future:** Update ConnectorRegistry to call `init(config:)` when ConfigManager exists
 
-## Claude Code: When You Pick This Up
+## Validation Results
 
-1. Read this HANDOFF.md (you're here)
-2. Open `CommandServer.swift` and `NativeIntents.swift` — architecture already mapped
-3. **Start with NativeIntents** — add small-talk patterns (quickest win, highest ROI)
-   - Look at existing patterns (time, date, device control)
-   - Add clarifications: "What?", "Can you repeat that?"
-   - Add acknowledgments: "Got it", "Thanks", "OK"
-   - Add casual responses: "How are you?", "What's up?"
-4. **Then optimize streaming** in CommandServer
-   - Find where NDJSON response chunks are sent to TTS
-   - Try dispatching first chunk to TTS earlier (maybe in `handleResponseStream`)
-   - Target: first audio within 200ms
-5. **Test locally:**
-   - Ask small-talk questions → should be instant (no network call)
-   - Ask conversational questions → should start streaming within 200ms
-   - Voice interaction preferred, but ConversationClient works too
-6. Commit with message like "Improve Sonique latency: expand native patterns, optimize streaming"
-7. Update this handoff with what shipped + any new findings
+✅ Build 65 compiles clean (only Swift 6 warnings, not errors)  
+✅ Deployed to /Applications/SoniqueBar.app  
+✅ Running (PID 15905)  
+✅ No user-facing changes yet (still using legacy constructors)
+
+## What's Next (Phase 3)
+
+### Option A: Settings UI (User-Facing Config Management)
+
+Create Settings → Connectors tab:
+- Enable/disable toggles for each connector type
+- Provider selection (e.g., Task Management: Helmsman vs Todoist vs Linear)
+- Configuration panels (API URLs, credentials, paths)
+- Test Connection buttons
+
+**Effort:** ~1 day  
+**User Value:** High — makes Quinn configurable for any user
+
+### Option B: ConfigManager Integration (Wire Existing Config)
+
+Update ConnectorRegistry to:
+1. Read from `~/Library/Application Support/SoniqueBar/config.json`
+2. Call `init(config:)` instead of `init()` for each connector
+3. Save enabled states to config
+4. Create default Seaynic Labs config on first run
+
+**Effort:** ~2 hours  
+**User Value:** Medium — infrastructure for future Settings UI
+
+### Option C: Ship As-Is (Minimal Viable Platform)
+
+Current state:
+- Config structs exist
+- Connectors can read config
+- Generic labels shipped
+- Backward compatible with our setup
+
+**Effort:** 0 hours (done)  
+**User Value:** Low — not yet user-configurable
+
+## Recommendation
+
+**Do Option B next** — wire ConfigManager so the infrastructure is complete, then Option A (Settings UI) becomes purely UI work.
+
+## Files Ready for Phase 3
+
+- `ConnectorConfig.swift` (in `SoniqueBar/Core/Config/`) — NOT yet in Xcode project, types live in ConnectorRegistry.swift now
+- `ConnectorRegistry.swift` — Has config types, needs to call `init(config:)`
+- All 5 connectors — Ready to accept config
+
+## Session Notes
+
+- Started: Platform-ready architecture implementation
+- Completed: Phase 2 (config wired into connectors)
+- Token usage: 81K / 200K (plenty of room)
+- Next session: Continue with Phase 3 (ConfigManager integration) OR ship as-is
 
 ---
 
-**Quinn's Notes:**
-- I started reading files and discussing implementation but didn't finish end-to-end with validation
-- Charlie called me out for not completing tasks mid-stream — that's fair
-- This is your pickup now. Make it work, test it, ship it.
-- The improvements are real (Charlie said "both speed AND fluidity matter") but need proper implementation
-- ~2 hours of solid work should complete this, not a full refactor
+**What Changed Since Last Handoff:**
+- Latency improvements → Still valid (OllamaService created, small talk patterns done, needs device testing)
+- Platform-ready → NOW ACTIVE WORK (Build 65 = Phase 2 complete)
+- Runtime reload → Done (Build 63)
+- Quinn's Docker health check fixes → Done (Build 63)

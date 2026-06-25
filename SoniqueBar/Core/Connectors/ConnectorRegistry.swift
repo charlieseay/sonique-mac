@@ -1,6 +1,303 @@
 import Foundation
 import SwiftUI
 
+// MARK: - Configuration System
+
+/// Complete SoniqueBar configuration
+struct SoniqueBarConfig: Codable {
+    var user: UserConfig
+    var connectors: ConnectorConfigs
+
+    static let `default` = SoniqueBarConfig(
+        user: UserConfig.default,
+        connectors: ConnectorConfigs.seaynicLabs
+    )
+}
+
+/// User preferences
+struct UserConfig: Codable {
+    var name: String
+    var voiceResponseStyle: VoiceStyle
+    var defaultLLM: String
+
+    enum VoiceStyle: String, Codable {
+        case concise, detailed, casual
+    }
+
+    static let `default` = UserConfig(
+        name: "User",
+        voiceResponseStyle: .concise,
+        defaultLLM: "claude"
+    )
+}
+
+/// All connector configurations
+struct ConnectorConfigs: Codable {
+    var taskManagement: TaskManagementConfig?
+    var communication: CommunicationConfig?
+    var knowledge: KnowledgeConfig?
+    var containers: ContainerConfig?
+    var code: CodeConfig?
+    var homeAutomation: HomeAutomationConfig?
+
+    /// Default Seaynic Labs configuration (backward compatible)
+    static let seaynicLabs = ConnectorConfigs(
+        taskManagement: TaskManagementConfig(
+            provider: "helmsman",
+            enabled: true,
+            helmsmanConfig: HelmsmanConfig(
+                apiURL: "http://localhost:5682",
+                webhookURL: "http://localhost:5680/webhook/task-dispatch",
+                autoDispatch: true
+            )
+        ),
+        communication: CommunicationConfig(
+            provider: "slack",
+            enabled: true,
+            slackConfig: SlackConfig(
+                defaultChannel: "#cael",
+                botTokenPath: "/Volumes/data/secrets/slack_bot_token"
+            )
+        ),
+        knowledge: KnowledgeConfig(
+            provider: "obsidian",
+            enabled: true,
+            obsidianConfig: ObsidianConfig(
+                vaultPath: "~/Library/Mobile Documents/iCloud~md~obsidian/Documents/SeaynicNet",
+                defaultFolder: "Projects"
+            )
+        ),
+        containers: ContainerConfig(
+            provider: "docker",
+            enabled: true,
+            dockerConfig: DockerConfig(
+                socket: "/var/run/docker.sock",
+                remoteHosts: []
+            )
+        ),
+        code: CodeConfig(
+            provider: "github",
+            enabled: true,
+            githubConfig: GitHubConfig(
+                defaultOrg: "charlieseay",
+                watchedRepos: ["sonique-mac", "sonique-ios"]
+            )
+        ),
+        homeAutomation: nil  // Optional
+    )
+}
+
+// MARK: - Task Management Config
+
+struct TaskManagementConfig: Codable {
+    var provider: String
+    var enabled: Bool
+    var helmsmanConfig: HelmsmanConfig?
+    var todoistConfig: TodoistConfig?
+    var linearConfig: LinearConfig?
+    var customConfig: CustomAPIConfig?
+}
+
+struct HelmsmanConfig: Codable {
+    var apiURL: String
+    var webhookURL: String
+    var autoDispatch: Bool
+}
+
+struct TodoistConfig: Codable {
+    var apiToken: String
+    var defaultProject: String?
+}
+
+struct LinearConfig: Codable {
+    var apiKey: String
+    var teamId: String
+    var defaultProject: String?
+}
+
+// MARK: - Communication Config
+
+struct CommunicationConfig: Codable {
+    var provider: String
+    var enabled: Bool
+    var slackConfig: SlackConfig?
+    var discordConfig: DiscordConfig?
+}
+
+struct SlackConfig: Codable {
+    var defaultChannel: String
+    var botTokenPath: String
+}
+
+struct DiscordConfig: Codable {
+    var botToken: String
+    var defaultGuildId: String
+    var defaultChannelId: String
+}
+
+// MARK: - Knowledge Config
+
+struct KnowledgeConfig: Codable {
+    var provider: String
+    var enabled: Bool
+    var obsidianConfig: ObsidianConfig?
+    var notionConfig: NotionConfig?
+}
+
+struct ObsidianConfig: Codable {
+    var vaultPath: String
+    var defaultFolder: String
+}
+
+struct NotionConfig: Codable {
+    var apiToken: String
+    var databaseId: String
+}
+
+// MARK: - Container Config
+
+struct ContainerConfig: Codable {
+    var provider: String
+    var enabled: Bool
+    var dockerConfig: DockerConfig?
+    var kubernetesConfig: KubernetesConfig?
+}
+
+struct DockerConfig: Codable {
+    var socket: String
+    var remoteHosts: [String]
+}
+
+struct KubernetesConfig: Codable {
+    var context: String
+    var namespace: String
+}
+
+// MARK: - Code Config
+
+struct CodeConfig: Codable {
+    var provider: String
+    var enabled: Bool
+    var githubConfig: GitHubConfig?
+    var gitlabConfig: GitLabConfig?
+}
+
+struct GitHubConfig: Codable {
+    var defaultOrg: String
+    var watchedRepos: [String]
+}
+
+struct GitLabConfig: Codable {
+    var baseURL: String
+    var apiToken: String
+    var defaultGroup: String
+}
+
+// MARK: - Home Automation Config
+
+struct HomeAutomationConfig: Codable {
+    var provider: String
+    var enabled: Bool
+    var homeAssistantConfig: HomeAssistantConfig?
+}
+
+struct HomeAssistantConfig: Codable {
+    var url: String
+    var token: String
+}
+
+// MARK: - Custom API Config
+
+struct CustomAPIConfig: Codable {
+    var baseURL: String
+    var authHeader: String?
+    var endpoints: [String: String]
+}
+
+// MARK: - Config Manager
+
+@MainActor
+class ConfigManager: ObservableObject {
+    static let shared = ConfigManager()
+
+    @Published var config: SoniqueBarConfig
+
+    private let configPath: URL
+
+    private init() {
+        // Config path: ~/Library/Application Support/SoniqueBar/config.json
+        let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+        let soniqueDir = appSupport.appendingPathComponent("SoniqueBar")
+        self.configPath = soniqueDir.appendingPathComponent("config.json")
+
+        // Create directory if needed
+        try? FileManager.default.createDirectory(at: soniqueDir, withIntermediateDirectories: true)
+
+        // Load config or use default
+        if let loadedConfig = Self.loadConfig(from: configPath) {
+            self.config = loadedConfig
+            print("[ConfigManager] Loaded config from \(configPath.path)")
+        } else {
+            // First run - create default config with Seaynic Labs setup
+            self.config = .default
+            Self.saveConfig(config, to: configPath)
+            print("[ConfigManager] Created default config at \(configPath.path)")
+        }
+    }
+
+    /// Load config from disk
+    private static func loadConfig(from url: URL) -> SoniqueBarConfig? {
+        guard FileManager.default.fileExists(atPath: url.path) else {
+            return nil
+        }
+
+        do {
+            let data = try Data(contentsOf: url)
+            let decoder = JSONDecoder()
+            decoder.keyDecodingStrategy = .convertFromSnakeCase
+            return try decoder.decode(SoniqueBarConfig.self, from: data)
+        } catch {
+            print("[ConfigManager] Failed to load config: \(error)")
+            return nil
+        }
+    }
+
+    /// Save config to disk
+    private static func saveConfig(_ config: SoniqueBarConfig, to url: URL) {
+        do {
+            let encoder = JSONEncoder()
+            encoder.keyEncodingStrategy = .convertToSnakeCase
+            encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+            let data = try encoder.encode(config)
+            try data.write(to: url)
+            print("[ConfigManager] Config saved to \(url.path)")
+        } catch {
+            print("[ConfigManager] Failed to save config: \(error)")
+        }
+    }
+
+    /// Save current config to disk
+    func save() {
+        Self.saveConfig(config, to: configPath)
+    }
+
+    /// Reset to default config
+    func resetToDefault() {
+        config = .default
+        save()
+    }
+
+    /// Reload config from disk
+    func reload() {
+        if let loadedConfig = Self.loadConfig(from: configPath) {
+            config = loadedConfig
+            print("[ConfigManager] Config reloaded")
+        }
+    }
+}
+
+// MARK: - Connector Registry
+
 /// Central registry for all action connectors
 /// Manages connector lifecycle, discovery, and execution routing
 @MainActor
@@ -188,22 +485,71 @@ class ConnectorRegistry: ObservableObject {
 
     // MARK: - Built-in Connectors
 
-    /// Register all built-in connectors
+    /// Register all built-in connectors using config
     private func registerBuiltInConnectors() async {
-        // Task Management
-        register(HelmsmanConnector())
+        let config = await ConfigManager.shared.config.connectors
 
-        // Development
-        register(DockerConnector())
-        register(GitHubConnector())
+        // Task Management
+        if let taskConfig = config.taskManagement, taskConfig.enabled {
+            if let helmsmanConfig = taskConfig.helmsmanConfig {
+                register(HelmsmanConnector(config: helmsmanConfig, enabled: true))
+            } else {
+                // Fallback to legacy if no config
+                register(HelmsmanConnector())
+            }
+        }
 
         // Communication
-        register(SlackConnector())
+        if let commConfig = config.communication, commConfig.enabled {
+            if let slackConfig = commConfig.slackConfig {
+                register(SlackConnector(config: slackConfig, enabled: true))
+            } else {
+                register(SlackConnector())
+            }
+        }
 
         // Knowledge
-        register(ObsidianConnector())
+        if let knowledgeConfig = config.knowledge, knowledgeConfig.enabled {
+            if let obsidianConfig = knowledgeConfig.obsidianConfig {
+                register(ObsidianConnector(config: obsidianConfig, enabled: true))
+            } else {
+                register(ObsidianConnector())
+            }
+        }
 
-        print("[ConnectorRegistry] Built-in connectors registered: \(connectors.count) total")
+        // Containers
+        if let containerConfig = config.containers, containerConfig.enabled {
+            if let dockerConfig = containerConfig.dockerConfig {
+                register(DockerConnector(config: dockerConfig, enabled: true))
+            } else {
+                register(DockerConnector())
+            }
+        }
+
+        // Code
+        if let codeConfig = config.code, codeConfig.enabled {
+            if let githubConfig = codeConfig.githubConfig {
+                register(GitHubConnector(config: githubConfig, enabled: true))
+            } else {
+                register(GitHubConnector())
+            }
+        }
+
+        print("[ConnectorRegistry] Built-in connectors registered: \(connectors.count) total (from config)")
+    }
+
+    /// Reload all connectors from config
+    func reload() async {
+        // Clear current connectors
+        connectors.removeAll()
+
+        // Reload config
+        await ConfigManager.shared.reload()
+
+        // Re-register from fresh config
+        await registerBuiltInConnectors()
+
+        print("[ConnectorRegistry] Reloaded \(connectors.count) connectors from config")
     }
 }
 

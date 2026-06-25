@@ -8,10 +8,27 @@ struct DockerConnector: ActionConnector {
     let version = "1.0.0"
     let description = "Manage Docker containers on local host"
     let category: ConnectorCategory = .development
-    var isEnabled: Bool = true
+    var isEnabled: Bool
 
-    /// Docker API endpoint (local socket)
-    private let endpoint = "http://localhost:2375"
+    /// Docker API endpoint (socket or remote)
+    private let socket: String
+
+    /// Initialize with config (preferred)
+    init(config: DockerConfig, enabled: Bool = true) {
+        self.socket = config.socket
+        self.isEnabled = enabled
+    }
+
+    /// Initialize with legacy hardcoded values (fallback)
+    init() {
+        self.socket = "/var/run/docker.sock"
+        self.isEnabled = true
+    }
+
+    /// Docker API endpoint (HTTP proxy to socket)
+    private var endpoint: String {
+        socket.starts(with: "http") ? socket : "http://localhost:2375"
+    }
 
     var capabilities: [ConnectorCapability] {
         [

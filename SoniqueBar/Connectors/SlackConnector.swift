@@ -8,7 +8,24 @@ struct SlackConnector: ActionConnector {
     let version = "1.0.0"
     let description = "Send messages to Slack channels"
     let category: ConnectorCategory = .communication
-    var isEnabled: Bool = true
+    var isEnabled: Bool
+
+    private let defaultChannel: String
+    private let botTokenPath: String
+
+    /// Initialize with config (preferred)
+    init(config: SlackConfig, enabled: Bool = true) {
+        self.defaultChannel = config.defaultChannel
+        self.botTokenPath = config.botTokenPath
+        self.isEnabled = enabled
+    }
+
+    /// Initialize with legacy hardcoded values (fallback)
+    init() {
+        self.defaultChannel = "#cael"
+        self.botTokenPath = "/Volumes/data/secrets/slack_bot_token"
+        self.isEnabled = true
+    }
 
     var capabilities: [ConnectorCapability] {
         [
@@ -177,13 +194,11 @@ struct SlackConnector: ActionConnector {
 
     /// Read Slack token from secure location
     private func getSlackToken() -> String {
-        let secretPath = "/Volumes/data/secrets/slack_bot_token"
-
-        if let token = try? String(contentsOfFile: secretPath, encoding: .utf8) {
+        if let token = try? String(contentsOfFile: botTokenPath, encoding: .utf8) {
             return token.trimmingCharacters(in: .whitespacesAndNewlines)
         }
 
-        print("[SlackConnector] WARNING: Could not read Slack token from \(secretPath)")
+        print("[SlackConnector] WARNING: Could not read Slack token from \(botTokenPath)")
         return ""
     }
 }

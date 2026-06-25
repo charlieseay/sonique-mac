@@ -8,9 +8,24 @@ struct ObsidianConnector: ActionConnector {
     let version = "1.0.0"
     let description = "Create and search Obsidian vault notes"
     let category: ConnectorCategory = .knowledge
-    var isEnabled: Bool = true
+    var isEnabled: Bool
 
-    private let vaultPath = "/Users/charlieseay/Library/Mobile Documents/iCloud~md~obsidian/Documents/SeaynicNet"
+    private let vaultPath: String
+    private let defaultFolder: String
+
+    /// Initialize with config (preferred)
+    init(config: ObsidianConfig, enabled: Bool = true) {
+        self.vaultPath = (config.vaultPath as NSString).expandingTildeInPath
+        self.defaultFolder = config.defaultFolder
+        self.isEnabled = enabled
+    }
+
+    /// Initialize with legacy hardcoded values (fallback)
+    init() {
+        self.vaultPath = "/Users/charlieseay/Library/Mobile Documents/iCloud~md~obsidian/Documents/SeaynicNet"
+        self.defaultFolder = "Projects"
+        self.isEnabled = true
+    }
 
     var capabilities: [ConnectorCapability] {
         [
@@ -20,7 +35,7 @@ struct ObsidianConnector: ActionConnector {
                 parameters: [
                     .init(name: "title", type: .string, required: true, description: "Note title"),
                     .init(name: "content", type: .string, required: false, description: "Note content"),
-                    .init(name: "folder", type: .string, required: false, defaultValue: "Projects", description: "Folder path")
+                    .init(name: "folder", type: .string, required: false, defaultValue: nil, description: "Folder path")
                 ],
                 requiredAuth: .none,
                 mutates: true
@@ -76,7 +91,7 @@ struct ObsidianConnector: ActionConnector {
         }
 
         let content = params["content"] as? String ?? ""
-        let folder = params["folder"] as? String ?? "Projects"
+        let folder = params["folder"] as? String ?? defaultFolder
 
         // Sanitize filename
         let filename = title.replacingOccurrences(of: "/", with: "-")
