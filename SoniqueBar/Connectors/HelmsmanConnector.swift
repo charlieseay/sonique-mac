@@ -4,16 +4,16 @@ import Foundation
 /// Allows Quinn to create tasks and query the task queue
 struct HelmsmanConnector: ActionConnector {
     let id = UUID()
-    let name = "Helmsman Task Dispatch"
+    let name = "Task Management"  // Generic, not brand-specific
     let version = "1.0.0"
-    let description = "Create and query tasks in the Helmsman queue"
+    let description = "Create and manage tasks"  // Generic description
     let category: ConnectorCategory = .taskManagement
     var isEnabled: Bool = true
 
-    /// Endpoint for Helmsman webhook
+    /// Endpoint for Helmsman webhook (TODO: make configurable)
     private let endpoint = "http://localhost:5680/webhook/task-dispatch"
 
-    /// REST API endpoint for queries
+    /// REST API endpoint for queries (TODO: make configurable)
     private let queryEndpoint = "http://localhost:5682"
 
     var capabilities: [ConnectorCapability] {
