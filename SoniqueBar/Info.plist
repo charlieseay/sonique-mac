@@ -3,7 +3,7 @@
 <plist version="1.0">
 <dict>
 	<key>CFBundleVersion</key>
-	<string>59</string>
+	<string>60</string>
 	<key>NSAppleEventsUsageDescription</key>
 	<string>SoniqueBar needs to control other apps to execute commands like opening files or controlling HomeKit.</string>
 	<key>NSCalendarsFullAccessUsageDescription</key>
