@@ -282,6 +282,9 @@
 			dependencies = (
 			);
 			name = SoniqueBar;
+			packageProductDependencies = (
+				KOKOROA2B6AA2020E5E8DFF9 /* Kokoro */,
+			);
 			productName = SoniqueBar;
 			productReference = BB000004000000000000004 /* SoniqueBar.app */;
 			productType = "com.apple.product-type.application";
@@ -417,7 +420,7 @@
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 67;
+				CURRENT_PROJECT_VERSION = 68;
 				DEVELOPMENT_TEAM = 7NSS5CJL9E;
 				ENABLE_HARDENED_RUNTIME = YES;
 				INFOPLIST_FILE = SoniqueBar/Resources/Info.plist;
@@ -442,7 +445,7 @@
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 67;
+				CURRENT_PROJECT_VERSION = 68;
 				DEVELOPMENT_TEAM = 7NSS5CJL9E;
 				ENABLE_HARDENED_RUNTIME = YES;
 				INFOPLIST_FILE = SoniqueBar/Resources/Info.plist;
@@ -484,4 +487,23 @@
 /* End XCConfigurationList section */
 	};
 	rootObject = BB000001000000000000001 /* Project object */;
+
+/* Begin XCRemoteSwiftPackageReference section */
+		KOKORO7AD99D19440B670BC3 /* XCRemoteSwiftPackageReference "kokoro-swift" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "Packages/kokoro-swift";
+			requirement = {
+				kind = branch;
+				branch = main;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		KOKOROA2B6AA2020E5E8DFF9 /* Kokoro */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = KOKORO7AD99D19440B670BC3 /* XCRemoteSwiftPackageReference "kokoro-swift" */;
+			productName = Kokoro;
+		};
+/* End XCSwiftPackageProductDependency section */
 }

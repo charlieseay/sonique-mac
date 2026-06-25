@@ -63,7 +63,7 @@ class VoiceRouter: ObservableObject {
     static let shared = VoiceRouter()
 
     @Published private(set) var providers: [any VoiceProvider] = []
-    @Published var defaultProvider: String = "elevenlabs"  // TODO: Change to "kokoro" once integrated
+    @Published var defaultProvider: String = "elevenlabs"  // Using ElevenLabs until Kokoro SPM resolved
     @Published var defaultVoice: [String: String] = [
         "elevenlabs": "cgSgspJ2msm6clMCkdW9", // Jessica
         "kokoro": "af_bella", // Best match to Jessica
@@ -78,8 +78,8 @@ class VoiceRouter: ObservableObject {
 
     private func registerProviders() {
         providers = [
-            KokoroProvider(),         // NEW: Local TTS (will integrate next)
-            ElevenLabsProvider(),     // Cloud TTS (current default)
+            // KokoroProvider(),         // TODO: Enable once SPM dependency resolved
+            ElevenLabsProvider(),     // Cloud TTS (current)
             OpenAITTSProvider(),      // Alternative cloud
             SystemVoiceProvider()     // System fallback
         ]

@@ -1,5 +1,6 @@
 import Foundation
 import AVFoundation
+// import Kokoro  // TODO: Enable once SPM dependency resolved
 
 /// Kokoro local TTS provider
 /// Uses kokoro-swift for fast, offline, high-quality synthesis
@@ -25,13 +26,71 @@ class KokoroProvider: NSObject, VoiceProvider, AVAudioPlayerDelegate {
     private var audioPlayer: AVAudioPlayer?
     private var currentlySpeaking = false
 
+    // Singleton pipeline (cached for session)
+    // private static var pipeline: KPipeline?
+    private static var pipelineError: Error?
+
     // MARK: - Initialization
 
-    /// Check if Kokoro is ready to use
+    /// Get model directory
+    private var modelDirectory: URL {
+        FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+            .appendingPathComponent("SoniqueBar/Kokoro")
+    }
+
+    /// Check if Kokoro models are available
     var isAvailable: Bool {
-        // TODO: Check if kokoro-swift package is available and models downloaded
-        // For now, return true and handle errors during synthesis
-        return true
+        let segmentedDir = modelDirectory.appendingPathComponent("CoreML_ANE/segmented")
+        let configFile = modelDirectory.appendingPathComponent("config.json")
+
+        return FileManager.default.fileExists(atPath: segmentedDir.path) &&
+               FileManager.default.fileExists(atPath: configFile.path)
+    }
+
+    /// Initialize pipeline (lazy, cached)
+    private func getPipeline() throws -> Any {
+        // Return cached error if initialization failed before
+        if let error = Self.pipelineError {
+            throw error
+        }
+
+        // TODO: Implement once Kokoro SPM dependency is resolved
+        throw VoiceError.synthesisFailedError("Kokoro integration pending - SPM dependency needs resolution")
+
+        /* UNCOMMENT ONCE KOKORO PACKAGE IS AVAILABLE:
+        // Return cached pipeline if available
+        if let pipeline = Self.pipeline {
+            return pipeline
+        }
+
+        do {
+            print("[KokoroProvider] Initializing pipeline...")
+
+            // Load CoreML segmented model
+            let model = try SegmentedCoreMLModel(
+                segmentedDir: modelDirectory.appendingPathComponent("CoreML_ANE/segmented"),
+                configURL: modelDirectory.appendingPathComponent("config.json")
+            )
+
+            // Load voices (with auto-download enabled)
+            let voices = VoiceLoader(
+                baseDirectory: modelDirectory.appendingPathComponent("voices"),
+                enableDownload: true
+            )
+
+            // Create pipeline
+            let pipeline = KPipeline(coreMLSegmentedModel: model, voices: voices)
+
+            Self.pipeline = pipeline
+            print("[KokoroProvider] Pipeline initialized successfully")
+
+            return pipeline
+        } catch {
+            Self.pipelineError = error
+            print("[KokoroProvider] Failed to initialize pipeline: \(error)")
+            throw VoiceError.synthesisFailedError("Kokoro initialization failed: \(error.localizedDescription)")
+        }
+        */
     }
 
     // MARK: - VoiceProvider Implementation
@@ -58,20 +117,34 @@ class KokoroProvider: NSObject, VoiceProvider, AVAudioPlayerDelegate {
 
     func synthesize(text: String, voice: String?) async throws -> URL {
         // Use configured voice or default to af_bella (best match to Jessica)
-        let selectedVoice = voice ?? UserDefaults.standard.string(forKey: "kokoro_voice") ?? "af_bella"
+        let kokoroVoice = await ConfigManager.shared.config.user.kokoroVoice
+        let selectedVoice = voice ?? kokoroVoice ?? "af_bella"
 
-        // TODO: Integrate with kokoro-swift package
-        // For now, throw error with helpful message
-        throw VoiceError.synthesisFailedError("""
-            Kokoro integration pending. Implementation steps:
-            1. Add kokoro-swift as SPM dependency
-            2. Download model weights from HuggingFace
-            3. Initialize KPipeline with CoreML backend
-            4. Call pipeline.synthesize(text: "\(text)", voice: "\(selectedVoice)")
+        print("[KokoroProvider] Synthesizing with voice: \(selectedVoice)")
 
-            Expected synthesis time: <300ms on M4 Pro
-            Model size: ~400 MB (one-time download)
-            """)
+        // TODO: Implement once Kokoro SPM dependency is resolved
+        throw VoiceError.synthesisFailedError("Kokoro integration pending - SPM dependency needs resolution")
+
+        /* UNCOMMENT ONCE KOKORO PACKAGE IS AVAILABLE:
+        let startTime = Date()
+
+        // Get pipeline (cached)
+        let pipeline = try getPipeline()
+
+        // Synthesize
+        let result = try pipeline.synthesize(text: text, voice: selectedVoice)
+
+        let synthesisTime = Date().timeIntervalSince(startTime)
+        print("[KokoroProvider] Synthesis completed in \(Int(synthesisTime * 1000))ms")
+
+        // Write to temp file
+        let tempURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString + ".wav")
+
+        try AudioWriter.writeWAV(samples: result.audio, to: tempURL, sampleRate: 24000)
+
+        return tempURL
+        */
     }
 
     func stop() async {
@@ -82,9 +155,19 @@ class KokoroProvider: NSObject, VoiceProvider, AVAudioPlayerDelegate {
     }
 
     func healthCheck() async -> Bool {
-        // Check if Kokoro models are available
-        // For now, return true (will handle download during first synthesis)
-        return isAvailable
+        // Check if models are available and pipeline can initialize
+        guard isAvailable else {
+            print("[KokoroProvider] Health check failed: Models not found")
+            return false
+        }
+
+        do {
+            _ = try getPipeline()
+            return true
+        } catch {
+            print("[KokoroProvider] Health check failed: \(error)")
+            return false
+        }
     }
 
     // MARK: - AVAudioPlayerDelegate
@@ -93,67 +176,3 @@ class KokoroProvider: NSObject, VoiceProvider, AVAudioPlayerDelegate {
         currentlySpeaking = false
     }
 }
-
-// MARK: - Kokoro Integration Notes
-
-/*
- Integration Plan:
-
- 1. Add SPM dependency to Package.swift:
-    .package(url: "https://github.com/mweinbach/kokoro-swift.git", from: "0.1.0")
-
- 2. Download model weights (one-time setup):
-    - Download from: https://huggingface.co/mweinbach/Kokoro-82M-Swift
-    - Save to: ~/Library/Application Support/SoniqueBar/Kokoro/
-    - CoreML ANE segmented model (4 mlpackage files) for best performance
-
- 3. Initialize in synthesize():
-    ```swift
-    import Kokoro
-
-    // Load model (singleton, cache for session)
-    static var pipeline: KPipeline?
-
-    if pipeline == nil {
-        let modelDir = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
-            .appendingPathComponent("SoniqueBar/Kokoro")
-
-        let model = try SegmentedCoreMLModel(
-            segmentedDir: modelDir.appendingPathComponent("CoreML_ANE/segmented"),
-            configURL: modelDir.appendingPathComponent("config.json")
-        )
-
-        let voices = VoiceLoader(
-            baseDirectory: modelDir.appendingPathComponent("voices"),
-            enableDownload: true  // auto-download missing voices
-        )
-
-        pipeline = KPipeline(coreMLSegmentedModel: model, voices: voices)
-    }
-
-    // Synthesize
-    let result = try pipeline!.synthesize(text: text, voice: selectedVoice)
-
-    // Write to temp file
-    let tempURL = FileManager.default.temporaryDirectory
-        .appendingPathComponent(UUID().uuidString + ".wav")
-    try AudioWriter.writeWAV(samples: result.audio, to: tempURL, sampleRate: 24000)
-
-    return tempURL
-    ```
-
- 4. Voice Downloads:
-    - Voices download on-demand from HuggingFace
-    - ~50 MB per voice
-    - Recommended: pre-download af_bella + af_heart during first launch
-
- 5. Performance:
-    - First synthesis: ~1s (loads model)
-    - Subsequent: <300ms (M4 Pro)
-    - Memory: +100-150 MB during synthesis
-
- 6. Error Handling:
-    - Model not found → prompt user to download
-    - Voice not found → auto-download or fallback to af_heart
-    - Synthesis failure → fallback to SystemVoiceProvider
- */
