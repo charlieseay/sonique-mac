@@ -129,10 +129,22 @@ class LabStatusService: ObservableObject {
             return (false, ["Docker daemon unreachable"])
         }
 
+        // Containers that are expected to be stopped (one-shot services, on-demand workers)
+        let ignoredContainers = [
+            "playwright-runner",
+            "remediator",
+            "funding-scout",
+            "funding-apply",
+            "docker-monitor",
+            "ollama-loader"
+        ]
+
         let lines = result.stdout.components(separatedBy: "\n").filter { !$0.isEmpty }
         let stopped = lines.filter { !$0.contains("Up") }.compactMap { line -> String? in
             let parts = line.components(separatedBy: ":")
-            return parts.first
+            guard let name = parts.first else { return nil }
+            // Ignore expected one-shot containers
+            return ignoredContainers.contains(name) ? nil : name
         }
 
         return (stopped.isEmpty, stopped)
