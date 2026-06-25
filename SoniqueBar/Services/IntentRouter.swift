@@ -988,6 +988,12 @@ struct InfrastructureExecutor {
         let homeDir = FileManager.default.homeDirectoryForCurrentUser.path
         var env = ProcessInfo.processInfo.environment
         env["PATH"] = "\(homeDir)/.local/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
+
+        // Unset DOCKER_HOST if it points to non-existent Podman socket - Docker Desktop uses /var/run/docker.sock
+        if let dockerHost = env["DOCKER_HOST"], dockerHost.contains("podman") {
+            env.removeValue(forKey: "DOCKER_HOST")
+        }
+
         process.environment = env
 
         let stdoutPipe = Pipe()
