@@ -54,6 +54,7 @@
 		FA925571F17B6BA9C9106F30 /* CommandServer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 51CF32BB11AD3B053074E4B1 /* CommandServer.swift */; };
 		FB4A785BC5C0C1732655A2E1 /* TaskDispatcher.swift in Sources */ = {isa = PBXBuildFile; fileRef = 52B477ED8413E4F7FC7A7216 /* TaskDispatcher.swift */; };
 		FDEB1550A3C56FEC61801B17 /* BackgroundMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = C97BFF455FB039ADE8EBB91B /* BackgroundMonitor.swift */; };
+		59B89861381D587339B3D3A1 /* KokoroProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 32396D21181A4209EA42EA26 /* KokoroProvider.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -115,6 +116,7 @@
 		F29D445D763F2FF764C645F4 /* ProactiveBriefing.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ProactiveBriefing.swift; path = SoniqueBar/Services/ProactiveBriefing.swift; sourceTree = "<group>"; };
 		F642E9115684301FB74E47CC /* PredictiveNotifications.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = PredictiveNotifications.swift; path = SoniqueBar/Services/PredictiveNotifications.swift; sourceTree = "<group>"; };
 		F66032BAA7F8170D24F8DE7D /* HelmsmanConnector.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = HelmsmanConnector.swift; path = SoniqueBar/Connectors/HelmsmanConnector.swift; sourceTree = "<group>"; };
+		32396D21181A4209EA42EA26 /* KokoroProvider.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; name = KokoroProvider.swift; path = SoniqueBar/Core/Voice/KokoroProvider.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -374,7 +376,8 @@
 				576A4E75D41FB3E23ECEFB0C /* DeviceOrchestrator.swift in Sources */,
 				CB3E57C1ED2668B202D071D9 /* CollaborationEngine.swift in Sources */,
 				69DC4A71E4571D30DD584083 /* DeviceContext.swift in Sources */,
-			);
+			
+				59B89861381D587339B3D3A1 /* KokoroProvider.swift in Sources */,);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
@@ -414,7 +417,7 @@
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 66;
+				CURRENT_PROJECT_VERSION = 67;
 				DEVELOPMENT_TEAM = 7NSS5CJL9E;
 				ENABLE_HARDENED_RUNTIME = YES;
 				INFOPLIST_FILE = SoniqueBar/Resources/Info.plist;
@@ -439,7 +442,7 @@
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 66;
+				CURRENT_PROJECT_VERSION = 67;
 				DEVELOPMENT_TEAM = 7NSS5CJL9E;
 				ENABLE_HARDENED_RUNTIME = YES;
 				INFOPLIST_FILE = SoniqueBar/Resources/Info.plist;

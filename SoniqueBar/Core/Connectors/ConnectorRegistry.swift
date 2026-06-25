@@ -19,15 +19,27 @@ struct UserConfig: Codable {
     var name: String
     var voiceResponseStyle: VoiceStyle
     var defaultLLM: String
+    var ttsProvider: TTSProvider
+    var elevenLabsVoiceID: String?
+    var kokoroVoice: String?
 
     enum VoiceStyle: String, Codable {
         case concise, detailed, casual
     }
 
+    enum TTSProvider: String, Codable {
+        case elevenlabs
+        case kokoro
+        case system
+    }
+
     static let `default` = UserConfig(
         name: "User",
         voiceResponseStyle: .concise,
-        defaultLLM: "claude"
+        defaultLLM: "claude",
+        ttsProvider: .kokoro,  // Default to Kokoro (local, fast, free)
+        elevenLabsVoiceID: "cgSgspJ2msm6clMCkdW9",  // Jessica (fallback)
+        kokoroVoice: "af_bella"  // Best match to Jessica
     )
 }
 

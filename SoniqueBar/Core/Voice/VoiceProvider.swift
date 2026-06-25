@@ -63,23 +63,54 @@ class VoiceRouter: ObservableObject {
     static let shared = VoiceRouter()
 
     @Published private(set) var providers: [any VoiceProvider] = []
-    @Published var defaultProvider: String = "elevenlabs"
+    @Published var defaultProvider: String = "elevenlabs"  // TODO: Change to "kokoro" once integrated
     @Published var defaultVoice: [String: String] = [
-        "elevenlabs": "", // Set from AppStorage
+        "elevenlabs": "cgSgspJ2msm6clMCkdW9", // Jessica
+        "kokoro": "af_bella", // Best match to Jessica
         "openai": "alloy",
         "system": "Samantha"
     ]
 
     private init() {
         registerProviders()
+        loadProviderFromConfig()
     }
 
     private func registerProviders() {
         providers = [
-            ElevenLabsProvider(),
-            OpenAITTSProvider(),
-            SystemVoiceProvider()
+            KokoroProvider(),         // NEW: Local TTS (will integrate next)
+            ElevenLabsProvider(),     // Cloud TTS (current default)
+            OpenAITTSProvider(),      // Alternative cloud
+            SystemVoiceProvider()     // System fallback
         ]
+    }
+
+    /// Load TTS provider preference from config
+    private func loadProviderFromConfig() {
+        let config = ConfigManager.shared.config.user
+        defaultProvider = config.ttsProvider.rawValue
+
+        // Load voice preferences
+        if let elevenLabsVoice = config.elevenLabsVoiceID {
+            defaultVoice["elevenlabs"] = elevenLabsVoice
+        }
+        if let kokoroVoice = config.kokoroVoice {
+            defaultVoice["kokoro"] = kokoroVoice
+        }
+    }
+
+    /// Update config when provider changes
+    func setProvider(_ providerName: String) {
+        defaultProvider = providerName
+        // Update config
+        Task {
+            await MainActor.run {
+                if let provider = UserConfig.TTSProvider(rawValue: providerName) {
+                    ConfigManager.shared.config.user.ttsProvider = provider
+                    ConfigManager.shared.save()
+                }
+            }
+        }
     }
 
     /// Get provider by name
