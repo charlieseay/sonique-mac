@@ -29,6 +29,7 @@ struct IntentRouter {
         case homeControl(action: HomeAction, device: String)
         case stopAction  // Stop current operation
         case readVaultFile(path: String)  // Read Standards/ or other vault files
+        case reloadRules  // Reload RULES.md, IDENTITY.md, CAPABILITIES.md from iCloud
     }
 
     enum HomeAction {
@@ -65,6 +66,12 @@ struct IntentRouter {
             }
         } else {
             logger.info("🔄 No pattern match, continuing to LLM for context")
+        }
+
+        // Reload rules/identity/capabilities from iCloud
+        if lower.matches(pattern: "(reload|refresh|reinitialize|re-initialize|reset).*(rules|identity|capabilities|config)") ||
+           lower.matches(pattern: "(rules|identity|capabilities).*(reload|refresh)") {
+            return .infrastructure(command: .reloadRules)
         }
 
         // Home control (check early - user expects instant response for lights/devices)
@@ -344,6 +351,54 @@ struct InfrastructureExecutor {
                 return content
             }
             return "File not found: \(path)"
+
+        case .reloadRules:
+            return await reloadAllRules()
+        }
+    }
+
+    // MARK: - Reload Rules
+
+    private static func reloadAllRules() async -> String {
+        let profilePath = "~/Library/Mobile\\ Documents/iCloud~com~seayniclabs~sonique/Documents/SoniqueProfiles/Desktop"
+
+        var reloaded: [String] = []
+        var errors: [String] = []
+
+        // Reload RULES.md
+        let rulesResult = await shell("cat \(profilePath)/RULES.md")
+        if rulesResult.exitCode == 0 && !rulesResult.stdout.isEmpty {
+            reloaded.append("RULES")
+        } else {
+            errors.append("RULES")
+        }
+
+        // Reload IDENTITY.md
+        let identityResult = await shell("cat \(profilePath)/IDENTITY.md")
+        if identityResult.exitCode == 0 && !identityResult.stdout.isEmpty {
+            reloaded.append("IDENTITY")
+        } else {
+            errors.append("IDENTITY")
+        }
+
+        // Reload CAPABILITIES.md
+        let capsResult = await shell("cat \(profilePath)/CAPABILITIES.md")
+        if capsResult.exitCode == 0 && !capsResult.stdout.isEmpty {
+            reloaded.append("CAPABILITIES")
+        } else {
+            errors.append("CAPABILITIES")
+        }
+
+        // Reload SOUL.md if it exists
+        let soulResult = await shell("cat \(profilePath)/SOUL.md 2>/dev/null")
+        if soulResult.exitCode == 0 && !soulResult.stdout.isEmpty {
+            reloaded.append("SOUL")
+        }
+
+        if errors.isEmpty {
+            return "Reloaded: \(reloaded.joined(separator: ", "))"
+        } else {
+            return "Reloaded: \(reloaded.joined(separator: ", ")). Failed: \(errors.joined(separator: ", "))"
         }
     }
 

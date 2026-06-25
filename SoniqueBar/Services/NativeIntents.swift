@@ -192,6 +192,95 @@ enum NativeIntents {
             }
         }
 
+        // --- Small talk (instant responses, zero LLM) ---
+        // Greetings
+        if lower.matchesAny(["hey", "hello", "hi", "hey sonique", "hey quinn", "are you there", "you there"]) {
+            return ["I'm here. What do you need?", "Hey! What's up?", "I'm listening."].randomElement() ?? "I'm here."
+        }
+
+        // How are you
+        if lower.matchesAny(["how are you", "how are you doing", "how's it going", "hows it going", "how are things"]) {
+            return ["Running smoothly. You?", "All good here. What do you need?", "I'm good, thanks for asking."].randomElement() ?? "All good."
+        }
+
+        // Thanks / appreciation
+        if lower.matchesAny(["thanks", "thank you", "thanks sonique", "thank you sonique", "appreciate it", "thanks quinn", "thank you quinn"]) {
+            return ["Happy to help.", "Got it.", "You got it."].randomElement() ?? "Got it."
+        }
+
+        // Busy / working on something
+        if lower.matchesAny(["are you busy", "you busy", "are you working", "busy right now", "working on something"]) {
+            return ["Just standing by for your commands.", "Ready when you are.", "Not at all, what do you need?"].randomElement() ?? "Always ready for you."
+        }
+
+        // Acknowledge affirmative
+        if lower == "yes" || lower == "yep" || lower == "yeah" || lower == "okay" || lower == "ok" || lower == "got it" {
+            return "Got it."
+        }
+
+        // Acknowledge negative
+        if lower == "no" || lower == "nope" || lower == "never mind" || lower == "cancel" || lower == "skip" {
+            return "Understood."
+        }
+
+        // Conversational acknowledgments
+        if lower.matchesAny(["i know", "that's right", "thats right", "exactly", "for sure", "definitely"]) {
+            return "Yeah."
+        }
+
+        // Casual follow-ups and agreements
+        if lower.matchesAny(["sounds good", "sounds great", "perfect", "cool", "awesome", "got it", "understood"]) {
+            return "Great."
+        }
+
+        // Simple clarifications
+        if lower == "what" || lower == "what is it" || lower == "what's this" || lower == "whats this" {
+            return "Need more context. What are you asking about?"
+        }
+
+        if lower == "why" || lower == "why's that" || lower == "whys that" {
+            return "Can you give me more details?"
+        }
+
+        if lower.matchesAny(["tell me more", "go on", "continue", "keep going"]) {
+            return "I'm listening."
+        }
+
+        // Acknowledgments of understanding
+        if lower.matchesAny(["sure", "alright", "fine", "ok then", "will do"]) {
+            return "Got it."
+        }
+
+        // Expressions of agreement (stronger)
+        if lower.matchesAny(["sounds right", "makes sense", "that makes sense", "of course", "naturally"]) {
+            return "Yeah."
+        }
+
+        // Light negations
+        if lower.matchesAny(["not really", "not quite", "not exactly", "not necessarily"]) {
+            return "Understood."
+        }
+
+        // Casual inquiries about help
+        if lower.matchesAny(["can you help", "can you assist", "do you mind", "would you"]) {
+            return "Of course. What do you need?"
+        }
+
+        // Simple time-related small talk
+        if lower.matchesAny(["in a bit", "in a minute", "soon", "shortly", "in a sec"]) {
+            return "Got it, I'll wait."
+        }
+
+        // Expressions of urgency or importance
+        if lower.matchesAny(["it's important", "its important", "it's urgent", "its urgent", "asap", "right now"]) {
+            return "I'm ready. What do you need?"
+        }
+
+        // Casual acknowledgments
+        if lower.matchesAny(["noted", "got that", "copy that", "roger that"]) {
+            return "Got it."
+        }
+
         return nil  // not a native intent → defer to LLM
     }
 
