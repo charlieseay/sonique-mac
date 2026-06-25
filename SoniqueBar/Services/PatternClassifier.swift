@@ -7,64 +7,38 @@ struct PatternClassifier {
     private static let logger = Logger(subsystem: "com.seayniclabs.soniquebar", category: "PatternClassifier")
 
     /// Classify intent using regex patterns (fallback to LLM if no match)
+    /// IMPORTANT: Only match VERY specific patterns. Let LLM handle ambiguity and context.
     static func classify(_ transcript: String) -> Intent? {
         logger.info("🔍 classify called with: '\(transcript)'")
         let lower = transcript.lowercased()
 
-        // Calendar queries
-        if lower.matches(pattern: "(calendar|schedule|meeting|appointment|today|tomorrow)") {
-            logger.info("✅ Matched: checkCalendar")
-            return .checkCalendar
-        }
-
-        // Email queries
-        if lower.matches(pattern: "(email|inbox|unread|mail|message)") {
-            logger.info("✅ Matched: checkEmail")
-            return .checkEmail
-        }
-
-        // Screen awareness
-        if lower.matches(pattern: "(screen|display|showing|what.s on|what is on)") {
-            logger.info("✅ Matched: describeScreen")
-            return .describeScreen
-        }
-
-        // Time/date queries
-        if lower.matches(pattern: "\\b(time|date|day)\\b|what.s the (time|date|day)|what is the (time|date|day)") {
+        // Time/date queries (very specific phrases only)
+        if lower.matches(pattern: "^what.s the (time|date)|^what is the (time|date)|^(time|date)$") {
             logger.info("✅ Matched: currentTime")
             return .currentTime
         }
 
-        // System status
-        if lower.matches(pattern: "(status|health|docker|helmsman|queue)") {
-            logger.info("✅ Matched: systemStatus")
-            return .systemStatus
-        }
-
-        // Task creation (needs more context, defer to LLM)
-        if lower.matches(pattern: "(create|add|make|new).*(task|reminder|todo)") {
-            logger.info("ℹ️ Task creation detected, deferring to LLM")
-            return nil  // Let LLM handle context
-        }
-
-        // Stop/cancel commands
-        if lower.matches(pattern: "^(stop|cancel|nevermind|forget it)") {
+        // Explicit stop commands (clear user intent to cancel)
+        if lower.matches(pattern: "^(stop|cancel|nevermind|forget it)$") {
             logger.info("✅ Matched: stopAction")
             return .stopAction
         }
 
-        // No pattern match — needs LLM classification
-        logger.info("❌ No pattern matched, needs LLM")
+        // Everything else falls through to LLM for contextual understanding
+        // This includes:
+        // - "your status" vs "lab status" - let LLM disambiguate based on conversation
+        // - Calendar/email - "what's on my calendar" vs "tell me about calendar features"
+        // - Screen queries - could be asking about capabilities vs actual screen content
+        // - Task creation - needs full context and natural response
+
+        logger.info("❌ No pattern matched, deferring to LLM for context")
         return nil
     }
 
     enum Intent {
-        case checkCalendar
-        case checkEmail
-        case describeScreen
-        case currentTime
-        case systemStatus
-        case stopAction
+        case currentTime         // "What's the time?" only
+        case stopAction          // "Stop" / "Cancel" only
+        // Everything else goes to LLM for contextual understanding
     }
 }
 

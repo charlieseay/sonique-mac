@@ -49,32 +49,22 @@ struct IntentRouter {
         logger.info("🎯 Classifying input: '\(text)'")
         let lower = text.lowercased()
 
-        // FAST PATH: Pattern-based classification (no LLM, <1ms)
+        // FAST PATH: Only match VERY specific, unambiguous patterns
+        // Most queries should go to LLM for contextual understanding
         if let patternIntent = PatternClassifier.classify(text) {
             logger.info("⚡ Pattern matched: \(String(describing: patternIntent))")
             switch patternIntent {
-            case .checkCalendar:
-                logger.info("➡️ Routing to: checkCalendar")
-                return .infrastructure(command: .checkCalendar(query: text))
-            case .checkEmail:
-                logger.info("➡️ Routing to: checkEmail")
-                return .infrastructure(command: .checkEmail(query: text))
-            case .describeScreen:
-                logger.info("➡️ Routing to: describeScreen")
-                return .infrastructure(command: .describeScreen)
             case .currentTime:
-                // Handle inline without infrastructure command
+                // "What's the time?" - instant response
                 logger.info("➡️ Routing to: fast-path current_time")
                 return .conversation(text: "current_time")
-            case .systemStatus:
-                logger.info("➡️ Routing to: systemStatus")
-                return .infrastructure(command: .checkStatus(service: "lab"))
             case .stopAction:
+                // "Stop" / "Cancel" - immediate action
                 logger.info("➡️ Routing to: stopAction")
                 return .infrastructure(command: .stopAction)
             }
         } else {
-            logger.info("🔄 No pattern match, continuing to full classification")
+            logger.info("🔄 No pattern match, continuing to LLM for context")
         }
 
         // Home control (check early - user expects instant response for lights/devices)
@@ -373,6 +363,45 @@ struct InfrastructureExecutor {
 
     private static func checkServiceStatus(_ service: String) async -> String {
         switch service.lowercased() {
+        case "self", "quinn", "sonique":
+            // Check Sonique's own health - services she depends on
+            var status: [String] = []
+
+            // Check SoniqueBar server
+            let serverResult = await shell("curl -sf http://localhost:8890/health")
+            if serverResult.exitCode == 0 {
+                status.append("Server: running")
+            } else {
+                status.append("Server: down")
+            }
+
+            // Check Helmsman connectivity (task dispatch)
+            let helmsmanResult = await shell("curl -sf http://localhost:5682/health")
+            if helmsmanResult.exitCode == 0 {
+                status.append("Helmsman: connected")
+            } else {
+                status.append("Helmsman: unreachable")
+            }
+
+            // Check LLM availability (ask_claude, ask_llm)
+            let claudeResult = await shell("which ask_claude")
+            if claudeResult.exitCode == 0 {
+                status.append("LLM: available")
+            } else {
+                status.append("LLM: missing")
+            }
+
+            // Check memory/conversation storage
+            let memoryPath = "~/Library/Mobile\\ Documents/iCloud~com~seayniclabs~sonique/Documents/SoniqueProfiles/Desktop/conversations.jsonl"
+            let memoryResult = await shell("test -f \(memoryPath) && echo ok")
+            if memoryResult.exitCode == 0 {
+                status.append("Memory: synced")
+            } else {
+                status.append("Memory: not synced")
+            }
+
+            return status.joined(separator: ". ")
+
         case "lab", "environment":
             return await LabStatusService.shared.getStatus()
 
