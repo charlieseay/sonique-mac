@@ -1,0 +1,5 @@
+fastapi==0.115.12
+uvicorn[standard]==0.32.1
+coremltools==8.2
+numpy==2.2.1
+pydantic==2.10.5

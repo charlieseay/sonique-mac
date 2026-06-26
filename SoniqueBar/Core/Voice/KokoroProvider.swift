@@ -1,6 +1,6 @@
 import Foundation
 import AVFoundation
-// import Kokoro  // TODO: Enable once SPM dependency resolved
+import Kokoro
 
 /// Kokoro local TTS provider
 /// Uses kokoro-swift for fast, offline, high-quality synthesis
@@ -27,7 +27,7 @@ class KokoroProvider: NSObject, VoiceProvider, AVAudioPlayerDelegate {
     private var currentlySpeaking = false
 
     // Singleton pipeline (cached for session)
-    // private static var pipeline: KPipeline?
+    private static var pipeline: KPipeline?
     private static var pipelineError: Error?
 
     // MARK: - Initialization
@@ -48,16 +48,12 @@ class KokoroProvider: NSObject, VoiceProvider, AVAudioPlayerDelegate {
     }
 
     /// Initialize pipeline (lazy, cached)
-    private func getPipeline() throws -> Any {
+    private func getPipeline() throws -> KPipeline {
         // Return cached error if initialization failed before
         if let error = Self.pipelineError {
             throw error
         }
 
-        // TODO: Implement once Kokoro SPM dependency is resolved
-        throw VoiceError.synthesisFailedError("Kokoro integration pending - SPM dependency needs resolution")
-
-        /* UNCOMMENT ONCE KOKORO PACKAGE IS AVAILABLE:
         // Return cached pipeline if available
         if let pipeline = Self.pipeline {
             return pipeline
@@ -90,7 +86,6 @@ class KokoroProvider: NSObject, VoiceProvider, AVAudioPlayerDelegate {
             print("[KokoroProvider] Failed to initialize pipeline: \(error)")
             throw VoiceError.synthesisFailedError("Kokoro initialization failed: \(error.localizedDescription)")
         }
-        */
     }
 
     // MARK: - VoiceProvider Implementation
@@ -122,10 +117,6 @@ class KokoroProvider: NSObject, VoiceProvider, AVAudioPlayerDelegate {
 
         print("[KokoroProvider] Synthesizing with voice: \(selectedVoice)")
 
-        // TODO: Implement once Kokoro SPM dependency is resolved
-        throw VoiceError.synthesisFailedError("Kokoro integration pending - SPM dependency needs resolution")
-
-        /* UNCOMMENT ONCE KOKORO PACKAGE IS AVAILABLE:
         let startTime = Date()
 
         // Get pipeline (cached)
@@ -144,7 +135,6 @@ class KokoroProvider: NSObject, VoiceProvider, AVAudioPlayerDelegate {
         try AudioWriter.writeWAV(samples: result.audio, to: tempURL, sampleRate: 24000)
 
         return tempURL
-        */
     }
 
     func stop() async {

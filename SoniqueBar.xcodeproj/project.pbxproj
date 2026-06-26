@@ -491,7 +491,7 @@
 /* Begin XCRemoteSwiftPackageReference section */
 		KOKORO7AD99D19440B670BC3 /* XCRemoteSwiftPackageReference "kokoro-swift" */ = {
 			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "Packages/kokoro-swift";
+			repositoryURL = "file:///Users/charlieseay/Projects/sonique-mac/Packages/kokoro-swift";
 			requirement = {
 				kind = branch;
 				branch = main;
