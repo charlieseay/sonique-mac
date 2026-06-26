@@ -18,10 +18,10 @@ import time
 
 app = FastAPI(title="Kokoro TTS Service", version="1.0.0")
 
-# Path to KokoroCLI binary (bundled with SoniqueBar or in Packages)
-KOKORO_CLI = Path.home() / "Projects/sonique-mac/Packages/kokoro-swift/.build/debug/KokoroCLI"
-# Use MLX backend (simpler than CoreML, works natively on Metal)
-WEIGHTS_DIR = Path.home() / "Library/Application Support/SoniqueBar/Kokoro/MLX_GPU"
+# Path to Kokoro models (PyTorch format from hexgrad/Kokoro-82M)
+WEIGHTS_DIR = Path.home() / "Library/Application Support/SoniqueBar/Kokoro"
+MODEL_PATH = WEIGHTS_DIR / "kokoro-v1_0.pth"
+VOICES_DIR = WEIGHTS_DIR / "voices"
 
 # Model cache
 models = {}
