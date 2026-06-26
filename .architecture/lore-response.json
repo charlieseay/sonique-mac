@@ -1,0 +1,83 @@
+{
+  "scanSummary": "File count: 11104\nExtensions: {\".md\":124,\".plist\":4,\".swift\":226,\"(none)\":299,\".json\":10,\".py\":4184,\".txt\":125,\".js\":2,\".css\":1,\".eot\":1,\".svg\":1,\".ttf\":1,\".woff\":1,\".html\":8,\".rst\":86,\".conf\":2,\".less\":71,\".h\":507,\".cc\":44,\".mk\":1,\".xml\":2,\".sublime-syntax\":1,\".bazel\":2,\".gradle\":1,\".cmake\":8,\".in\":8,\".cu\":96,\".sh\":17,\".m\":1,\".hpp\":184,\".modulemap\":2,\".MIT\":1,\".natvis\":1,\".png\":23,\".safetensors\":1,\".c\":61,\".cpp\":290,\".metal\":49,\".cff\":1,\".toml\":2,\".ps1\":2,\".cuh\":32,\".typed\":47,\".patch\":1,\".pbxproj\":2,\".xcworkspacedata\":1,\".xcscheme\":1,\".xctestplan\":1,\".profraw\":1,\".xcconfig\":7,\".entitlements\":1,\".xcuserstate\":1,\".pyc\":4039,\".csh\":1,\".fish\":1,\".11\":2,\".pyi\":218,\".so\":31,\".pth\":1,\".pxd\":34,\".pyx\":29,\".a\":2,\".ini\":3,\".pc\":1,\".pkl\":1,\".fits\":1,\".csv\":30,\".build\":3,\".template\":1,\".cfg\":3,\".f90\":59,\".f\":23,\".pyf\":7,\".inc\":1,\".f95\":1,\".npy\":5,\".npz\":2,\".gz\":3,\".APACHE\":5,\".BSD\":5,\".pem\":1,\".exe\":14,\".zip\":1,\".egg\":1,\".tmpl\":2,\".g4\":2,\".al\":16,\".lark\":2,\".xsl\":3,\".1\":2,\".pxi\":2}\n\nFile tree:\nAGENTS.md\nARCHITECTURE.md\nBUILD-35-SUMMARY.md\nBUILD_70_STATUS.md\nCLEANUP.md\nDEPENDENCIES.md\nExportOptions.plist\nFINAL_STATUS.md\nHANDOFF.md\nIMPLEMENTATION-PLAN.md\nIMPLEMENTATION_STATUS.md\nJARVIS-ROADMAP.md\nJARVIS-TODO.md\nKOKORO_STATUS.md\nLabStatusService.swift\nMemoryService.swift\nPRODUCTION-READY.md\nPROJECT_HEADER.md\nPackage.swift\nPackages\n  kokoro-swift\n    LICENSE\n    Package.swift\n    Packages\n      Misaki\n        Package.swift\n        Sources\n        Tests\n    README.md\n    Scripts\n      convert_to_coreml.py\n      convert_to_coreml_segmented.py\n      convert_weights.py\n      coreml_wrapper.py\n      coreml_wrapper_v2.py\n      verify_coreml_models.py\n    Sources\n      Kokoro\n        AudioWriter.swift\n        CoreMLVoiceAdapter.swift\n        KModel.swift\n        KPipeline.swift\n        KokoroConfig.swift\n        NN\n        SegmentedCoreMLModel.swift\n        VoiceDownloader.swift\n        VoiceLoader.swift\n        WeightConverter.swift\n      KokoroCLI\n        main.swift\n    Tests\n      KokoroTests\n        IntegrationTests.swift\n        KokoroTests.swift\n  mlx-swift\n    ACKNOWLEDGMENTS.md\n    CMakeLists.txt\n    CODE_OF_CONDUCT.md\n    CONTRIBUTING.md\n    LICENSE\n    MAINTENANCE.md\n    Package.swift\n    README.md\n    Source\n      Cmlx\n        fmt\n        framework\n        include\n        include-framework\n        json\n        metal-cpp\n        mlx\n        mlx-c\n        mlx-conditional\n        mlx-generated\n        vendor-README.md\n      Examples\n        CustomFunctionExample.swift\n        CustomFunctionExampleSimple.swift\n        Example1.swift\n        Tutorial.swift\n      MLX\n        ArrayAt.swift\n        Cmlx+Util.swift\n        DType.swift\n        Device.swift\n        Documentation.docc\n        ErrorHandler.swift\n        Export.swift\n        FFT.swift\n        Factory.swift\n        Foundation+Util.swift\n        GPU+Metal.swift\n        IO.swift\n        Linalg.swift\n        MLXArray+Bytes.swift\n        MLXArray+Indexing.swift\n        MLXArray+Init.swift\n        MLXArray+Metal.swift\n        MLXArray+Ops.swift\n        MLXArray.swift\n        MLXCustomFunction.swift\n        MLXFast.swift\n        MLXFastKernel.swift\n        Memory.swift\n        Nested.swift\n        Ops+Array.swift\n        Ops.swift\n        ParameterTypes.swift\n        Protocols.swift\n        Random.swift\n        State.swift\n        Stream.swift\n        Transforms+Compile.swift\n        Transforms+Eval.swift\n        Transforms+Grad.swift\n        Transforms+Internal.swift\n        Transforms+Vmap.swift\n        Transforms.swift\n        WiredMemory.swift\n      MLXFFT\n        FFT.swift\n      MLXFast\n        MLXFast.swift\n        MLXFastKernel.swift\n      MLXLinalg\n        Linalg.swift\n      MLXNN\n        Activations.swift\n        Cache.swift\n        Containers.swift\n        Convolution.swift\n        ConvolutionTransposed.swift\n        Documentation.docc\n        Dropout.swift\n        Embedding.swift\n        Linear.swift\n        Losses.swift\n        Module.swift\n        Normalization.swift\n        Pooling.swift\n        PositionalEncoding.swift\n        Quantized.swift\n        Recurrent.swift\n        Transformer.swift\n        Upsample.swift\n        ValueAndGrad.swift\n      MLXOptimizers\n        Documentation.docc\n        Optimizers.swift\n      MLXRandom\n        Random.swift\n    Tests\n      CmlxTests\n        CmlxTests.swift\n      MLXTests\n        ArrayAtTests.swift\n        DTypeTests.swift\n        ErrorTests.swift\n        ExportTests.swift\n        IntegrationTests.swift\n        LinalgTests.swift\n        LossTests.swift\n        MLXArray+IndexingTests.swift\n        MLXArray+InitTests.swift\n        MLXArray+OpsTests.swift\n        MLXArrayTests.swift\n        MLXFastKernelTests.swift\n        MLXRandomTests.swift\n        MemoryTests.swift\n        ModuleTests.swift\n        NestedTests.swift\n        OpsTests.swift\n        OptimizerTests.swift\n        PoolingTests.swift\n        QuantizationTests.swift\n        SaveTests.swift\n        StreamTests.swift\n        SubclassTests.swift\n        TransformTests.swift\n        UpsampleTests.swift\n        Utils.swift\n        WiredMemoryTests.swift\n    cmake\n      swift-numerics.patch\n    skills\n      README.md\n      mlx-swift\n        SKILL.md\n        references\n    tools\n      build-documentation.sh\n      create-xcframework.sh\n      fix-metal-includes.sh\n      generate_integration_tests.py\n      update-mlx-xcodeproj.sh\n      update-mlx.sh\n    xcode\n      MLX.xcodeproj\n        project.pbxproj\n        project.xcworkspace\n        xcshareddata\n      MLX.xctestplan\n      default.profraw\n      xcconfig\n        Cmlx.xcconfig\n        MLX.xcconfig\n        MLXNN.xcconfig\n        MLXOptimizers.xcconfig\n        MLXTests.xcconfig\n        common.xcconfig\n        project.xcconfig\n  swift-numerics\n    CMakeLists.txt\n    CONTRIBUTING.md\n    LICENSE.txt\n    Package.swift\n    README.md\n    Sources\n      CMakeLists.txt\n      ComplexModule\n        CMakeLists.txt\n        Complex+AdditiveArithmetic.swift\n        Complex+AlgebraicField.swift\n        Complex+Codable.swift\n        Complex+ElementaryFunctions.swift\n        Complex+Hashable.swift\n        Complex+IntegerLiteral.swift\n        Complex+Numeric.swift\n        Complex+StringConvertible.swift\n        Complex.swift\n        Documentation.docc\n        Polar.swift\n        README.md\n        Scale.swift\n      IntegerUtilities\n        CMakeLists.txt\n        DivideWithRounding.swift\n        GCD.swift\n        README.md\n        Rotate.swift\n        RoundingRule.swift\n        SaturatingArithmetic.swift\n        ShiftWithRounding.swift\n      Numerics\n        CMakeLists.txt\n        Numerics.swift\n        README.md\n      RealModule\n        AlgebraicField.swift\n        ApproximateEquality.swift\n        AugmentedArithmetic.swift\n        CMakeLists.txt\n        Documentation.docc\n        Double+Real.swift\n        ElementaryFunctions.swift\n        Float+Real.swift\n        Float16+Real.swift\n        Float80+Real.swift\n        README.md\n        Real.swift\n        RealFunctions.swift\n        RelaxedArithmetic.swift\n      _NumericsShims\n        CMakeLists.txt\n        README.md\n        _NumericsShims.c\n        include\n      _TestSupport\n        BlackHole.swift\n        CMakeLists.txt\n        DoubleWidth.swift\n        Error.swift\n        Interval.swift\n        RealTestSupport.swift\n    Tests\n      ComplexTests\n        ApproximateEqualityTests.swift\n        ArithmeticTests.swift\n        CMakeLists.txt\n        ElementaryFunctionTests.swift\n        PropertyTests.swift\n      IntegerUtilitiesTests\n        CMakeLists.txt\n        DivideTests.swift\n        DoubleWidthTests.swift\n        GCDTests.swift\n        RotateTests.swift\n        RoundingTests.swift\n        SaturatingArithmeticTests.swift\n        ShiftTests.swift\n      RealTests\n        ApproximateEqualityTests.swift\n        AugmentedArithmeticTests.swift\n        CMakeLists.txt\n        ElementaryFunctionChecks.swift\n        IntegerExponentTests.swift\n        RelaxedArithmeticTests.swift\n    cmake\n      modules\n        SwiftSupport.cmake\nQUINN-ENHANCEMENTS.md\nREADME.md\nSoniqueBar\n  Connectors\n    DockerConnector.swift\n    GitHubConnector.swift\n    HelmsmanConnector.swift\n    ObsidianConnector.swift\n    SlackConnector.swift\n  Core\n    Config\n      ConfigManager.swift\n      ConnectorConfig.swift\n    Connectors\n      ConnectorProtocol.swift\n      ConnectorRegistry.swift\n    LLM\n      ClaudeProvider.swift\n      GeminiProvider.swift\n      LLMProvider.swift\n      NVIDIAProvider.swift\n      OpenAIProvider.swift\n    Voice\n      ElevenLabsProvider.swift\n      KokoroProvider.swift\n      OpenAITTSProvider.swift\n      SystemVoiceProvider.swift\n      VoiceProvider.swift\n    WakeWord\n      WakeWordDetector.swift\n  Info.plist\n  Resources\n    Assets.xcassets\n      AppIcon.appiconset\n        Contents.json\n        icon_1024x1024.png\n        icon_128x128.png\n        icon_16x16.png\n        icon_256x256.png\n        icon_32x32.png\n        icon_512x512.png\n        icon_64x64.png\n    Info.plist\n    README.md\n  Services\n    BackgroundMonitor.swift\n    CodeAnalyzer.swift\n    CollaborationEngine.swift\n    CommandServer.swift\n    ContextEngine.swift\n    DeviceContext.swift\n    DeviceOrchestrator.swift\n    DiagnosticAgent.swift\n    HelmsmanIntegration.swift\n    InitializationScript.swift\n    IntentRouter.swift\n    LabStatusService.swift\n    LiveScreenCapture.swift\n    MCPProxyClient.swift\n    MemoryService.swift\n    NativeIntents.swift\n    NotificationService.swift\n    OllamaService.swift\n    PatternClassifier.swift\n    PredictiveNotifications.swift\n    ProactiveBriefing.swift\n    QuickCommands.swift\n    RemediationEngine.swift\n    ScreenAnalyzer.swift\n    ScreenAwarenessService.swift\n    SelfHealingEngine.swift\n    SoniqueBrain.swift\n    TaskDecomposer.swift\n    TaskDispatcher.swift\n    VaultReader.swift\n  SoniqueBarApp.swift\n  Views\n    SettingsView.swift\nSoniqueBar.entitlements\nSoniqueBar.xcodeproj\n  project.pbxproj\n  project.xcworkspace\n    xcuserdata\n      charlieseay.xcuserdatad\n        UserInterfaceState.xcuserstate\n  xcuserdata\n    charlieseay.xcuserdatad\n      xcschemes\n        xcschememanagement.plist\nTEST_ALL_COMMANDS.sh\nTEST_INFRASTRUCTURE.sh\nTRANSCRIPT_ISSUES.md\nTTS_COMPARISON_RESULTS.md\nTaskDispatcher.swift\nVALIDATION_PLAN.md\nVOICE_COMMANDS.md\ngenerate_xcodeproj.py\nkokoro-service\n  README.md\n  __pycache__\n    main.cpython-311.pyc\n  install-kokoro.sh\n  main.py\n  requirements.txt\n  venv\n    bin\n      Activate.ps1\n      activate\n      activate.csh\n      activate.fish\n      dotenv\n      f2py\n      fastapi\n      idna\n      isympy\n      numpy-config\n      pip\n      pip3\n      pip3.11\n      pyaml\n      python\n      python3\n      python3.11\n      tqdm\n      uvicorn\n      watchfiles\n      websockets\n    lib\n      python3.11\n        site-packages\n    pyvenv.cfg\n    share\n      man\n        man1\nscripts\n  archive-and-upload.sh\n  auto-deploy.sh\n  build-sidecar.sh\n  github-watcher.sh\nverify-quinn.sh\n\nDetected frameworks: none\nSchema files: none\nEnv keys (names only): none",
+  "summary": "SoniqueBar is a macOS voice-driven AI assistant (Jarvis-style menu bar app) that combines on-device ML speech synthesis (Kokoro TTS via MLX/Swift) with multiple LLM providers and a local voice service. It listens for wake words, routes intents to LLMs, and integrates with developer tools like GitHub, Docker, Slack, and Obsidian.",
+  "nodes": [
+    {
+      "title": "Frontend",
+      "type": "core",
+      "stack": [
+        "SwiftUI",
+        "AppKit"
+      ],
+      "notes": "macOS menu bar app (SoniqueBarApp, SettingsView) for voice interaction, wake-word capture, and UI"
+    },
+    {
+      "title": "Backend",
+      "type": "core",
+      "stack": [
+        "Swift",
+        "Python",
+        "FastAPI",
+        "MLX",
+        "CoreML"
+      ],
+      "notes": "Service layer (SoniqueBrain, IntentRouter, CommandServer) plus a Python Kokoro TTS HTTP service for on-device speech synthesis"
+    },
+    {
+      "title": "Integrations",
+      "type": "supporting",
+      "stack": [
+        "OpenAI",
+        "Claude",
+        "Gemini",
+        "NVIDIA",
+        "ElevenLabs",
+        "GitHub",
+        "Docker",
+        "Slack",
+        "Obsidian"
+      ],
+      "notes": "LLM, voice/TTS providers, and external tool connectors driving assistant capabilities"
+    },
+    {
+      "title": "Infrastructure",
+      "type": "supporting",
+      "stack": [
+        "Bash",
+        "Xcode",
+        "Swift Package Manager"
+      ],
+      "notes": "Build, deploy, and sidecar packaging scripts plus xcodeproj generation and CI helpers"
+    },
+    {
+      "title": "CLI",
+      "type": "supporting",
+      "stack": [
+        "Swift"
+      ],
+      "notes": "KokoroCLI command-line entry point for running the TTS engine standalone"
+    }
+  ],
+  "edges": [
+    {
+      "from": "Frontend",
+      "to": "Backend",
+      "label": "invokes"
+    },
+    {
+      "from": "Backend",
+      "to": "Integrations",
+      "label": "calls providers"
+    },
+    {
+      "from": "CLI",
+      "to": "Backend",
+      "label": "drives TTS"
+    },
+    {
+      "from": "Infrastructure",
+      "to": "Backend",
+      "label": "builds/deploys"
+    }
+  ]
+}
