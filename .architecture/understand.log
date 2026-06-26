@@ -1,0 +1,7 @@
+I need to build the understand-anything plugin before I can analyze your codebase. The plugin requires installation and build steps outside the current working directory. 
+
+Would you like me to:
+1. Install dependencies and build the plugin at `/Users/charlieseay/.claude/plugins/cache/understand-anything/understand-anything/2.8.1`
+2. Then proceed with the codebase analysis
+
+This is a one-time setup step required for the `/understand` skill to function.
