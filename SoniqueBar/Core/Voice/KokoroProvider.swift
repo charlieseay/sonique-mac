@@ -1,6 +1,7 @@
 import Foundation
 import AVFoundation
-import Kokoro
+// Using Python FastAPI service instead of direct MLX integration
+// import Kokoro
 
 /// Kokoro local TTS provider
 /// Uses kokoro-swift for fast, offline, high-quality synthesis
@@ -26,9 +27,8 @@ class KokoroProvider: NSObject, VoiceProvider, AVAudioPlayerDelegate {
     private var audioPlayer: AVAudioPlayer?
     private var currentlySpeaking = false
 
-    // Singleton pipeline (cached for session)
-    private static var pipeline: KPipeline?
-    private static var pipelineError: Error?
+    // HTTP service URL
+    private let serviceURL = "http://localhost:5903"
 
     // MARK: - Initialization
 
@@ -47,44 +47,15 @@ class KokoroProvider: NSObject, VoiceProvider, AVAudioPlayerDelegate {
                FileManager.default.fileExists(atPath: configFile.path)
     }
 
-    /// Initialize pipeline (lazy, cached)
-    private func getPipeline() throws -> KPipeline {
-        // Return cached error if initialization failed before
-        if let error = Self.pipelineError {
-            throw error
-        }
-
-        // Return cached pipeline if available
-        if let pipeline = Self.pipeline {
-            return pipeline
-        }
+    /// Check if Kokoro service is available
+    private func checkService() async -> Bool {
+        guard let url = URL(string: "\(serviceURL)/health") else { return false }
 
         do {
-            print("[KokoroProvider] Initializing pipeline...")
-
-            // Load CoreML segmented model
-            let model = try SegmentedCoreMLModel(
-                segmentedDir: modelDirectory.appendingPathComponent("CoreML_ANE/segmented"),
-                configURL: modelDirectory.appendingPathComponent("config.json")
-            )
-
-            // Load voices (with auto-download enabled)
-            let voices = VoiceLoader(
-                baseDirectory: modelDirectory.appendingPathComponent("voices"),
-                enableDownload: true
-            )
-
-            // Create pipeline
-            let pipeline = KPipeline(coreMLSegmentedModel: model, voices: voices)
-
-            Self.pipeline = pipeline
-            print("[KokoroProvider] Pipeline initialized successfully")
-
-            return pipeline
+            let (_, response) = try await URLSession.shared.data(from: url)
+            return (response as? HTTPURLResponse)?.statusCode == 200
         } catch {
-            Self.pipelineError = error
-            print("[KokoroProvider] Failed to initialize pipeline: \(error)")
-            throw VoiceError.synthesisFailedError("Kokoro initialization failed: \(error.localizedDescription)")
+            return false
         }
     }
 
@@ -119,20 +90,30 @@ class KokoroProvider: NSObject, VoiceProvider, AVAudioPlayerDelegate {
 
         let startTime = Date()
 
-        // Get pipeline (cached)
-        let pipeline = try getPipeline()
+        // Call Python FastAPI service (http://localhost:5903)
+        let url = URL(string: "http://localhost:5903/synthesize")!
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
 
-        // Synthesize
-        let result = try pipeline.synthesize(text: text, voice: selectedVoice)
+        let requestBody = ["text": text, "voice": selectedVoice]
+        request.httpBody = try JSONSerialization.data(withJSONObject: requestBody)
+
+        let (data, response) = try await URLSession.shared.data(for: request)
+
+        guard let httpResponse = response as? HTTPURLResponse,
+              httpResponse.statusCode == 200 else {
+            throw VoiceError.synthesisFailedError("Kokoro service returned error")
+        }
 
         let synthesisTime = Date().timeIntervalSince(startTime)
         print("[KokoroProvider] Synthesis completed in \(Int(synthesisTime * 1000))ms")
 
-        // Write to temp file
+        // Save to temp file
         let tempURL = FileManager.default.temporaryDirectory
             .appendingPathComponent(UUID().uuidString + ".wav")
 
-        try AudioWriter.writeWAV(samples: result.audio, to: tempURL, sampleRate: 24000)
+        try data.write(to: tempURL)
 
         return tempURL
     }
@@ -145,19 +126,12 @@ class KokoroProvider: NSObject, VoiceProvider, AVAudioPlayerDelegate {
     }
 
     func healthCheck() async -> Bool {
-        // Check if models are available and pipeline can initialize
-        guard isAvailable else {
-            print("[KokoroProvider] Health check failed: Models not found")
-            return false
+        // Check if HTTP service is available
+        let healthy = await checkService()
+        if !healthy {
+            print("[KokoroProvider] Health check failed: Service not available at \(serviceURL)")
         }
-
-        do {
-            _ = try getPipeline()
-            return true
-        } catch {
-            print("[KokoroProvider] Health check failed: \(error)")
-            return false
-        }
+        return healthy
     }
 
     // MARK: - AVAudioPlayerDelegate
