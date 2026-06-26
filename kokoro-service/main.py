@@ -18,9 +18,10 @@ import time
 
 app = FastAPI(title="Kokoro TTS Service", version="1.0.0")
 
-# Path to KokoroCLI binary
+# Path to KokoroCLI binary (bundled with SoniqueBar or in Packages)
 KOKORO_CLI = Path.home() / "Projects/sonique-mac/Packages/kokoro-swift/.build/debug/KokoroCLI"
-WEIGHTS_DIR = Path.home() / "Library/Application Support/SoniqueBar/Kokoro"
+# Use MLX backend (simpler than CoreML, works natively on Metal)
+WEIGHTS_DIR = Path.home() / "Library/Application Support/SoniqueBar/Kokoro/MLX_GPU"
 
 # Model cache
 models = {}
@@ -60,15 +61,15 @@ async def synthesize(request: SynthesizeRequest):
         with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as f:
             output_path = f.name
 
-        # Call KokoroCLI
+        # Call KokoroCLI with CoreML backend (native, no Metal library needed)
         cmd = [
             str(KOKORO_CLI),
             "--text", request.text,
             "--voice", request.voice,
             "--output", output_path,
-            "--backend", "coreml-ane-segmented",
+            "--backend", "coreml-ane-segmented",  # Uses Apple Neural Engine, zero dependencies
             "--weights-dir", str(WEIGHTS_DIR),
-            "--auto-download"  # Auto-download missing voices
+            "--auto-download"  # Auto-download missing voices/models
         ]
 
         result = subprocess.run(
