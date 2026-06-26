@@ -31,8 +31,8 @@ else
 fi
 
 # 4. Check CommandServer
-if curl -s http://localhost:9876/health > /dev/null 2>&1; then
-    echo "✅ CommandServer responding on :9876"
+if curl -s http://localhost:8890/health > /dev/null 2>&1; then
+    echo "✅ CommandServer responding on :8890"
 else
     echo "⚠️  CommandServer not responding (may still be initializing)"
 fi
