@@ -4,7 +4,7 @@
     {
       "path": ".architecture/ARCHITECTURE.md",
       "language": "markdown",
-      "sizeLines": 115,
+      "sizeLines": 118,
       "fileCategory": "docs"
     },
     {
@@ -14,10 +14,34 @@
       "fileCategory": "config"
     },
     {
+      "path": ".architecture/lore/api-response.json",
+      "language": "json",
+      "sizeLines": 85,
+      "fileCategory": "config"
+    },
+    {
       "path": ".architecture/SUMMARY.md",
       "language": "markdown",
       "sizeLines": 130,
       "fileCategory": "docs"
+    },
+    {
+      "path": ".architecture/understand-anything/import-input.json",
+      "language": "json",
+      "sizeLines": 647,
+      "fileCategory": "config"
+    },
+    {
+      "path": ".architecture/understand-anything/import-map.json",
+      "language": "json",
+      "sizeLines": 116,
+      "fileCategory": "config"
+    },
+    {
+      "path": ".architecture/understand-anything/scan-files.json",
+      "language": "json",
+      "sizeLines": 671,
+      "fileCategory": "config"
     },
     {
       "path": ".DS_Store",
@@ -644,20 +668,20 @@
       "fileCategory": "docs"
     }
   ],
-  "totalFiles": 107,
+  "totalFiles": 111,
   "filteredByIgnore": 0,
   "estimatedComplexity": "moderate",
   "stats": {
-    "filesScanned": 107,
+    "filesScanned": 111,
     "byCategory": {
       "docs": 27,
-      "config": 9,
+      "config": 13,
       "code": 63,
       "script": 8
     },
     "byLanguage": {
       "markdown": 26,
-      "json": 5,
+      "json": 9,
       "unknown": 2,
       "xml": 4,
       "python": 2,

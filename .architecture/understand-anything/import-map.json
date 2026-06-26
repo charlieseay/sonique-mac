@@ -1,14 +1,18 @@
 {
   "scriptCompleted": true,
   "stats": {
-    "filesScanned": 107,
+    "filesScanned": 111,
     "filesWithImports": 0,
     "totalEdges": 0
   },
   "importMap": {
     ".architecture/ARCHITECTURE.md": [],
     ".architecture/lore-response.json": [],
+    ".architecture/lore/api-response.json": [],
     ".architecture/SUMMARY.md": [],
+    ".architecture/understand-anything/import-input.json": [],
+    ".architecture/understand-anything/import-map.json": [],
+    ".architecture/understand-anything/scan-files.json": [],
     ".DS_Store": [],
     ".lore/map.md": [],
     ".understand-anything/tmp/ua-import-input.json": [],

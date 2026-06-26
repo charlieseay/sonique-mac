@@ -5,7 +5,7 @@ project: sonique-mac
 
 # Architecture Diagram: sonique-mac
 
-**Files:** 107 | **Complexity:** moderate
+**Files:** 111 | **Complexity:** moderate
 
 ## Project Structure
 
@@ -13,7 +13,7 @@ project: sonique-mac
 graph TB
     subgraph "📦 sonique-mac"
         docs[docs<br/>27 files]
-        config[config<br/>9 files]
+        config[config<br/>13 files]
         code[code<br/>63 files]
         script[script<br/>8 files]
     end
@@ -26,8 +26,8 @@ pie
     title Language Distribution
     "swift" : 56
     "markdown" : 26
+    "json" : 9
     "shell" : 8
-    "json" : 5
     "xml" : 4
     "unknown" : 2
     "python" : 2
@@ -47,6 +47,14 @@ pie
   SUMMARY.md
 .architecture/
   lore-response.json
+.architecture/
+    api-response.json
+.architecture/
+    import-input.json
+.architecture/
+    import-map.json
+.architecture/
+    scan-files.json
 .lore/
   map.md
 .understand-anything/
@@ -91,13 +99,6 @@ SoniqueBar/
     GitHubConnector.swift
 SoniqueBar/
     HelmsmanConnector.swift
-SoniqueBar/
-    ObsidianConnector.swift
-SoniqueBar/
-    SlackConnector.swift
-SoniqueBar/
-      ConfigManager.swift
-      ConnectorConfig.swift
 generate_xcodeproj.py
 kokoro-service/
   README.md
