@@ -4,7 +4,7 @@
    To use an API key instead, set ANTHROPIC_API_KEY.)
 
   Lore Map is running in scan mode
-  → http://localhost:3400
+  → http://localhost:3333
 
 
   Shutting down Lore Map.

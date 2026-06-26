@@ -6,21 +6,21 @@ status: automated-scan
 
 # Architecture Summary: sonique-mac
 
-**Generated:** Fri Jun 26 08:12:18 CDT 2026
+**Generated:** Fri Jun 26 09:57:25 CDT 2026
 **Location:** /Users/charlieseay/Projects/sonique-mac
 
 ## Project Inventory
 
 ```json
 {
-  "totalFiles": 111,
+  "totalFiles": 113,
   "estimatedComplexity": "moderate",
   "stats": {
-    "filesScanned": 111,
+    "filesScanned": 113,
     "byCategory": {
       "docs": 27,
       "config": 13,
-      "code": 63,
+      "code": 65,
       "script": 8
     },
     "byLanguage": {
@@ -31,7 +31,7 @@ status: automated-scan
       "python": 2,
       "shell": 8,
       "txt": 1,
-      "swift": 56,
+      "swift": 58,
       "entitlements": 1,
       "pbxproj": 1,
       "xcuserstate": 1
@@ -44,12 +44,12 @@ status: automated-scan
 
 - **docs**: 27 files
 - **config**: 13 files
-- **code**: 63 files
+- **code**: 65 files
 - **script**: 8 files
 
 ### Languages Detected
 
-- **swift**: 56 files
+- **swift**: 58 files
 - **markdown**: 26 files
 - **json**: 9 files
 - **shell**: 8 files

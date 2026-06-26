@@ -1,7 +1,7 @@
 {
   "scriptCompleted": true,
   "stats": {
-    "filesScanned": 111,
+    "filesScanned": 113,
     "filesWithImports": 0,
     "totalEdges": 0
   },
@@ -53,6 +53,7 @@
     "SoniqueBar.xcodeproj/project.xcworkspace/xcuserdata/charlieseay.xcuserdatad/UserInterfaceState.xcuserstate": [],
     "SoniqueBar.xcodeproj/xcuserdata/charlieseay.xcuserdatad/xcschemes/xcschememanagement.plist": [],
     "SoniqueBar/.DS_Store": [],
+    "SoniqueBar/Backend.swift": [],
     "SoniqueBar/Connectors/DockerConnector.swift": [],
     "SoniqueBar/Connectors/GitHubConnector.swift": [],
     "SoniqueBar/Connectors/HelmsmanConnector.swift": [],
@@ -107,6 +108,7 @@
     "SoniqueBar/Services/TaskDecomposer.swift": [],
     "SoniqueBar/Services/TaskDispatcher.swift": [],
     "SoniqueBar/Services/VaultReader.swift": [],
+    "SoniqueBar/Shared/ErrorHandler.swift": [],
     "SoniqueBar/SoniqueBarApp.swift": [],
     "SoniqueBar/Views/SettingsView.swift": [],
     "TaskDispatcher.swift": [],

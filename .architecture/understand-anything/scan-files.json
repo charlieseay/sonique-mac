@@ -4,7 +4,7 @@
     {
       "path": ".architecture/ARCHITECTURE.md",
       "language": "markdown",
-      "sizeLines": 118,
+      "sizeLines": 119,
       "fileCategory": "docs"
     },
     {
@@ -16,7 +16,7 @@
     {
       "path": ".architecture/lore/api-response.json",
       "language": "json",
-      "sizeLines": 85,
+      "sizeLines": 84,
       "fileCategory": "config"
     },
     {
@@ -28,19 +28,19 @@
     {
       "path": ".architecture/understand-anything/import-input.json",
       "language": "json",
-      "sizeLines": 647,
+      "sizeLines": 683,
       "fileCategory": "config"
     },
     {
       "path": ".architecture/understand-anything/import-map.json",
       "language": "json",
-      "sizeLines": 116,
+      "sizeLines": 122,
       "fileCategory": "config"
     },
     {
       "path": ".architecture/understand-anything/scan-files.json",
       "language": "json",
-      "sizeLines": 671,
+      "sizeLines": 707,
       "fileCategory": "config"
     },
     {
@@ -281,6 +281,12 @@
       "path": "SoniqueBar/.DS_Store",
       "language": "unknown",
       "sizeLines": 0,
+      "fileCategory": "code"
+    },
+    {
+      "path": "SoniqueBar/Backend.swift",
+      "language": "swift",
+      "sizeLines": 1,
       "fileCategory": "code"
     },
     {
@@ -608,6 +614,12 @@
       "fileCategory": "code"
     },
     {
+      "path": "SoniqueBar/Shared/ErrorHandler.swift",
+      "language": "swift",
+      "sizeLines": 1,
+      "fileCategory": "code"
+    },
+    {
       "path": "SoniqueBar/SoniqueBarApp.swift",
       "language": "swift",
       "sizeLines": 283,
@@ -668,15 +680,15 @@
       "fileCategory": "docs"
     }
   ],
-  "totalFiles": 111,
+  "totalFiles": 113,
   "filteredByIgnore": 0,
   "estimatedComplexity": "moderate",
   "stats": {
-    "filesScanned": 111,
+    "filesScanned": 113,
     "byCategory": {
       "docs": 27,
       "config": 13,
-      "code": 63,
+      "code": 65,
       "script": 8
     },
     "byLanguage": {
@@ -687,7 +699,7 @@
       "python": 2,
       "shell": 8,
       "txt": 1,
-      "swift": 56,
+      "swift": 58,
       "entitlements": 1,
       "pbxproj": 1,
       "xcuserstate": 1
