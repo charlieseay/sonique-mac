@@ -1,5 +1,5 @@
 {
-  "scriptCompleted": true,
+  "projectRoot": "/Users/charlieseay/Projects/sonique-mac",
   "files": [
     {
       "path": ".architecture/SUMMARY.md",
@@ -613,30 +613,5 @@
       "sizeLines": 287,
       "fileCategory": "docs"
     }
-  ],
-  "totalFiles": 102,
-  "filteredByIgnore": 0,
-  "estimatedComplexity": "moderate",
-  "stats": {
-    "filesScanned": 102,
-    "byCategory": {
-      "docs": 25,
-      "code": 63,
-      "config": 6,
-      "script": 8
-    },
-    "byLanguage": {
-      "markdown": 24,
-      "unknown": 2,
-      "json": 2,
-      "xml": 4,
-      "python": 2,
-      "shell": 8,
-      "txt": 1,
-      "swift": 56,
-      "entitlements": 1,
-      "pbxproj": 1,
-      "xcuserstate": 1
-    }
-  }
+  ]
 }

@@ -1,5 +1,1 @@
-extract-import-map.mjs failed: EISDIR: illegal operation on a directory, read
-Error: EISDIR: illegal operation on a directory, read
-    at readFileSync (node:fs:440:20)
-    at main (file:///Users/charlieseay/.claude/plugins/marketplaces/understand-anything/understand-anything-plugin/skills/understand/extract-import-map.mjs:1487:20)
-    at file:///Users/charlieseay/.claude/plugins/marketplaces/understand-anything/understand-anything-plugin/skills/understand/extract-import-map.mjs:1662:11
+extract-import-map: filesScanned=102 filesWithImports=0 totalEdges=0

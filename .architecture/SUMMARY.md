@@ -6,26 +6,27 @@ status: automated-scan
 
 # Architecture Summary: sonique-mac
 
-**Generated:** Thu Jun 25 21:55:13 CDT 2026
+**Generated:** Thu Jun 25 21:58:49 CDT 2026
 **Location:** /Users/charlieseay/Projects/sonique-mac
 
 ## Project Inventory
 
 ```json
 {
-  "totalFiles": 101,
+  "totalFiles": 102,
   "estimatedComplexity": "moderate",
   "stats": {
-    "filesScanned": 101,
+    "filesScanned": 102,
     "byCategory": {
       "docs": 25,
       "code": 63,
-      "config": 5,
+      "config": 6,
       "script": 8
     },
     "byLanguage": {
       "markdown": 24,
       "unknown": 2,
+      "json": 2,
       "xml": 4,
       "python": 2,
       "shell": 8,
@@ -33,8 +34,7 @@ status: automated-scan
       "swift": 56,
       "entitlements": 1,
       "pbxproj": 1,
-      "xcuserstate": 1,
-      "json": 1
+      "xcuserstate": 1
     }
   }
 }
@@ -44,7 +44,7 @@ status: automated-scan
 
 - **docs**: 25 files
 - **code**: 63 files
-- **config**: 5 files
+- **config**: 6 files
 - **script**: 8 files
 
 ### Languages Detected
@@ -54,12 +54,21 @@ status: automated-scan
 - **shell**: 8 files
 - **xml**: 4 files
 - **unknown**: 2 files
+- **json**: 2 files
 - **python**: 2 files
 - **txt**: 1 files
 - **entitlements**: 1 files
 - **pbxproj**: 1 files
 - **xcuserstate**: 1 files
-- **json**: 1 files
+
+
+### Import Relationships
+
+**Stats:**
+- Files with imports: 0
+- Total import edges: 0
+
+**Import map available:** `.understand-anything/tmp/ua-import-map.json`
 
 
 ## Lore Map

@@ -4,6 +4,8 @@
    To use an API key instead, set ANTHROPIC_API_KEY.)
 
   Error: Port 3333 is already in use.
-  Another Lore session may still be running — close that tab and Ctrl+C it first.
+  Another Lore session may
+  Shutting down Lore Map.
+ that tab and Ctrl+C it first.
   Or use a different port:  LORE_PORT=3334 lore deep-scan
 
