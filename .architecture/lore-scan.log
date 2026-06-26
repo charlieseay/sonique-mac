@@ -3,9 +3,8 @@
   (If Claude isn't logged in, run `claude /login` first.
    To use an API key instead, set ANTHROPIC_API_KEY.)
 
-  Error: Port 3333 is already in use.
-  Another Lore session may
-  Shutting down Lore Map.
- that tab and Ctrl+C it first.
-  Or use a different port:  LORE_PORT=3334 lore deep-scan
+  Lore Map is running in scan mode
+  → http://localhost:3400
 
+
+  Shutting down Lore Map.

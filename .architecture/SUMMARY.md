@@ -6,27 +6,27 @@ status: automated-scan
 
 # Architecture Summary: sonique-mac
 
-**Generated:** Thu Jun 25 21:58:49 CDT 2026
+**Generated:** Thu Jun 25 22:23:11 CDT 2026
 **Location:** /Users/charlieseay/Projects/sonique-mac
 
 ## Project Inventory
 
 ```json
 {
-  "totalFiles": 102,
+  "totalFiles": 107,
   "estimatedComplexity": "moderate",
   "stats": {
-    "filesScanned": 102,
+    "filesScanned": 107,
     "byCategory": {
-      "docs": 25,
+      "docs": 27,
+      "config": 9,
       "code": 63,
-      "config": 6,
       "script": 8
     },
     "byLanguage": {
-      "markdown": 24,
+      "markdown": 26,
+      "json": 5,
       "unknown": 2,
-      "json": 2,
       "xml": 4,
       "python": 2,
       "shell": 8,
@@ -42,19 +42,19 @@ status: automated-scan
 
 ### Files by Category
 
-- **docs**: 25 files
+- **docs**: 27 files
+- **config**: 9 files
 - **code**: 63 files
-- **config**: 6 files
 - **script**: 8 files
 
 ### Languages Detected
 
 - **swift**: 56 files
-- **markdown**: 24 files
+- **markdown**: 26 files
 - **shell**: 8 files
+- **json**: 5 files
 - **xml**: 4 files
 - **unknown**: 2 files
-- **json**: 2 files
 - **python**: 2 files
 - **txt**: 1 files
 - **entitlements**: 1 files
@@ -68,7 +68,7 @@ status: automated-scan
 - Files with imports: 0
 - Total import edges: 0
 
-**Import map available:** `.understand-anything/tmp/ua-import-map.json`
+**Import map available:** `.architecture/understand-anything/import-map.json`
 
 
 ## Lore Map
@@ -125,6 +125,6 @@ Run this script again to refresh the analysis:
 - Lore scan: `.architecture/lore-scan.log`
 
 **Raw data:**
-- File inventory: `.understand-anything/tmp/ua-scan-files.json`
-- Import map: `.understand-anything/tmp/ua-import-map.json`
+- File inventory: `.architecture/understand-anything/scan-files.json`
+- Import map: `.architecture/understand-anything/import-map.json`
 

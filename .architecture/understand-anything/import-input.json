@@ -1,0 +1,647 @@
+{
+  "projectRoot": "/Users/charlieseay/Projects/sonique-mac",
+  "files": [
+    {
+      "path": ".architecture/ARCHITECTURE.md",
+      "language": "markdown",
+      "sizeLines": 115,
+      "fileCategory": "docs"
+    },
+    {
+      "path": ".architecture/lore-response.json",
+      "language": "json",
+      "sizeLines": 83,
+      "fileCategory": "config"
+    },
+    {
+      "path": ".architecture/SUMMARY.md",
+      "language": "markdown",
+      "sizeLines": 130,
+      "fileCategory": "docs"
+    },
+    {
+      "path": ".DS_Store",
+      "language": "unknown",
+      "sizeLines": 1,
+      "fileCategory": "code"
+    },
+    {
+      "path": ".lore/map.md",
+      "language": "markdown",
+      "sizeLines": 9,
+      "fileCategory": "docs"
+    },
+    {
+      "path": ".understand-anything/tmp/ua-import-input.json",
+      "language": "json",
+      "sizeLines": 617,
+      "fileCategory": "config"
+    },
+    {
+      "path": ".understand-anything/tmp/ua-import-map.json",
+      "language": "json",
+      "sizeLines": 111,
+      "fileCategory": "config"
+    },
+    {
+      "path": ".understand-anything/tmp/ua-scan-files.json",
+      "language": "json",
+      "sizeLines": 641,
+      "fileCategory": "config"
+    },
+    {
+      "path": "AGENTS.md",
+      "language": "markdown",
+      "sizeLines": 135,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "ARCHITECTURE.md",
+      "language": "markdown",
+      "sizeLines": 532,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "BUILD_70_STATUS.md",
+      "language": "markdown",
+      "sizeLines": 132,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "BUILD-35-SUMMARY.md",
+      "language": "markdown",
+      "sizeLines": 167,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "CLEANUP.md",
+      "language": "markdown",
+      "sizeLines": 96,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "DEPENDENCIES.md",
+      "language": "markdown",
+      "sizeLines": 51,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "ExportOptions.plist",
+      "language": "xml",
+      "sizeLines": 23,
+      "fileCategory": "config"
+    },
+    {
+      "path": "FINAL_STATUS.md",
+      "language": "markdown",
+      "sizeLines": 172,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "generate_xcodeproj.py",
+      "language": "python",
+      "sizeLines": 365,
+      "fileCategory": "code"
+    },
+    {
+      "path": "HANDOFF.md",
+      "language": "markdown",
+      "sizeLines": 205,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "IMPLEMENTATION_STATUS.md",
+      "language": "markdown",
+      "sizeLines": 176,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "IMPLEMENTATION-PLAN.md",
+      "language": "markdown",
+      "sizeLines": 812,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "JARVIS-ROADMAP.md",
+      "language": "markdown",
+      "sizeLines": 273,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "JARVIS-TODO.md",
+      "language": "markdown",
+      "sizeLines": 201,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "KOKORO_STATUS.md",
+      "language": "markdown",
+      "sizeLines": 123,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "kokoro-service/install-kokoro.sh",
+      "language": "shell",
+      "sizeLines": 82,
+      "fileCategory": "script"
+    },
+    {
+      "path": "kokoro-service/main.py",
+      "language": "python",
+      "sizeLines": 117,
+      "fileCategory": "code"
+    },
+    {
+      "path": "kokoro-service/README.md",
+      "language": "markdown",
+      "sizeLines": 46,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "kokoro-service/requirements.txt",
+      "language": "txt",
+      "sizeLines": 5,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "LabStatusService.swift",
+      "language": "swift",
+      "sizeLines": 160,
+      "fileCategory": "code"
+    },
+    {
+      "path": "MemoryService.swift",
+      "language": "swift",
+      "sizeLines": 223,
+      "fileCategory": "code"
+    },
+    {
+      "path": "Package.swift",
+      "language": "swift",
+      "sizeLines": 18,
+      "fileCategory": "code"
+    },
+    {
+      "path": "PRODUCTION-READY.md",
+      "language": "markdown",
+      "sizeLines": 310,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "PROJECT_HEADER.md",
+      "language": "markdown",
+      "sizeLines": 197,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "QUINN-ENHANCEMENTS.md",
+      "language": "markdown",
+      "sizeLines": 70,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "README.md",
+      "language": "markdown",
+      "sizeLines": 76,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "scripts/archive-and-upload.sh",
+      "language": "shell",
+      "sizeLines": 67,
+      "fileCategory": "script"
+    },
+    {
+      "path": "scripts/auto-deploy.sh",
+      "language": "shell",
+      "sizeLines": 82,
+      "fileCategory": "script"
+    },
+    {
+      "path": "scripts/build-sidecar.sh",
+      "language": "shell",
+      "sizeLines": 364,
+      "fileCategory": "script"
+    },
+    {
+      "path": "scripts/github-watcher.sh",
+      "language": "shell",
+      "sizeLines": 61,
+      "fileCategory": "script"
+    },
+    {
+      "path": "SoniqueBar.entitlements",
+      "language": "entitlements",
+      "sizeLines": 26,
+      "fileCategory": "code"
+    },
+    {
+      "path": "SoniqueBar.xcodeproj/project.pbxproj",
+      "language": "pbxproj",
+      "sizeLines": 509,
+      "fileCategory": "code"
+    },
+    {
+      "path": "SoniqueBar.xcodeproj/project.xcworkspace/xcuserdata/charlieseay.xcuserdatad/UserInterfaceState.xcuserstate",
+      "language": "xcuserstate",
+      "sizeLines": 244,
+      "fileCategory": "code"
+    },
+    {
+      "path": "SoniqueBar.xcodeproj/xcuserdata/charlieseay.xcuserdatad/xcschemes/xcschememanagement.plist",
+      "language": "xml",
+      "sizeLines": 14,
+      "fileCategory": "config"
+    },
+    {
+      "path": "SoniqueBar/.DS_Store",
+      "language": "unknown",
+      "sizeLines": 0,
+      "fileCategory": "code"
+    },
+    {
+      "path": "SoniqueBar/Connectors/DockerConnector.swift",
+      "language": "swift",
+      "sizeLines": 263,
+      "fileCategory": "code"
+    },
+    {
+      "path": "SoniqueBar/Connectors/GitHubConnector.swift",
+      "language": "swift",
+      "sizeLines": 217,
+      "fileCategory": "code"
+    },
+    {
+      "path": "SoniqueBar/Connectors/HelmsmanConnector.swift",
+      "language": "swift",
+      "sizeLines": 241,
+      "fileCategory": "code"
+    },
+    {
+      "path": "SoniqueBar/Connectors/ObsidianConnector.swift",
+      "language": "swift",
+      "sizeLines": 202,
+      "fileCategory": "code"
+    },
+    {
+      "path": "SoniqueBar/Connectors/SlackConnector.swift",
+      "language": "swift",
+      "sizeLines": 204,
+      "fileCategory": "code"
+    },
+    {
+      "path": "SoniqueBar/Core/Config/ConfigManager.swift",
+      "language": "swift",
+      "sizeLines": 268,
+      "fileCategory": "code"
+    },
+    {
+      "path": "SoniqueBar/Core/Config/ConnectorConfig.swift",
+      "language": "swift",
+      "sizeLines": 284,
+      "fileCategory": "code"
+    },
+    {
+      "path": "SoniqueBar/Core/Connectors/ConnectorProtocol.swift",
+      "language": "swift",
+      "sizeLines": 255,
+      "fileCategory": "code"
+    },
+    {
+      "path": "SoniqueBar/Core/Connectors/ConnectorRegistry.swift",
+      "language": "swift",
+      "sizeLines": 583,
+      "fileCategory": "code"
+    },
+    {
+      "path": "SoniqueBar/Core/LLM/ClaudeProvider.swift",
+      "language": "swift",
+      "sizeLines": 94,
+      "fileCategory": "code"
+    },
+    {
+      "path": "SoniqueBar/Core/LLM/GeminiProvider.swift",
+      "language": "swift",
+      "sizeLines": 90,
+      "fileCategory": "code"
+    },
+    {
+      "path": "SoniqueBar/Core/LLM/LLMProvider.swift",
+      "language": "swift",
+      "sizeLines": 120,
+      "fileCategory": "code"
+    },
+    {
+      "path": "SoniqueBar/Core/LLM/NVIDIAProvider.swift",
+      "language": "swift",
+      "sizeLines": 92,
+      "fileCategory": "code"
+    },
+    {
+      "path": "SoniqueBar/Core/LLM/OpenAIProvider.swift",
+      "language": "swift",
+      "sizeLines": 97,
+      "fileCategory": "code"
+    },
+    {
+      "path": "SoniqueBar/Core/Voice/ElevenLabsProvider.swift",
+      "language": "swift",
+      "sizeLines": 139,
+      "fileCategory": "code"
+    },
+    {
+      "path": "SoniqueBar/Core/Voice/KokoroProvider.swift",
+      "language": "swift",
+      "sizeLines": 142,
+      "fileCategory": "code"
+    },
+    {
+      "path": "SoniqueBar/Core/Voice/OpenAITTSProvider.swift",
+      "language": "swift",
+      "sizeLines": 130,
+      "fileCategory": "code"
+    },
+    {
+      "path": "SoniqueBar/Core/Voice/SystemVoiceProvider.swift",
+      "language": "swift",
+      "sizeLines": 101,
+      "fileCategory": "code"
+    },
+    {
+      "path": "SoniqueBar/Core/Voice/VoiceProvider.swift",
+      "language": "swift",
+      "sizeLines": 159,
+      "fileCategory": "code"
+    },
+    {
+      "path": "SoniqueBar/Core/WakeWord/WakeWordDetector.swift",
+      "language": "swift",
+      "sizeLines": 222,
+      "fileCategory": "code"
+    },
+    {
+      "path": "SoniqueBar/Info.plist",
+      "language": "xml",
+      "sizeLines": 28,
+      "fileCategory": "config"
+    },
+    {
+      "path": "SoniqueBar/Resources/Assets.xcassets/AppIcon.appiconset/Contents.json",
+      "language": "json",
+      "sizeLines": 18,
+      "fileCategory": "config"
+    },
+    {
+      "path": "SoniqueBar/Resources/Info.plist",
+      "language": "xml",
+      "sizeLines": 34,
+      "fileCategory": "config"
+    },
+    {
+      "path": "SoniqueBar/Resources/README.md",
+      "language": "markdown",
+      "sizeLines": 31,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "SoniqueBar/Services/BackgroundMonitor.swift",
+      "language": "swift",
+      "sizeLines": 292,
+      "fileCategory": "code"
+    },
+    {
+      "path": "SoniqueBar/Services/CodeAnalyzer.swift",
+      "language": "swift",
+      "sizeLines": 267,
+      "fileCategory": "code"
+    },
+    {
+      "path": "SoniqueBar/Services/CollaborationEngine.swift",
+      "language": "swift",
+      "sizeLines": 310,
+      "fileCategory": "code"
+    },
+    {
+      "path": "SoniqueBar/Services/CommandServer.swift",
+      "language": "swift",
+      "sizeLines": 2181,
+      "fileCategory": "code"
+    },
+    {
+      "path": "SoniqueBar/Services/ContextEngine.swift",
+      "language": "swift",
+      "sizeLines": 157,
+      "fileCategory": "code"
+    },
+    {
+      "path": "SoniqueBar/Services/DeviceContext.swift",
+      "language": "swift",
+      "sizeLines": 113,
+      "fileCategory": "code"
+    },
+    {
+      "path": "SoniqueBar/Services/DeviceOrchestrator.swift",
+      "language": "swift",
+      "sizeLines": 341,
+      "fileCategory": "code"
+    },
+    {
+      "path": "SoniqueBar/Services/DiagnosticAgent.swift",
+      "language": "swift",
+      "sizeLines": 251,
+      "fileCategory": "code"
+    },
+    {
+      "path": "SoniqueBar/Services/HelmsmanIntegration.swift",
+      "language": "swift",
+      "sizeLines": 259,
+      "fileCategory": "code"
+    },
+    {
+      "path": "SoniqueBar/Services/InitializationScript.swift",
+      "language": "swift",
+      "sizeLines": 193,
+      "fileCategory": "code"
+    },
+    {
+      "path": "SoniqueBar/Services/IntentRouter.swift",
+      "language": "swift",
+      "sizeLines": 1103,
+      "fileCategory": "code"
+    },
+    {
+      "path": "SoniqueBar/Services/LabStatusService.swift",
+      "language": "swift",
+      "sizeLines": 172,
+      "fileCategory": "code"
+    },
+    {
+      "path": "SoniqueBar/Services/LiveScreenCapture.swift",
+      "language": "swift",
+      "sizeLines": 178,
+      "fileCategory": "code"
+    },
+    {
+      "path": "SoniqueBar/Services/MCPProxyClient.swift",
+      "language": "swift",
+      "sizeLines": 88,
+      "fileCategory": "code"
+    },
+    {
+      "path": "SoniqueBar/Services/MemoryService.swift",
+      "language": "swift",
+      "sizeLines": 316,
+      "fileCategory": "code"
+    },
+    {
+      "path": "SoniqueBar/Services/NativeIntents.swift",
+      "language": "swift",
+      "sizeLines": 837,
+      "fileCategory": "code"
+    },
+    {
+      "path": "SoniqueBar/Services/NotificationService.swift",
+      "language": "swift",
+      "sizeLines": 68,
+      "fileCategory": "code"
+    },
+    {
+      "path": "SoniqueBar/Services/OllamaService.swift",
+      "language": "swift",
+      "sizeLines": 112,
+      "fileCategory": "code"
+    },
+    {
+      "path": "SoniqueBar/Services/PatternClassifier.swift",
+      "language": "swift",
+      "sizeLines": 54,
+      "fileCategory": "code"
+    },
+    {
+      "path": "SoniqueBar/Services/PredictiveNotifications.swift",
+      "language": "swift",
+      "sizeLines": 176,
+      "fileCategory": "code"
+    },
+    {
+      "path": "SoniqueBar/Services/ProactiveBriefing.swift",
+      "language": "swift",
+      "sizeLines": 307,
+      "fileCategory": "code"
+    },
+    {
+      "path": "SoniqueBar/Services/QuickCommands.swift",
+      "language": "swift",
+      "sizeLines": 245,
+      "fileCategory": "code"
+    },
+    {
+      "path": "SoniqueBar/Services/RemediationEngine.swift",
+      "language": "swift",
+      "sizeLines": 179,
+      "fileCategory": "code"
+    },
+    {
+      "path": "SoniqueBar/Services/ScreenAnalyzer.swift",
+      "language": "swift",
+      "sizeLines": 246,
+      "fileCategory": "code"
+    },
+    {
+      "path": "SoniqueBar/Services/ScreenAwarenessService.swift",
+      "language": "swift",
+      "sizeLines": 122,
+      "fileCategory": "code"
+    },
+    {
+      "path": "SoniqueBar/Services/SelfHealingEngine.swift",
+      "language": "swift",
+      "sizeLines": 363,
+      "fileCategory": "code"
+    },
+    {
+      "path": "SoniqueBar/Services/SoniqueBrain.swift",
+      "language": "swift",
+      "sizeLines": 174,
+      "fileCategory": "code"
+    },
+    {
+      "path": "SoniqueBar/Services/TaskDecomposer.swift",
+      "language": "swift",
+      "sizeLines": 94,
+      "fileCategory": "code"
+    },
+    {
+      "path": "SoniqueBar/Services/TaskDispatcher.swift",
+      "language": "swift",
+      "sizeLines": 293,
+      "fileCategory": "code"
+    },
+    {
+      "path": "SoniqueBar/Services/VaultReader.swift",
+      "language": "swift",
+      "sizeLines": 33,
+      "fileCategory": "code"
+    },
+    {
+      "path": "SoniqueBar/SoniqueBarApp.swift",
+      "language": "swift",
+      "sizeLines": 283,
+      "fileCategory": "code"
+    },
+    {
+      "path": "SoniqueBar/Views/SettingsView.swift",
+      "language": "swift",
+      "sizeLines": 273,
+      "fileCategory": "code"
+    },
+    {
+      "path": "TaskDispatcher.swift",
+      "language": "swift",
+      "sizeLines": 201,
+      "fileCategory": "code"
+    },
+    {
+      "path": "TEST_ALL_COMMANDS.sh",
+      "language": "shell",
+      "sizeLines": 47,
+      "fileCategory": "script"
+    },
+    {
+      "path": "TEST_INFRASTRUCTURE.sh",
+      "language": "shell",
+      "sizeLines": 40,
+      "fileCategory": "script"
+    },
+    {
+      "path": "TRANSCRIPT_ISSUES.md",
+      "language": "markdown",
+      "sizeLines": 109,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "TTS_COMPARISON_RESULTS.md",
+      "language": "markdown",
+      "sizeLines": 140,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "VALIDATION_PLAN.md",
+      "language": "markdown",
+      "sizeLines": 105,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "verify-quinn.sh",
+      "language": "shell",
+      "sizeLines": 52,
+      "fileCategory": "script"
+    },
+    {
+      "path": "VOICE_COMMANDS.md",
+      "language": "markdown",
+      "sizeLines": 287,
+      "fileCategory": "docs"
+    }
+  ]
+}

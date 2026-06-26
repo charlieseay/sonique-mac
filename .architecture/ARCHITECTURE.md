@@ -5,16 +5,16 @@ project: sonique-mac
 
 # Architecture Diagram: sonique-mac
 
-**Files:** 102 | **Complexity:** moderate
+**Files:** 107 | **Complexity:** moderate
 
 ## Project Structure
 
 ```mermaid
 graph TB
     subgraph "📦 sonique-mac"
-        docs[docs<br/>25 files]
+        docs[docs<br/>27 files]
+        config[config<br/>9 files]
         code[code<br/>63 files]
-        config[config<br/>6 files]
         script[script<br/>8 files]
     end
 ```
@@ -25,11 +25,11 @@ graph TB
 pie
     title Language Distribution
     "swift" : 56
-    "markdown" : 24
+    "markdown" : 26
     "shell" : 8
+    "json" : 5
     "xml" : 4
     "unknown" : 2
-    "json" : 2
     "python" : 2
     "txt" : 1
     "entitlements" : 1
@@ -42,7 +42,17 @@ pie
 ```
 .DS_Store
 .architecture/
+  ARCHITECTURE.md
+.architecture/
   SUMMARY.md
+.architecture/
+  lore-response.json
+.lore/
+  map.md
+.understand-anything/
+    ua-import-input.json
+.understand-anything/
+    ua-import-map.json
 .understand-anything/
     ua-scan-files.json
 AGENTS.md
@@ -88,13 +98,6 @@ SoniqueBar/
 SoniqueBar/
       ConfigManager.swift
       ConnectorConfig.swift
-SoniqueBar/
-      ConnectorProtocol.swift
-      ConnectorRegistry.swift
-SoniqueBar/
-      ClaudeProvider.swift
-      GeminiProvider.swift
-      LLMProvider.swift
 generate_xcodeproj.py
 kokoro-service/
   README.md
