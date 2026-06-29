@@ -1277,6 +1277,15 @@ class CommandServer: ObservableObject {
             return
         }
 
+        // DUPLICATE CHECK: Ignore identical requests within 5s window
+        if text == self.lastProcessedText,
+           let lastTime = self.lastProcessedTime,
+           Date().timeIntervalSince(lastTime) < self.dedupeWindow {
+            logger.info("🚫 DUPLICATE REQUEST blocked at stream level: '\(text)' (within \(self.dedupeWindow)s window)")
+            sendResponse("HTTP/1.1 204 No Content\r\n\r\n", to: connection)
+            return
+        }
+
         await MainActor.run {
             Self.logEntries.append("[CommandServer] Processing command: \(text.prefix(50))")
         }

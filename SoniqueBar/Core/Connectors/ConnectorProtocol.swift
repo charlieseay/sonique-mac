@@ -29,7 +29,7 @@ protocol ActionConnector: Identifiable, Sendable {
     ///   - capability: Name of the capability to execute
     ///   - parameters: Dictionary of parameters for the capability
     /// - Returns: Result of the operation
-    func execute(_ capability: String, parameters: [String: Any]) async throws -> ConnectorResult
+    func execute(_ capability: String, parameters: [String: Any]) async -> ConnectorResult
 
     /// Check if the connector's backend is healthy/reachable
     /// - Returns: True if the connector can currently execute operations

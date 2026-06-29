@@ -69,16 +69,20 @@ struct HelmsmanConnector: ActionConnector {
 
     // MARK: - Execution
 
-    func execute(_ capability: String, parameters: [String: Any]) async throws -> ConnectorResult {
-        switch capability {
-        case "create_task":
-            return try await createTask(parameters)
-        case "query_queue":
-            return try await queryQueue(parameters)
-        case "get_task":
-            return try await getTask(parameters)
-        default:
-            throw ConnectorError.unknownCapability(capability)
+    func execute(_ capability: String, parameters: [String: Any]) async -> ConnectorResult {
+        do {
+            switch capability {
+            case "create_task":
+                return try await createTask(parameters)
+            case "query_queue":
+                return try await queryQueue(parameters)
+            case "get_task":
+                return try await getTask(parameters)
+            default:
+                throw ConnectorError.unknownCapability(capability)
+            }
+        } catch {
+            return ConnectorErrorHandler.handle(error: error, connectorName: self.name)
         }
     }
 

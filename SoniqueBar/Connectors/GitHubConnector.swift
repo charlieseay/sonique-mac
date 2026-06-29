@@ -64,16 +64,20 @@ struct GitHubConnector: ActionConnector {
 
     // MARK: - Execution
 
-    func execute(_ capability: String, parameters: [String: Any]) async throws -> ConnectorResult {
-        switch capability {
-        case "create_issue":
-            return try await createIssue(parameters)
-        case "list_prs":
-            return try await listPRs(parameters)
-        case "check_ci":
-            return try await checkCI(parameters)
-        default:
-            throw ConnectorError.unknownCapability(capability)
+    func execute(_ capability: String, parameters: [String: Any]) async -> ConnectorResult {
+        do {
+            switch capability {
+            case "create_issue":
+                return try await createIssue(parameters)
+            case "list_prs":
+                return try await listPRs(parameters)
+            case "check_ci":
+                return try await checkCI(parameters)
+            default:
+                throw ConnectorError.unknownCapability(capability)
+            }
+        } catch {
+            return ConnectorErrorHandler.handle(error: error, connectorName: self.name)
         }
     }
 

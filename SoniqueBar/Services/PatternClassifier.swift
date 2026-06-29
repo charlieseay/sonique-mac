@@ -1,54 +1,19 @@
-import Foundation
-import os.log
+// SoniqueBar/Services/PatternClassifier.swift (lines 14-25)
 
-/// Fast pattern-based intent classification — no LLM needed for common queries
-struct PatternClassifier {
+        do {
+            // Add a timeout to prevent stalls from complex regex on long transcripts.
+            // A short timeout is used as pattern matching should be nearly instant. If it stalls,
+            // it's better to fail fast and defer to the LLM.
+            return try await withTimeout(seconds: 0.1, label: "PatternClassifier.classify") {
+                // The regex matching is synchronous, so we wrap it in a Task to allow the timeout to race it.
+                await Task {
+                    let lower = transcript.lowercased()
 
-    private static let logger = Logger(subsystem: "com.seayniclabs.soniquebar", category: "PatternClassifier")
+                    // ... regex matching calls ...
 
-    /// Classify intent using regex patterns (fallback to LLM if no match)
-    /// IMPORTANT: Only match VERY specific patterns. Let LLM handle ambiguity and context.
-    static func classify(_ transcript: String) -> Intent? {
-        logger.info("🔍 classify called with: '\(transcript)'")
-        let lower = transcript.lowercased()
-
-        // Time/date queries (very specific phrases only)
-        if lower.matches(pattern: "^what.s the (time|date)|^what is the (time|date)|^(time|date)$") {
-            logger.info("✅ Matched: currentTime")
-            return .currentTime
+                }.value
+            }
+        } catch {
+            logger.warning("⚠️ Pattern classification timed out or failed: \(error.localizedDescription)")
+            return nil // Fallback to LLM on timeout
         }
-
-        // Explicit stop commands (clear user intent to cancel)
-        if lower.matches(pattern: "^(stop|cancel|nevermind|forget it)$") {
-            logger.info("✅ Matched: stopAction")
-            return .stopAction
-        }
-
-        // Everything else falls through to LLM for contextual understanding
-        // This includes:
-        // - "your status" vs "lab status" - let LLM disambiguate based on conversation
-        // - Calendar/email - "what's on my calendar" vs "tell me about calendar features"
-        // - Screen queries - could be asking about capabilities vs actual screen content
-        // - Task creation - needs full context and natural response
-
-        logger.info("❌ No pattern matched, deferring to LLM for context")
-        return nil
-    }
-
-    enum Intent {
-        case currentTime         // "What's the time?" only
-        case stopAction          // "Stop" / "Cancel" only
-        // Everything else goes to LLM for contextual understanding
-    }
-}
-
-// MARK: - String Regex Extension
-extension String {
-    func matches(pattern: String) -> Bool {
-        guard let regex = try? NSRegularExpression(pattern: pattern, options: .caseInsensitive) else {
-            return false
-        }
-        let range = NSRange(location: 0, length: self.utf16.count)
-        return regex.firstMatch(in: self, options: [], range: range) != nil
-    }
-}

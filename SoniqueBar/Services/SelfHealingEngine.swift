@@ -59,6 +59,7 @@ class SelfHealingEngine: ObservableObject {
         await checkLLMConnectivity()
         await checkICloudSync()
         await checkDiskSpace()
+        await checkScreenCapture()
 
         // Overall health assessment
         isHealthy = healingHistory.isEmpty || healingHistory.last?.success == true
@@ -194,6 +195,52 @@ class SelfHealingEngine: ObservableObject {
                     escalate: true
                 )
             }
+        }
+    }
+
+    private func checkScreenCapture() async {
+        guard #available(macOS 12.3, *) else { return }
+
+        let isUnhealthy: Bool
+        var diagnosis: String = ""
+
+        if !LiveScreenCapture.shared.isCapturing {
+            isUnhealthy = true
+            diagnosis = "Capture service is not running."
+        } else if let lastFrameTime = LiveScreenCapture.shared.lastFrameTime {
+            let secondsSinceLastFrame = Date().timeIntervalSince(lastFrameTime)
+            if secondsSinceLastFrame > 25.0 {
+                isUnhealthy = true
+                diagnosis = "Capture service is frozen. Last frame received \(Int(secondsSinceLastFrame)) seconds ago."
+            } else {
+                isUnhealthy = false
+            }
+        } else {
+            // Capturing, but no frame ever received. This is an unhealthy state.
+            isUnhealthy = true
+            diagnosis = "Capture service is running but has never received a frame. This may be a permissions issue."
+        }
+
+        if isUnhealthy {
+            await diagnoseAndHeal(
+                issue: "LiveScreenCapture service unhealthy",
+                diagnosis: diagnosis,
+                autoFix: {
+                    do {
+                        self.logger.info("🔧 Attempting to restart LiveScreenCapture service...")
+                        // Stop it first, in case it's in a weird state
+                        try await LiveScreenCapture.shared.stopCapture()
+                        try await Task.sleep(nanoseconds: 250_000_000) // Brief pause
+                        try await LiveScreenCapture.shared.startCapture()
+                        self.logger.info("✅ Successfully restarted LiveScreenCapture service.")
+                        return true
+                    } catch {
+                        self.logger.error("❌ Failed to restart LiveScreenCapture: \(error.localizedDescription)")
+                        return false
+                    }
+                },
+                escalate: true // Screen capture is critical for vision
+            )
         }
     }
 
