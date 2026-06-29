@@ -4,9 +4,6 @@
 
 set -e
 
-# Add ~/.local/bin to PATH for slack-post-filtered
-export PATH="$HOME/.local/bin:$PATH"
-
 PROJECT_DIR="/Users/charlieseay/Projects/sonique-mac"
 BUILD_DIR="$PROJECT_DIR/build/Build/Products/Release"
 APP_PATH="$BUILD_DIR/SoniqueBar.app"

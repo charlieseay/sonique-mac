@@ -52,18 +52,14 @@ struct SlackConnector: ActionConnector {
 
     // MARK: - Execution
 
-    func execute(_ capability: String, parameters: [String: Any]) async -> ConnectorResult {
-        do {
-            switch capability {
-            case "post_message":
-                return try await postMessage(parameters)
-            case "list_channels":
-                return try await listChannels()
-            default:
-                throw ConnectorError.unknownCapability(capability)
-            }
-        } catch {
-            return ConnectorErrorHandler.handle(error: error, connectorName: self.name)
+    func execute(_ capability: String, parameters: [String: Any]) async throws -> ConnectorResult {
+        switch capability {
+        case "post_message":
+            return try await postMessage(parameters)
+        case "list_channels":
+            return try await listChannels()
+        default:
+            throw ConnectorError.unknownCapability(capability)
         }
     }
 
@@ -128,8 +124,7 @@ struct SlackConnector: ActionConnector {
 
         guard let httpResponse = response as? HTTPURLResponse,
               httpResponse.statusCode == 200 else {
-            let responseBody = String(data: data, encoding: .utf8) ?? "No response body"
-            throw ConnectorError.invalidResponse("Slack API returned status \(String(describing: (response as? HTTPURLResponse)?.statusCode)) - \(responseBody)")
+            throw ConnectorError.connectionFailed
         }
 
         if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
@@ -138,8 +133,7 @@ struct SlackConnector: ActionConnector {
             return .success(message: "Posted to #\(channel)")
         }
 
-        let responseBody = String(data: data, encoding: .utf8) ?? "No response body"
-        throw ConnectorError.invalidResponse("Slack API returned error: \(responseBody)")
+        throw ConnectorError.invalidResponse("Slack API returned error")
     }
 
     private func listChannels() async throws -> ConnectorResult {

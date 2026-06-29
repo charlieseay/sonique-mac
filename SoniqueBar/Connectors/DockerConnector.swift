@@ -89,26 +89,22 @@ struct DockerConnector: ActionConnector {
 
     // MARK: - Execution
 
-    func execute(_ capability: String, parameters: [String: Any]) async -> ConnectorResult {
-        do {
-            switch capability {
-            case "list_containers":
-                return try await listContainers(parameters)
-            case "get_container":
-                return try await getContainer(parameters)
-            case "restart_container":
-                return try await restartContainer(parameters)
-            case "start_container":
-                return try await startContainer(parameters)
-            case "stop_container":
-                return try await stopContainer(parameters)
-            case "health_check":
-                return try await healthCheckContainers()
-            default:
-                throw ConnectorError.unknownCapability(capability)
-            }
-        } catch {
-            return ConnectorErrorHandler.handle(error: error, connectorName: self.name)
+    func execute(_ capability: String, parameters: [String: Any]) async throws -> ConnectorResult {
+        switch capability {
+        case "list_containers":
+            return try await listContainers(parameters)
+        case "get_container":
+            return try await getContainer(parameters)
+        case "restart_container":
+            return try await restartContainer(parameters)
+        case "start_container":
+            return try await startContainer(parameters)
+        case "stop_container":
+            return try await stopContainer(parameters)
+        case "health_check":
+            return try await healthCheckContainers()
+        default:
+            throw ConnectorError.unknownCapability(capability)
         }
     }
 
@@ -127,7 +123,7 @@ struct DockerConnector: ActionConnector {
         let result = await shell("docker \(args) --format '{{.Names}}\t{{.Status}}\t{{.Image}}'")
 
         guard result.exitCode == 0 else {
-            throw ConnectorError.invalidResponse(result.stderr)
+            throw ConnectorError.serviceUnavailable
         }
 
         // Parse output into structured data
@@ -159,7 +155,7 @@ struct DockerConnector: ActionConnector {
         let result = await shell("docker inspect \(name)")
 
         guard result.exitCode == 0 else {
-            throw ConnectorError.invalidResponse("Container '\(name)' not found. \(result.stderr)")
+            throw ConnectorError.invalidResponse("Container '\(name)' not found")
         }
 
         // Parse JSON output
@@ -183,7 +179,7 @@ struct DockerConnector: ActionConnector {
         let result = await shell("docker restart \(name)")
 
         guard result.exitCode == 0 else {
-            throw ConnectorError.invalidResponse(result.stderr)
+            throw ConnectorError.serviceUnavailable
         }
 
         return .success(message: "Container '\(name)' restarted successfully")
@@ -197,7 +193,7 @@ struct DockerConnector: ActionConnector {
         let result = await shell("docker start \(name)")
 
         guard result.exitCode == 0 else {
-            throw ConnectorError.invalidResponse(result.stderr)
+            throw ConnectorError.serviceUnavailable
         }
 
         return .success(message: "Container '\(name)' started successfully")
@@ -211,7 +207,7 @@ struct DockerConnector: ActionConnector {
         let result = await shell("docker stop \(name)")
 
         guard result.exitCode == 0 else {
-            throw ConnectorError.invalidResponse(result.stderr)
+            throw ConnectorError.serviceUnavailable
         }
 
         return .success(message: "Container '\(name)' stopped successfully")
@@ -221,7 +217,7 @@ struct DockerConnector: ActionConnector {
         let result = await shell("docker ps --filter 'health=unhealthy' --format '{{.Names}}'")
 
         guard result.exitCode == 0 else {
-            throw ConnectorError.invalidResponse(result.stderr)
+            throw ConnectorError.serviceUnavailable
         }
 
         let unhealthy = result.stdout.components(separatedBy: "\n").filter { !$0.isEmpty }

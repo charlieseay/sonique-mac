@@ -1,0 +1,3984 @@
+
+# 2026-06-27 10:59:19.938830
++# Brief: Add Kokoro Health Check and Fallback to KokoroProvider
++
++## Goal
++KokoroProvider.swift automatically detects when Kokoro TTS service is unavailable and falls back to ElevenLabsProvider without user intervention.
++
++## Context
++- **Repo:** `~/Projects/sonique-mac` (SoniqueBar macOS app)
++- **File to modify:** `SoniqueBar/Providers/KokoroProvider.swift`
++- **Related file:** `SoniqueBar/Providers/ElevenLabsProvider.swift` (fallback target)
++- **Pattern:** Similar to other providers in `SoniqueBar/Providers/` directory
++- **Current behavior:** Kokoro failures likely crash or hang the voice output
++- **Requirements from CLAUDE.md:**
++  - Read Apple Speech/AVFoundation docs before modifying audio code
++  - Test changes by running the app and speaking to Quinn
++  - Follow Swift naming conventions in existing codebase
++
++## Steps
++1. **Research:** Read current KokoroProvider.swift implementation to understand initialization and TTS flow
++2. **Design health check:** 
++   - Add `isAvailable()` method that attempts a lightweight connection to Kokoro service
++   - Cache availability status with 5-minute TTL to avoid repeated checks
++   - Log health check results for debugging
++3. **Implement fallback:**
++   - Modify `speak()` method to call `isAvailable()` before attempting Kokoro TTS
++   - If unavailable, route to `ElevenLabsProvider.speak()` with same text/options
++   - Log fallback events: "⚠️ Kokoro unavailable, falling back to ElevenLabs"
++4. **Test:**
++   - Build app in Xcode
++   - With Kokoro running: verify voice output uses Kokoro
++   - Stop Kokoro service: verify automatic fallback to ElevenLabs
++   - Restart Kokoro: verify it recovers after 5-minute cache expires
++
++## Dependencies
++- **Files that must exist:**
++  - `~/Projects/sonique-mac/SoniqueBar/Providers/KokoroProvider.swift`
++  - `~/Projects/sonique-mac/SoniqueBar/Providers/ElevenLabsProvider.swift`
++- **Services:** ElevenLabsProvider must be configured with valid API key (fallback target)
++- **Xcode:** macOS development environment with Swift toolchain
++
++## Potential Issues
++1. **Kokoro connection timeout too long** → Use 3-second timeout for health check
++2. **Fallback causes voice mismatch** → Log when fallback occurs so user knows why voice changed
++3. **Cache prevents recovery** → Implement cache invalidation on successful Kokoro response
++
++## Expected Output
++- Modified: `SoniqueBar/Providers/KokoroProvider.swift` with health check + fallback logic
++- Git commit with descriptive message
++- No build errors in Xcode
++
++## Success Criteria
++- [ ] `xcodebuild -project SoniqueBar.xcodeproj -scheme SoniqueBar build` exits 0
++- [ ] With Kokoro down, TTS request succeeds using ElevenLabs (no crash/hang)
++- [ ] Console logs show "⚠️ Kokoro unavailable, falling back to ElevenLabs"
++- [ ] With Kokoro up, TTS uses Kokoro (logs show "✓ Kokoro health check passed")
++
++## Verification
++```bash
++cd ~/Projects/sonique-mac
++xcodebuild -project SoniqueBar.xcodeproj -scheme SoniqueBar build
++grep -q "isAvailable" SoniqueBar/Providers/KokoroProvider.swift
++grep -q "fallback" SoniqueBar/Providers/KokoroProvider.swift
++```
++
++## Security Review
++- **Threats:** None (internal service health check)
++- **Secrets:** No new credentials required
++- **Network:** Health check uses existing Kokoro service connection
++
++## Functional Test
++1. Launch SoniqueBar
++2. Say "Hey Quinn, tell me a joke"
++3. Verify voice output plays (using ElevenLabs if Kokoro down)
++4. Check Console.app logs for health check status
++
++## Recovery
++If health check logic breaks voice output entirely:
++- Revert to simple try/catch around Kokoro calls
++- Mark NHR with diagnostic: "Kokoro health check broke existing flow"
++
++## Rollback
++```bash
++cd ~/Projects/sonique-mac
++git revert HEAD
++xcodebuild -project SoniqueBar.xcodeproj -scheme SoniqueBar build
++```
+
+# 2026-06-27 10:59:19.939020
++# Brief: Add Kokoro Health Check and Fallback to KokoroProvider
++
++## Goal
++KokoroProvider.swift automatically detects when Kokoro TTS service is unavailable and falls back to ElevenLabsProvider without user intervention.
++
++## Context
++- **Repo:** `~/Projects/sonique-mac` (SoniqueBar macOS app)
++- **File to modify:** `SoniqueBar/Providers/KokoroProvider.swift`
++- **Related file:** `SoniqueBar/Providers/ElevenLabsProvider.swift` (fallback target)
++- **Pattern:** Similar to other providers in `SoniqueBar/Providers/` directory
++- **Current behavior:** Kokoro failures likely crash or hang the voice output
++- **Requirements from CLAUDE.md:**
++  - Read Apple Speech/AVFoundation docs before modifying audio code
++  - Test changes by running the app and speaking to Quinn
++  - Follow Swift naming conventions in existing codebase
++
++## Steps
++1. **Research:** Read current KokoroProvider.swift implementation to understand initialization and TTS flow
++2. **Design health check:** 
++   - Add `isAvailable()` method that attempts a lightweight connection to Kokoro service
++   - Cache availability status with 5-minute TTL to avoid repeated checks
++   - Log health check results for debugging
++3. **Implement fallback:**
++   - Modify `speak()` method to call `isAvailable()` before attempting Kokoro TTS
++   - If unavailable, route to `ElevenLabsProvider.speak()` with same text/options
++   - Log fallback events: "⚠️ Kokoro unavailable, falling back to ElevenLabs"
++4. **Test:**
++   - Build app in Xcode
++   - With Kokoro running: verify voice output uses Kokoro
++   - Stop Kokoro service: verify automatic fallback to ElevenLabs
++   - Restart Kokoro: verify it recovers after 5-minute cache expires
++
++## Dependencies
++- **Files that must exist:**
++  - `~/Projects/sonique-mac/SoniqueBar/Providers/KokoroProvider.swift`
++  - `~/Projects/sonique-mac/SoniqueBar/Providers/ElevenLabsProvider.swift`
++- **Services:** ElevenLabsProvider must be configured with valid API key (fallback target)
++- **Xcode:** macOS development environment with Swift toolchain
++
++## Potential Issues
++1. **Kokoro connection timeout too long** → Use 3-second timeout for health check
++2. **Fallback causes voice mismatch** → Log when fallback occurs so user knows why voice changed
++3. **Cache prevents recovery** → Implement cache invalidation on successful Kokoro response
++
++## Expected Output
++- Modified: `SoniqueBar/Providers/KokoroProvider.swift` with health check + fallback logic
++- Git commit with descriptive message
++- No build errors in Xcode
++
++## Success Criteria
++- [ ] `xcodebuild -project SoniqueBar.xcodeproj -scheme SoniqueBar build` exits 0
++- [ ] With Kokoro down, TTS request succeeds using ElevenLabs (no crash/hang)
++- [ ] Console logs show "⚠️ Kokoro unavailable, falling back to ElevenLabs"
++- [ ] With Kokoro up, TTS uses Kokoro (logs show "✓ Kokoro health check passed")
++
++## Verification
++```bash
++cd ~/Projects/sonique-mac
++xcodebuild -project SoniqueBar.xcodeproj -scheme SoniqueBar build
++grep -q "isAvailable" SoniqueBar/Providers/KokoroProvider.swift
++grep -q "fallback" SoniqueBar/Providers/KokoroProvider.swift
++```
++
++## Security Review
++- **Threats:** None (internal service health check)
++- **Secrets:** No new credentials required
++- **Network:** Health check uses existing Kokoro service connection
++
++## Functional Test
++1. Launch SoniqueBar
++2. Say "Hey Quinn, tell me a joke"
++3. Verify voice output plays (using ElevenLabs if Kokoro down)
++4. Check Console.app logs for health check status
++
++## Recovery
++If health check logic breaks voice output entirely:
++- Revert to simple try/catch around Kokoro calls
++- Mark NHR with diagnostic: "Kokoro health check broke existing flow"
++
++## Rollback
++```bash
++cd ~/Projects/sonique-mac
++git revert HEAD
++xcodebuild -project SoniqueBar.xcodeproj -scheme SoniqueBar build
++```
+
+# 2026-06-27 11:05:03.960066
++# Brief: Create ConnectorErrorHandler Utility
++
++## Goal
++Central error handling utility provides consistent error logging, user feedback, and recovery strategies for all 4 SoniqueBar connectors (Helmsman, Docker, Slack, GitHub).
++
++## Context
++- **Repo:** `~/Projects/sonique-mac`
++- **New file:** `SoniqueBar/Utilities/ConnectorErrorHandler.swift`
++- **Connectors to integrate:**
++  - `SoniqueBar/Connectors/HelmsmanConnector.swift`
++  - `SoniqueBar/Connectors/DockerConnector.swift`
++  - `SoniqueBar/Connectors/SlackConnector.swift`
++  - `SoniqueBar/Connectors/GitHubConnector.swift`
++- **Current state:** Each connector likely has ad-hoc error handling or silent failures
++- **Pattern:** Similar to ConnectorProtocol.swift structure
++
++## Steps
++1. **Research:** Read all 4 connector files to identify common error patterns
++2. **Design utility:**
++   - Create `ConnectorErrorHandler` class with static methods
++   - `handle(error: Error, connector: String) -> UserFeedback`
++   - Error types: network timeout, auth failure, service unavailable, invalid params
++   - Return structured feedback: severity, user message, should retry, log details
++3. **Implement:**
++   - Error categorization logic
++   - User-friendly message mapping
++   - Logging to Console with structured tags
++   - Retry decision logic (network errors = retry, auth = don't retry)
++4. **Integrate:**
++   - Add `import ConnectorErrorHandler` to each connector
++   - Replace ad-hoc error handling with `ConnectorErrorHandler.handle()`
++   - Verify all error paths now use centralized handler
++5. **Test:**
++   - Trigger errors in each connector (bad API key, network timeout, etc.)
++   - Verify consistent logging format
++   - Verify user gets helpful error messages in UI
++
++## Dependencies
++- **Files:** All 4 connector files must exist
++- **Build:** Xcode project must compile with new utility file
++- **No external services required** (error handling is local)
++
++## Potential Issues
++1. **Error types vary by connector** → Use Swift Error protocol + type checking
++2. **Some errors need connector-specific context** → Pass connector name to handler
++3. **User messages too technical** → Use plain language ("Slack unavailable" not "HTTP 503")
++
++## Expected Output
++- New file: `SoniqueBar/Utilities/ConnectorErrorHandler.swift` (~150 lines)
++- Modified: 4 connector files with integrated error handling
++- Git commit with all changes
++- Build succeeds in Xcode
++
++## Success Criteria
++- [ ] `xcodebuild -project SoniqueBar.xcodeproj -scheme SoniqueBar build` exits 0
++- [ ] All 4 connectors use `ConnectorErrorHandler.handle()` for errors
++- [ ] Console logs show structured error format: `[ConnectorError][Slack] Network timeout`
++- [ ] Triggering Docker error shows user-friendly message
++
++## Verification
++```bash
++cd ~/Projects/sonique-mac
++xcodebuild -project SoniqueBar.xcodeproj -scheme SoniqueBar build
++test -f SoniqueBar/Utilities/ConnectorErrorHandler.swift
++grep -c "ConnectorErrorHandler" SoniqueBar/Connectors/*.swift  # Should be 4+
++```
++
++## Security Review
++- **Threats:** Error messages might leak sensitive data
++- **Mitigation:** Strip auth tokens from error messages before logging
++- **Secrets:** No new credentials required
++
++## Functional Test
++1. Launch SoniqueBar
++2. Disable WiFi
++3. Say "Hey Quinn, check Docker status"
++4. Verify error message: "Unable to reach Docker" (not stack trace)
++5. Check Console.app for structured log
++
++## Recovery
++If centralized handling breaks existing error flows:
++- Keep `ConnectorErrorHandler.swift` but remove integrations
++- Mark NHR with diagnostic: "Connector X broke with centralized error handler"
++
++## Rollback
++```bash
++cd ~/Projects/sonique-mac
++git revert HEAD
++xcodebuild -project SoniqueBar.xcodeproj -scheme SoniqueBar build
++```
++
+
+# 2026-06-27 11:05:03.960333
++# Brief: Create ConnectorErrorHandler Utility
++
++## Goal
++Central error handling utility provides consistent error logging, user feedback, and recovery strategies for all 4 SoniqueBar connectors (Helmsman, Docker, Slack, GitHub).
++
++## Context
++- **Repo:** `~/Projects/sonique-mac`
++- **New file:** `SoniqueBar/Utilities/ConnectorErrorHandler.swift`
++- **Connectors to integrate:**
++  - `SoniqueBar/Connectors/HelmsmanConnector.swift`
++  - `SoniqueBar/Connectors/DockerConnector.swift`
++  - `SoniqueBar/Connectors/SlackConnector.swift`
++  - `SoniqueBar/Connectors/GitHubConnector.swift`
++- **Current state:** Each connector likely has ad-hoc error handling or silent failures
++- **Pattern:** Similar to ConnectorProtocol.swift structure
++
++## Steps
++1. **Research:** Read all 4 connector files to identify common error patterns
++2. **Design utility:**
++   - Create `ConnectorErrorHandler` class with static methods
++   - `handle(error: Error, connector: String) -> UserFeedback`
++   - Error types: network timeout, auth failure, service unavailable, invalid params
++   - Return structured feedback: severity, user message, should retry, log details
++3. **Implement:**
++   - Error categorization logic
++   - User-friendly message mapping
++   - Logging to Console with structured tags
++   - Retry decision logic (network errors = retry, auth = don't retry)
++4. **Integrate:**
++   - Add `import ConnectorErrorHandler` to each connector
++   - Replace ad-hoc error handling with `ConnectorErrorHandler.handle()`
++   - Verify all error paths now use centralized handler
++5. **Test:**
++   - Trigger errors in each connector (bad API key, network timeout, etc.)
++   - Verify consistent logging format
++   - Verify user gets helpful error messages in UI
++
++## Dependencies
++- **Files:** All 4 connector files must exist
++- **Build:** Xcode project must compile with new utility file
++- **No external services required** (error handling is local)
++
++## Potential Issues
++1. **Error types vary by connector** → Use Swift Error protocol + type checking
++2. **Some errors need connector-specific context** → Pass connector name to handler
++3. **User messages too technical** → Use plain language ("Slack unavailable" not "HTTP 503")
++
++## Expected Output
++- New file: `SoniqueBar/Utilities/ConnectorErrorHandler.swift` (~150 lines)
++- Modified: 4 connector files with integrated error handling
++- Git commit with all changes
++- Build succeeds in Xcode
++
++## Success Criteria
++- [ ] `xcodebuild -project SoniqueBar.xcodeproj -scheme SoniqueBar build` exits 0
++- [ ] All 4 connectors use `ConnectorErrorHandler.handle()` for errors
++- [ ] Console logs show structured error format: `[ConnectorError][Slack] Network timeout`
++- [ ] Triggering Docker error shows user-friendly message
++
++## Verification
++```bash
++cd ~/Projects/sonique-mac
++xcodebuild -project SoniqueBar.xcodeproj -scheme SoniqueBar build
++test -f SoniqueBar/Utilities/ConnectorErrorHandler.swift
++grep -c "ConnectorErrorHandler" SoniqueBar/Connectors/*.swift  # Should be 4+
++```
++
++## Security Review
++- **Threats:** Error messages might leak sensitive data
++- **Mitigation:** Strip auth tokens from error messages before logging
++- **Secrets:** No new credentials required
++
++## Functional Test
++1. Launch SoniqueBar
++2. Disable WiFi
++3. Say "Hey Quinn, check Docker status"
++4. Verify error message: "Unable to reach Docker" (not stack trace)
++5. Check Console.app for structured log
++
++## Recovery
++If centralized handling breaks existing error flows:
++- Keep `ConnectorErrorHandler.swift` but remove integrations
++- Mark NHR with diagnostic: "Connector X broke with centralized error handler"
++
++## Rollback
++```bash
++cd ~/Projects/sonique-mac
++git revert HEAD
++xcodebuild -project SoniqueBar.xcodeproj -scheme SoniqueBar build
++```
++
+
+# 2026-06-27 11:27:39.210052
++# Brief: Create PermissionsManager.swift with TCC Status Detection
++
++## Goal
++Create `PermissionsManager.swift` that provides real-time status detection for all macOS system permissions (TCC) required by SoniqueBar.
++
++## Context
++- **Repo:** `~/Projects/sonique-mac`
++- **New file:** `SoniqueBar/Services/PermissionsManager.swift`
++- **Permissions to track:**
++  - Screen Recording (AVCaptureDevice)
++  - Microphone (AVCaptureDevice)
++  - Calendar (EventKit)
++  - Reminders (EventKit)
++  - Accessibility (AXIsProcessTrusted)
++  - Full Disk Access (file access test)
++- **Current state:** App may crash or silently fail when permissions missing
++- **Pattern:** Singleton manager accessible from any view
++- **Prerequisites completed:** Apple's TCC documentation has been reviewed (see Dependencies section for URLs)
++
++## Dependencies
++- **Files that must exist:**
++  - `~/Projects/sonique-mac/SoniqueBar/Info.plist` (for usage descriptions)
++  - `~/Projects/sonique-mac/SoniqueBar/SoniqueBar.entitlements`
++- **Frameworks:** AVFoundation, EventKit, ApplicationServices (for AX APIs)
++- **Documentation:** 
++  - AVFoundation auth: https://developer.apple.com/documentation/avfoundation/capture_setup/requesting_authorization_to_capture_and_save_media
++  - EventKit auth: https://developer.apple.com/documentation/eventkit/accessing_the_event_store
++  - Verified current as of macOS 12.3+ (project deployment target)
++
++## Steps
++1. **Create file structure:**
++   - Create `SoniqueBar/Services/PermissionsManager.swift`
++   - Import required frameworks: Foundation, AVFoundation, EventKit, ApplicationServices
++
++2. **Define types:**
++   - Enum `PermissionType`: `.screenRecording, .microphone, .calendar, .reminders, .accessibility, .fullDiskAccess`
++   - Enum `PermissionStatus`: `.granted, .denied, .notDetermined, .restricted`
++
++3. **Implement singleton:**
++   - Class `PermissionsManager` with `shared` static property
++   - Method: `status(for: PermissionType) -> PermissionStatus`
++   - Method: `requestPermission(for: PermissionType, completion: (Bool) -> Void)`
++   - Observable properties for SwiftUI integration (if using @Published)
++
++4. **Implement permission checks:**
++   - Screen Recording: `AVCaptureDevice.authorizationStatus(for: .video)`
++   - Microphone: `AVCaptureDevice.authorizationStatus(for: .audio)`
++   - Calendar: `EKEventStore.authorizationStatus(for: .event)`
++   - Reminders: `EKEventStore.authorizationStatus(for: .reminder)`
++   - Accessibility: `AXIsProcessTrusted()`
++   - Full Disk Access: Test read `~/Library/Safari/` (protected location)
++
++5. **Add logging:**
++   - Log each permission status check
++   - Use structured logging format: `[PermissionsManager][PermissionType] status`
++
++6. **Update Info.plist if needed:**
++   - Verify usage description strings exist for each permission
++   - If missing, add them with clear explanations
++
++## Potential Issues
++1. **Status checks use async callbacks** → Use completion handlers or async/await
++2. **Accessibility requires running app** → Document this in code comments
++3. **Full Disk Access has no direct API** → Use file access test as proxy
++
++## Expected Output
++- New file: `SoniqueBar/Services/PermissionsManager.swift` (~200-250 lines)
++- Modified (if needed): `Info.plist` with usage description strings
++- Git commit
++- Build succeeds without errors
++
++## Success Criteria
++- [ ] `xcodebuild -project SoniqueBar.xcodeproj -scheme SoniqueBar build` exits 0
++- [ ] `PermissionsManager.shared.status(for:)` returns correct status for each permission type
++- [ ] Console shows permission status logs on first call
++- [ ] File exists at expected path
++
++## Verification
++```bash
++cd ~/Projects/sonique-mac
++xcodebuild -project SoniqueBar.xcodeproj -scheme SoniqueBar build
++test -f SoniqueBar/Services/PermissionsManager.swift
++grep -q "PermissionType" SoniqueBar/Services/PermissionsManager.swift
++grep -q "PermissionStatus" SoniqueBar/Services/PermissionsManager.swift
++grep -q "class PermissionsManager" SoniqueBar/Services/PermissionsManager.swift
++```
++
++## Security Review
++- **Threats:** None (reads permission status, doesn't grant anything)
++- **Privacy:** Usage description strings must explain why each permission is needed
++- **Best practice:** Never request permissions until user action requires it
++
++## Functional Test
++1. Build and launch SoniqueBar
++2. Open Console.app, filter for "PermissionsManager"
++3. Trigger permission check (e.g., from Settings view or on startup)
++4. Verify log shows: "✓ Screen Recording: granted" or "⚠️ Screen Recording: denied"
++5. Open System Settings > Privacy & Security > Screen Recording
++6. Toggle SoniqueBar permission
++7. Re-check in app, verify status updates correctly
++
++## Recovery
++If permission checks crash the app:
++- Wrap all TCC API calls in do-catch or guard statements
++- Return `.notDetermined` on any error
++- Mark NHR with diagnostic: "TCC API crash on [PermissionType]"
++
++## Rollback
++```bash
++cd ~/Projects/sonique-mac
++git revert HEAD
++xcodebuild -project SoniqueBar.xcodeproj -scheme SoniqueBar build
++```
++
++## Notes
++- Apple's TCC APIs vary across macOS versions - code targets macOS 12.3+ per project settings
++- Some permissions (like Accessibility) require app restart to take effect
++- Full Disk Access requires app to be signed and notarized for real TCC enforcement
++- Code examples from Apple docs show proper usage patterns for each permission type
+
+# 2026-06-27 11:27:39.232467
++# Brief: Create PermissionsManager.swift with TCC Status Detection
++
++## Goal
++Create `PermissionsManager.swift` that provides real-time status detection for all macOS system permissions (TCC) required by SoniqueBar.
++
++## Context
++- **Repo:** `~/Projects/sonique-mac`
++- **New file:** `SoniqueBar/Services/PermissionsManager.swift`
++- **Permissions to track:**
++  - Screen Recording (AVCaptureDevice)
++  - Microphone (AVCaptureDevice)
++  - Calendar (EventKit)
++  - Reminders (EventKit)
++  - Accessibility (AXIsProcessTrusted)
++  - Full Disk Access (file access test)
++- **Current state:** App may crash or silently fail when permissions missing
++- **Pattern:** Singleton manager accessible from any view
++- **Prerequisites completed:** Apple's TCC documentation has been reviewed (see Dependencies section for URLs)
++
++## Dependencies
++- **Files that must exist:**
++  - `~/Projects/sonique-mac/SoniqueBar/Info.plist` (for usage descriptions)
++  - `~/Projects/sonique-mac/SoniqueBar/SoniqueBar.entitlements`
++- **Frameworks:** AVFoundation, EventKit, ApplicationServices (for AX APIs)
++- **Documentation:** 
++  - AVFoundation auth: https://developer.apple.com/documentation/avfoundation/capture_setup/requesting_authorization_to_capture_and_save_media
++  - EventKit auth: https://developer.apple.com/documentation/eventkit/accessing_the_event_store
++  - Verified current as of macOS 12.3+ (project deployment target)
++
++## Steps
++1. **Create file structure:**
++   - Create `SoniqueBar/Services/PermissionsManager.swift`
++   - Import required frameworks: Foundation, AVFoundation, EventKit, ApplicationServices
++
++2. **Define types:**
++   - Enum `PermissionType`: `.screenRecording, .microphone, .calendar, .reminders, .accessibility, .fullDiskAccess`
++   - Enum `PermissionStatus`: `.granted, .denied, .notDetermined, .restricted`
++
++3. **Implement singleton:**
++   - Class `PermissionsManager` with `shared` static property
++   - Method: `status(for: PermissionType) -> PermissionStatus`
++   - Method: `requestPermission(for: PermissionType, completion: (Bool) -> Void)`
++   - Observable properties for SwiftUI integration (if using @Published)
++
++4. **Implement permission checks:**
++   - Screen Recording: `AVCaptureDevice.authorizationStatus(for: .video)`
++   - Microphone: `AVCaptureDevice.authorizationStatus(for: .audio)`
++   - Calendar: `EKEventStore.authorizationStatus(for: .event)`
++   - Reminders: `EKEventStore.authorizationStatus(for: .reminder)`
++   - Accessibility: `AXIsProcessTrusted()`
++   - Full Disk Access: Test read `~/Library/Safari/` (protected location)
++
++5. **Add logging:**
++   - Log each permission status check
++   - Use structured logging format: `[PermissionsManager][PermissionType] status`
++
++6. **Update Info.plist if needed:**
++   - Verify usage description strings exist for each permission
++   - If missing, add them with clear explanations
++
++## Potential Issues
++1. **Status checks use async callbacks** → Use completion handlers or async/await
++2. **Accessibility requires running app** → Document this in code comments
++3. **Full Disk Access has no direct API** → Use file access test as proxy
++
++## Expected Output
++- New file: `SoniqueBar/Services/PermissionsManager.swift` (~200-250 lines)
++- Modified (if needed): `Info.plist` with usage description strings
++- Git commit
++- Build succeeds without errors
++
++## Success Criteria
++- [ ] `xcodebuild -project SoniqueBar.xcodeproj -scheme SoniqueBar build` exits 0
++- [ ] `PermissionsManager.shared.status(for:)` returns correct status for each permission type
++- [ ] Console shows permission status logs on first call
++- [ ] File exists at expected path
++
++## Verification
++```bash
++cd ~/Projects/sonique-mac
++xcodebuild -project SoniqueBar.xcodeproj -scheme SoniqueBar build
++test -f SoniqueBar/Services/PermissionsManager.swift
++grep -q "PermissionType" SoniqueBar/Services/PermissionsManager.swift
++grep -q "PermissionStatus" SoniqueBar/Services/PermissionsManager.swift
++grep -q "class PermissionsManager" SoniqueBar/Services/PermissionsManager.swift
++```
++
++## Security Review
++- **Threats:** None (reads permission status, doesn't grant anything)
++- **Privacy:** Usage description strings must explain why each permission is needed
++- **Best practice:** Never request permissions until user action requires it
++
++## Functional Test
++1. Build and launch SoniqueBar
++2. Open Console.app, filter for "PermissionsManager"
++3. Trigger permission check (e.g., from Settings view or on startup)
++4. Verify log shows: "✓ Screen Recording: granted" or "⚠️ Screen Recording: denied"
++5. Open System Settings > Privacy & Security > Screen Recording
++6. Toggle SoniqueBar permission
++7. Re-check in app, verify status updates correctly
++
++## Recovery
++If permission checks crash the app:
++- Wrap all TCC API calls in do-catch or guard statements
++- Return `.notDetermined` on any error
++- Mark NHR with diagnostic: "TCC API crash on [PermissionType]"
++
++## Rollback
++```bash
++cd ~/Projects/sonique-mac
++git revert HEAD
++xcodebuild -project SoniqueBar.xcodeproj -scheme SoniqueBar build
++```
++
++## Notes
++- Apple's TCC APIs vary across macOS versions - code targets macOS 12.3+ per project settings
++- Some permissions (like Accessibility) require app restart to take effect
++- Full Disk Access requires app to be signed and notarized for real TCC enforcement
++- Code examples from Apple docs show proper usage patterns for each permission type
+
+# 2026-06-27 22:57:39.896877
++# Test
++
++## Goal
++Test brief validation
++
++## Steps
++1. Test step
+
+# 2026-06-27 22:57:39.897211
++# Test
++
++## Goal
++Test brief validation
++
++## Steps
++1. Test step
+
+# 2026-06-27 22:58:34.489938
++# Brief: Wire LiveScreenCapture to SoniqueBarApp Startup
++
++## Goal
++Initialize LiveScreenCapture service on SoniqueBarApp startup and verify screenshot capture logging is working correctly.
++
++## Context
++- **Repo:** `~/Projects/sonique-mac`
++- **Files to modify:** `SoniqueBarApp.swift` (main app entry point)
++- **Expected existing file:** `SoniqueBar/Services/LiveScreenCapture.swift`
++- **Current behavior:** LiveScreenCapture not initialized on startup
++- **Target behavior:** Service starts automatically, logs confirm it's capturing
++
++## Dependencies
++- **Files must exist:**
++  - `SoniqueBarApp.swift` 
++  - `SoniqueBar/Services/LiveScreenCapture.swift`
++- **Permissions:** Screen Recording permission must be requested
++- **Frameworks:** ScreenCaptureKit, AVFoundation
++
++## Steps
++1. **Locate app initialization:**
++   - Find `SoniqueBarApp.swift` or main app struct
++   - Identify `init()` or `onAppear` where services are initialized
++
++2. **Add LiveScreenCapture import:**
++   - Add `import Foundation` if not present
++   - Reference LiveScreenCapture service
++
++3. **Initialize service:**
++   - Call `LiveScreenCapture.shared.start()` or equivalent
++   - Add to app init or main window's `.onAppear` modifier
++   - Ensure initialization happens after permissions check
++
++4. **Add logging:**
++   - Log service startup: `print("✓ Live screen capture started")`
++   - Log if permissions missing: `print("⚠️ Screen recording permission required")`
++   - Log frame rate: `print("  Capturing at X FPS")`
++
++5. **Verify permissions check:**
++   - Ensure Screen Recording permission is checked before starting capture
++   - Gracefully handle permission denial
++
++## Potential Issues
++1. **Service crashes without permissions** → Add permission check guard
++2. **Multiple initialization calls** → Add `isRunning` flag check
++3. **Memory leak from capture** → Ensure service stops on app quit
++
++## Expected Output
++- Modified: `SoniqueBarApp.swift` with LiveScreenCapture initialization
++- Console logs visible on app launch
++- Build succeeds without errors
++
++## Success Criteria
++- [ ] `xcodebuild -project SoniqueBar.xcodeproj -scheme SoniqueBar build` exits 0
++- [ ] App launches without crashing
++- [ ] Console shows "Live screen capture started" message
++- [ ] Logs show FPS or capture confirmation
++
++## Verification
++```bash
++cd ~/Projects/sonique-mac
++grep -q "LiveScreenCapture" SoniqueBarApp.swift
++xcodebuild -project SoniqueBar.xcodeproj -scheme SoniqueBar build
++# Run app and check Console.app for startup logs
++```
++
++## QA Checklist
++- [ ] q1: LiveScreenCapture imported → `grep "LiveScreenCapture" SoniqueBarApp.swift`
++- [ ] q2: Service initialized → `grep "start()" SoniqueBarApp.swift`
++- [ ] q3: Build succeeds → `xcodebuild build && echo $?`
++- [ ] q4: Logs visible → Run app, check Console.app
++
++## Security Review
++- **Threats:** Screen capture without permission
++- **Mitigations:** Permission check before initialization
++- **Privacy:** User must grant Screen Recording permission
++
++## Functional Test
++1. Build and run SoniqueBar
++2. Open Console.app, filter for "SoniqueBar"
++3. Launch the app
++4. Verify log messages appear:
++   - "Live screen capture started" or equivalent
++   - Frame rate or status message
++5. If permission denied, verify graceful error message
++
++## Recovery
++If service initialization crashes app:
++- Wrap initialization in do-catch
++- Add permission check guard
++- Mark NHR with diagnostic: "LiveScreenCapture.start() crashed"
++
++## Rollback
++```bash
++cd ~/Projects/sonique-mac
++git revert HEAD
++xcodebuild -project SoniqueBar.xcodeproj -scheme SoniqueBar build
++```
++
++## Notes
++- LiveScreenCapture may use ScreenCaptureKit (macOS 12.3+)
++- Service should run continuously once started
++- Consider adding stop() call in app delegate's applicationWillTerminate
++
+
+# 2026-06-27 22:58:34.490149
++# Brief: Wire LiveScreenCapture to SoniqueBarApp Startup
++
++## Goal
++Initialize LiveScreenCapture service on SoniqueBarApp startup and verify screenshot capture logging is working correctly.
++
++## Context
++- **Repo:** `~/Projects/sonique-mac`
++- **Files to modify:** `SoniqueBarApp.swift` (main app entry point)
++- **Expected existing file:** `SoniqueBar/Services/LiveScreenCapture.swift`
++- **Current behavior:** LiveScreenCapture not initialized on startup
++- **Target behavior:** Service starts automatically, logs confirm it's capturing
++
++## Dependencies
++- **Files must exist:**
++  - `SoniqueBarApp.swift` 
++  - `SoniqueBar/Services/LiveScreenCapture.swift`
++- **Permissions:** Screen Recording permission must be requested
++- **Frameworks:** ScreenCaptureKit, AVFoundation
++
++## Steps
++1. **Locate app initialization:**
++   - Find `SoniqueBarApp.swift` or main app struct
++   - Identify `init()` or `onAppear` where services are initialized
++
++2. **Add LiveScreenCapture import:**
++   - Add `import Foundation` if not present
++   - Reference LiveScreenCapture service
++
++3. **Initialize service:**
++   - Call `LiveScreenCapture.shared.start()` or equivalent
++   - Add to app init or main window's `.onAppear` modifier
++   - Ensure initialization happens after permissions check
++
++4. **Add logging:**
++   - Log service startup: `print("✓ Live screen capture started")`
++   - Log if permissions missing: `print("⚠️ Screen recording permission required")`
++   - Log frame rate: `print("  Capturing at X FPS")`
++
++5. **Verify permissions check:**
++   - Ensure Screen Recording permission is checked before starting capture
++   - Gracefully handle permission denial
++
++## Potential Issues
++1. **Service crashes without permissions** → Add permission check guard
++2. **Multiple initialization calls** → Add `isRunning` flag check
++3. **Memory leak from capture** → Ensure service stops on app quit
++
++## Expected Output
++- Modified: `SoniqueBarApp.swift` with LiveScreenCapture initialization
++- Console logs visible on app launch
++- Build succeeds without errors
++
++## Success Criteria
++- [ ] `xcodebuild -project SoniqueBar.xcodeproj -scheme SoniqueBar build` exits 0
++- [ ] App launches without crashing
++- [ ] Console shows "Live screen capture started" message
++- [ ] Logs show FPS or capture confirmation
++
++## Verification
++```bash
++cd ~/Projects/sonique-mac
++grep -q "LiveScreenCapture" SoniqueBarApp.swift
++xcodebuild -project SoniqueBar.xcodeproj -scheme SoniqueBar build
++# Run app and check Console.app for startup logs
++```
++
++## QA Checklist
++- [ ] q1: LiveScreenCapture imported → `grep "LiveScreenCapture" SoniqueBarApp.swift`
++- [ ] q2: Service initialized → `grep "start()" SoniqueBarApp.swift`
++- [ ] q3: Build succeeds → `xcodebuild build && echo $?`
++- [ ] q4: Logs visible → Run app, check Console.app
++
++## Security Review
++- **Threats:** Screen capture without permission
++- **Mitigations:** Permission check before initialization
++- **Privacy:** User must grant Screen Recording permission
++
++## Functional Test
++1. Build and run SoniqueBar
++2. Open Console.app, filter for "SoniqueBar"
++3. Launch the app
++4. Verify log messages appear:
++   - "Live screen capture started" or equivalent
++   - Frame rate or status message
++5. If permission denied, verify graceful error message
++
++## Recovery
++If service initialization crashes app:
++- Wrap initialization in do-catch
++- Add permission check guard
++- Mark NHR with diagnostic: "LiveScreenCapture.start() crashed"
++
++## Rollback
++```bash
++cd ~/Projects/sonique-mac
++git revert HEAD
++xcodebuild -project SoniqueBar.xcodeproj -scheme SoniqueBar build
++```
++
++## Notes
++- LiveScreenCapture may use ScreenCaptureKit (macOS 12.3+)
++- Service should run continuously once started
++- Consider adding stop() call in app delegate's applicationWillTerminate
++
+
+# 2026-06-28 02:27:35.172238
++# Brief: Remove ScreenAwarenessService and CLI Screenshot Logic
++
++## Goal
++Remove deprecated ScreenAwarenessService.swift and any CLI-based screenshot logic after LiveScreenCapture.swift is verified working.
++
++## Context
++- **Repo:** `~/Projects/sonique-mac`
++- **Files to delete:** `SoniqueBar/Services/ScreenAwarenessService.swift` (if exists)
++- **Files to search:** All Swift files referencing ScreenAwarenessService
++- **Prerequisite:** LiveScreenCapture must be wired and working (task #1005675)
++- **Why:** Consolidating to single screen capture system
++
++## Dependencies
++- **Must be completed first:** Task #1005675 (LiveScreenCapture integration)
++- **Must verify:** LiveScreenCapture successfully capturing screenshots
++
++## Steps
++1. **Search for all references:**
++   ```bash
++   cd ~/Projects/sonique-mac
++   grep -r "ScreenAwarenessService" SoniqueBar/ --include="*.swift"
++   grep -r "screencapture" SoniqueBar/ --include="*.swift"  # CLI tool usage
++   ```
++
++2. **Remove import statements:**
++   - Find all files importing ScreenAwarenessService
++   - Remove `import ScreenAwarenessService` lines
++
++3. **Remove initialization code:**
++   - Search for `.shared`, `.start()`, `.stop()` calls
++   - Remove initialization in app entry point
++   - Remove any configuration or setup code
++
++4. **Remove usage code:**
++   - Find method calls to the service
++   - Replace with LiveScreenCapture equivalents OR remove if redundant
++   - Check for any delegates, callbacks, or observers
++
++5. **Delete service file:**
++   ```bash
++   rm SoniqueBar/Services/ScreenAwarenessService.swift
++   ```
++
++6. **Search for CLI screenshot usage:**
++   ```bash
++   grep -r "screencapture" SoniqueBar/ --include="*.swift"
++   grep -r "Process()" SoniqueBar/ | grep -i screen
++   ```
++
++7. **Remove CLI screenshot logic:**
++   - Remove shell command invocations of `screencapture`
++   - Remove temporary file handling for screenshots
++   - Replace with LiveScreenCapture API calls
++
++8. **Clean up project:**
++   - Remove file references from Xcode project if needed
++   - Verify no broken imports remain
++
++## Potential Issues
++1. **Other features depend on ScreenAwarenessService** → Migrate them to LiveScreenCapture
++2. **File doesn't exist** → Verify via search first, not an error
++3. **Build breaks after removal** → Check for missed references
++
++## Expected Output
++- Deleted: `SoniqueBar/Services/ScreenAwarenessService.swift` (if exists)
++- Modified: Files that previously imported/used the service
++- Clean build with no references to old system
++
++## Success Criteria
++- [ ] No file exists at `SoniqueBar/Services/ScreenAwarenessService.swift`
++- [ ] `grep -r "ScreenAwarenessService" SoniqueBar/` returns 0 matches
++- [ ] `grep -r "screencapture" SoniqueBar/ --include="*.swift"` returns 0 matches (or only comments)
++- [ ] `xcodebuild -project SoniqueBar.xcodeproj -scheme SoniqueBar build` exits 0
++
++## Verification
++```bash
++cd ~/Projects/sonique-mac
++
++# Verify file deleted
++! test -f SoniqueBar/Services/ScreenAwarenessService.swift
++
++# Verify no references remain
++! grep -r "ScreenAwarenessService" SoniqueBar/ --include="*.swift"
++! grep -r "screencapture" SoniqueBar/ --include="*.swift" | grep -v "^[[:space:]]*#\|^[[:space:]]*//"
++
++# Verify build succeeds
++xcodebuild -project SoniqueBar.xcodeproj -scheme SoniqueBar build
++```
++
++## QA Checklist
++- [ ] q1: File deleted → `! test -f SoniqueBar/Services/ScreenAwarenessService.swift`
++- [ ] q2: No imports remain → `! grep "import.*ScreenAwarenessService"`
++- [ ] q3: No CLI screencapture → `! grep "screencapture" SoniqueBar/**/*.swift`
++- [ ] q4: Build succeeds → `xcodebuild build && echo $?`
++
++## Security Review
++- **Threats:** None (code removal)
++- **Cleanup:** Verify no leftover temp files or screenshots
++
++## Functional Test
++1. Build and run SoniqueBar after deletion
++2. Trigger screenshot capture via LiveScreenCapture
++3. Verify screenshots still work correctly
++4. Check Console.app for no errors about missing services
++
++## Recovery
++If build breaks after removal:
++- Check for missed import statements
++- Verify LiveScreenCapture has equivalent functionality
++- Mark NHR with diagnostic: "Build failed after ScreenAwarenessService removal"
++
++## Rollback
++```bash
++cd ~/Projects/sonique-mac
++git revert HEAD
++xcodebuild -project SoniqueBar.xcodeproj -scheme SoniqueBar build
++```
++
++## Notes
++- If ScreenAwarenessService.swift doesn't exist, this task is already complete
++- Verify LiveScreenCapture provides all needed functionality before deleting
++- Check for any CLI `screencapture` usage outside of the service file
++- Consider removing any related configuration keys from UserDefaults
++
+
+# 2026-06-28 02:27:35.172874
++# Brief: Remove ScreenAwarenessService and CLI Screenshot Logic
++
++## Goal
++Remove deprecated ScreenAwarenessService.swift and any CLI-based screenshot logic after LiveScreenCapture.swift is verified working.
++
++## Context
++- **Repo:** `~/Projects/sonique-mac`
++- **Files to delete:** `SoniqueBar/Services/ScreenAwarenessService.swift` (if exists)
++- **Files to search:** All Swift files referencing ScreenAwarenessService
++- **Prerequisite:** LiveScreenCapture must be wired and working (task #1005675)
++- **Why:** Consolidating to single screen capture system
++
++## Dependencies
++- **Must be completed first:** Task #1005675 (LiveScreenCapture integration)
++- **Must verify:** LiveScreenCapture successfully capturing screenshots
++
++## Steps
++1. **Search for all references:**
++   ```bash
++   cd ~/Projects/sonique-mac
++   grep -r "ScreenAwarenessService" SoniqueBar/ --include="*.swift"
++   grep -r "screencapture" SoniqueBar/ --include="*.swift"  # CLI tool usage
++   ```
++
++2. **Remove import statements:**
++   - Find all files importing ScreenAwarenessService
++   - Remove `import ScreenAwarenessService` lines
++
++3. **Remove initialization code:**
++   - Search for `.shared`, `.start()`, `.stop()` calls
++   - Remove initialization in app entry point
++   - Remove any configuration or setup code
++
++4. **Remove usage code:**
++   - Find method calls to the service
++   - Replace with LiveScreenCapture equivalents OR remove if redundant
++   - Check for any delegates, callbacks, or observers
++
++5. **Delete service file:**
++   ```bash
++   rm SoniqueBar/Services/ScreenAwarenessService.swift
++   ```
++
++6. **Search for CLI screenshot usage:**
++   ```bash
++   grep -r "screencapture" SoniqueBar/ --include="*.swift"
++   grep -r "Process()" SoniqueBar/ | grep -i screen
++   ```
++
++7. **Remove CLI screenshot logic:**
++   - Remove shell command invocations of `screencapture`
++   - Remove temporary file handling for screenshots
++   - Replace with LiveScreenCapture API calls
++
++8. **Clean up project:**
++   - Remove file references from Xcode project if needed
++   - Verify no broken imports remain
++
++## Potential Issues
++1. **Other features depend on ScreenAwarenessService** → Migrate them to LiveScreenCapture
++2. **File doesn't exist** → Verify via search first, not an error
++3. **Build breaks after removal** → Check for missed references
++
++## Expected Output
++- Deleted: `SoniqueBar/Services/ScreenAwarenessService.swift` (if exists)
++- Modified: Files that previously imported/used the service
++- Clean build with no references to old system
++
++## Success Criteria
++- [ ] No file exists at `SoniqueBar/Services/ScreenAwarenessService.swift`
++- [ ] `grep -r "ScreenAwarenessService" SoniqueBar/` returns 0 matches
++- [ ] `grep -r "screencapture" SoniqueBar/ --include="*.swift"` returns 0 matches (or only comments)
++- [ ] `xcodebuild -project SoniqueBar.xcodeproj -scheme SoniqueBar build` exits 0
++
++## Verification
++```bash
++cd ~/Projects/sonique-mac
++
++# Verify file deleted
++! test -f SoniqueBar/Services/ScreenAwarenessService.swift
++
++# Verify no references remain
++! grep -r "ScreenAwarenessService" SoniqueBar/ --include="*.swift"
++! grep -r "screencapture" SoniqueBar/ --include="*.swift" | grep -v "^[[:space:]]*#\|^[[:space:]]*//"
++
++# Verify build succeeds
++xcodebuild -project SoniqueBar.xcodeproj -scheme SoniqueBar build
++```
++
++## QA Checklist
++- [ ] q1: File deleted → `! test -f SoniqueBar/Services/ScreenAwarenessService.swift`
++- [ ] q2: No imports remain → `! grep "import.*ScreenAwarenessService"`
++- [ ] q3: No CLI screencapture → `! grep "screencapture" SoniqueBar/**/*.swift`
++- [ ] q4: Build succeeds → `xcodebuild build && echo $?`
++
++## Security Review
++- **Threats:** None (code removal)
++- **Cleanup:** Verify no leftover temp files or screenshots
++
++## Functional Test
++1. Build and run SoniqueBar after deletion
++2. Trigger screenshot capture via LiveScreenCapture
++3. Verify screenshots still work correctly
++4. Check Console.app for no errors about missing services
++
++## Recovery
++If build breaks after removal:
++- Check for missed import statements
++- Verify LiveScreenCapture has equivalent functionality
++- Mark NHR with diagnostic: "Build failed after ScreenAwarenessService removal"
++
++## Rollback
++```bash
++cd ~/Projects/sonique-mac
++git revert HEAD
++xcodebuild -project SoniqueBar.xcodeproj -scheme SoniqueBar build
++```
++
++## Notes
++- If ScreenAwarenessService.swift doesn't exist, this task is already complete
++- Verify LiveScreenCapture provides all needed functionality before deleting
++- Check for any CLI `screencapture` usage outside of the service file
++- Consider removing any related configuration keys from UserDefaults
++
+
+# 2026-06-28 07:39:10.205131
++None\n\n## Retry Context\nFocus on implementing just the basic endpoint structure first, then add screencapture integration as a second step to avoid getting stalled on complex dependencies.
+
+# 2026-06-28 07:39:10.205937
++None\n\n## Retry Context\nFocus on implementing just the basic endpoint structure first, then add screencapture integration as a second step to avoid getting stalled on complex dependencies.
+
+# 2026-06-28 07:39:33.087928
++None\n\n## Retry Context\nCheck that the dependency Task #1005680 (artifact line parsing) is actually completed before proceeding with the overlay implementation.
+
+# 2026-06-28 07:39:33.088152
++None\n\n## Retry Context\nCheck that the dependency Task #1005680 (artifact line parsing) is actually completed before proceeding with the overlay implementation.
+
+# 2026-06-28 07:40:03.830979
++None\n\n## Retry Context\nCheck that the dependency Task #1005680 (artifact line parsing) is actually completed before proceeding with the overlay implementation.
+
+# 2026-06-28 07:40:03.831174
++None\n\n## Retry Context\nCheck that the dependency Task #1005680 (artifact line parsing) is actually completed before proceeding with the overlay implementation.
+
+# 2026-06-28 07:40:35.289127
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 07:40:35.289374
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 07:42:57.451139
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 07:42:57.451376
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 07:43:26.191797
++## NHR Triage Amendment
++Previous attempt failed. Root cause: The task appears to have stalled due to repeated auto-resets, indicating potential issues with the environment or dependencies not being met.
++Fix to apply: Ensure that all dependencies, particularly task #1005683 (Mac POST /diagnose endpoint), are completed and that the environment is correctly set up. Verify that the `HTTPClient.swift` file exists and is correctly referenced.
++
++Confirm that the Mac POST /diagnose endpoint is operational and that the `HTTPClient.swift` file is correctly modified. Ensure all dependencies are met before proceeding.
++
++---
++
++# Brief: Add DiagnosticSnapshot Capture in HTTPClient on URLSession Failure
++
++## Goal
++Capture DiagnosticSnapshot when URLSession requests fail and POST it to the Mac's /diagnose endpoint for debugging.
++
++## Context
++- **Repo:** `~/Projects/sonique-ios` (iOS app)
++- **File to modify:** `Sonique/HTTPClient.swift` or equivalent networking layer
++- **Dependencies:** Mac running POST /diagnose endpoint (task #1005683)
++- **Pattern:** On network failure, collect diagnostic data and POST to Mac
++- **Use case:** When voice command network request fails, automatically send diagnostic snapshot to Mac
++
++## Dependencies
++- **Files must exist:**
++  - `Sonique/HTTPClient.swift` or similar networking layer
++- **Must be completed:** Task #1005683 (Mac POST /diagnose endpoint)
++- **Frameworks:** Foundation (URLSession)
++
++## Steps
++1. **Define DiagnosticSnapshot struct** (if doesn't exist):
++   ```swift
++   struct DiagnosticSnapshot: Codable {
++       let timestamp: String  // ISO8601
++       let errorType: String
++       let errorMessage: String
++       let requestURL: String?
++       let requestMethod: String?
++       let responseStatusCode: Int?
++       let responseHeaders: [String: String]?
++       let clientInfo: ClientInfo
++       
++       struct ClientInfo: Codable {
++           let deviceModel: String
++           let osVersion: String
++           let appVersion: String
++       }
++   }
++   ```
++
++2. **Add helper to get device info:**
++   ```swift
++   func getClientInfo() -> DiagnosticSnapshot.ClientInfo {
++       let device = UIDevice.current
++       let appVersion = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "unknown"
++       
++       return DiagnosticSnapshot.ClientInfo(
++           deviceModel: device.model,
++           osVersion: device.systemVersion,
++           appVersion: appVersion
++       )
++   }
++   ```
++
++3. **Locate URLSession error handling:**
++   - Find where URLSession.dataTask completion handlers are implemented
++   - Identify error handling block
++
++4. **Add diagnostic capture on error:**
++   ```swift
++   URLSession.shared.dataTask(with: request) { data, response, error in
++       if let error = error {
++           // Capture diagnostic snapshot
++           let snapshot = DiagnosticSnapshot(
++               timestamp: ISO8601DateFormatter().string(from: Date()),
++               errorType: type(of: error).description(),
++               errorMessage: error.localizedDescription,
++               requestURL: request.url?.absoluteString,
++               requestMethod: request.httpMethod,
++               responseStatusCode: (response as? HTTPURLResponse)?.statusCode,
++               responseHeaders: (response as? HTTPURLResponse)?.allHeaderFields as? [String: String],
++               clientInfo: getClientInfo()
++           )
++           
++           // POST diagnostic to Mac
++           sendDiagnosticToMac(snapshot)
++           
++           // Continue with existing error handling
++           // ...
++       }
++   }
++   ```
++
++5. **Implement sendDiagnosticToMac function:**
++   ```swift
++   func sendDiagnosticToMac(_ snapshot: DiagnosticSnapshot) {
++       // Mac endpoint URL (use discovered Mac IP or localhost if same device)
++       guard let macURL = URL(string: "http://\(macIPAddress):8080/diagnose") else {
++           print("[Diagnostics] Invalid Mac URL")
++           return
++       }
++       
++       var request = URLRequest(url: macURL)
++       request.httpMethod = "POST"
++       request.setValue("application/json", forHTTPHeaderField: "Content-Type")
++       
++       do {
++           request.httpBody = try JSONEncoder().encode(snapshot)
++           
++           URLSession.shared.dataTask(with: request) { data, response, error in
++               if let error = error {
++                   print("[Diagnostics] Failed to send: \(error)")
++               } else {
++                   print("[Diagnostics] Snapshot sent to Mac")
++               }
++           }.resume()
++       } catch {
++           print("[Diagnostics] Failed to encode snapshot: \(error)")
++       }
++   }
++   ```
++
++6. **Add Mac IP discovery:**
++   - Use Bonjour/mDNS to discover Mac on local network
++   - OR use hardcoded IP from settings
++   - OR use UserDefaults to store Mac IP
++
++7. **Add logging:**
++   ```swift
++   print("[Diagnostics] Capturing snapshot for error: \(error.localizedDescription)")
++   print("[Diagnostics] Request: \(request.httpMethod ?? "?") \(request.url?.absoluteString ?? "?")")
++   ```
++
++8. **Handle edge cases:**
++   - Don't send diagnostic if Mac is unreachable
++   - Don't send diagnostic for diagnostic POST itself (avoid loop)
++   - Rate-limit diagnostic sends (max 1 per 10 seconds)
++
++## Potential Issues
++1. **Mac IP unknown** → Need discovery mechanism or settings entry
++2. **Infinite loop** → Diagnostic POST fails, triggers diagnostic → guard against
++3. **Network overhead** → Only send on actual failures, not cancellations
++4. **Privacy** → Don't include sensitive data in diagnostics
++
++## Expected Output
++- Modified: `Sonique/HTTPClient.swift` with diagnostic capture
++- New: DiagnosticSnapshot struct (if not exists)
++- New: sendDiagnosticToMac function
++- Diagnostics POSTed to Mac on URLSession failure
++- Build succeeds
++
++## Success Criteria
++- [ ] DiagnosticSnapshot struct defined
++- [ ] sendDiagnosticToMac function implemented
++- [ ] URLSession error handler captures diagnostic
++- [ ] Diagnostic POST includes all required fields
++- [ ] Avoids infinite loop (guards diagnostic endpoint)
++- [ ] `xcodebuild -project Sonique.xcodeproj -scheme Sonique build` exits 0
++
++## Verification
++```bash
++cd ~/Projects/sonique-ios
++
++# Verify DiagnosticSnapshot struct
++grep -q "struct DiagnosticSnapshot" Sonique/HTTPClient.swift || \
++grep -q "struct DiagnosticSnapshot" Sonique/Models/
++
++# Verify sendDiagnosticToMac function
++grep -q "func sendDiagnosticToMac" Sonique/HTTPClient.swift
++
++# Verify URLSession error capture
++grep -q "DiagnosticSnapshot" Sonique/HTTPClient.swift
++
++# Build succeeds
++xcodebuild -project Sonique.xcodeproj -scheme Sonique build
++```
++
++## QA Checklist
++- [ ] q1: DiagnosticSnapshot → `grep "struct DiagnosticSnapshot"`
++- [ ] q2: sendDiagnosticToMac → `grep "func sendDiagnosticToMac"`
++- [ ] q3: Error capture → `grep "DiagnosticSnapshot" HTTPClient.swift`
++- [ ] q4: Infinite loop guard → `grep "/diagnose" HTTPClient.swift | grep -v "sendDiagnosticToMac\|guard"`
++- [ ] q5: Build succeeds → `xcodebuild build && echo $?`
++
++## Security Review
++- **Threats:**
++  - Sensitive data in error messages
++  - Network traffic interception
++- **Mitigations:**
++  - Use HTTPS if Mac supports it
++  - Redact sensitive headers (Authorization, API keys)
++  - Local network only (no internet transit)
++- **Privacy:** Error messages may contain user data — sanitize before sending
++
++## Functional Test
++1. Ensure Mac running with POST /diagnose endpoint
++2. Build and run Sonique iOS app
++3. Configure Mac IP address (or use discovery)
++4. Trigger network error (e.g., stop Mac server)
++5. Attempt voice command
++6. Verify diagnostic sent:
++   ```bash
++   # On Mac
++   tail -f ~/Library/Application\ Support/SoniqueBar/diagnostics/*.json
++   ```
++7. Check iOS console:
++   ```
++   [Diagnostics] Capturing snapshot for error: ...
++   [Diagnostics] Snapshot sent to Mac
++   ```
++8. Verify diagnostic file created on Mac
++9. Test guard against infinite loop:
++   - Break /diagnose endpoint
++   - Verify diagnostic send fails but doesn't retry infinitely
++
++## Recovery
++If diagnostic capture crashes app:
++- Wrap JSON encoding in try-catch
++- Add nil checks for all optional fields
++- Mark NHR with diagnostic: "DiagnosticSnapshot capture crashed"
++
++## Rollback
++```bash
++cd ~/Projects/sonique-ios
++git revert HEAD
++xcodebuild -project Sonique.xcodeproj -scheme Sonique build
++```
++
++## Notes
++- Mac IP discovery: consider using Bonjour (_sonique._tcp.local)
++- Rate limiting: store last diagnostic send timestamp in memory
++- Don't send diagnostics for cancelled requests (user-initiated)
++- Consider adding diagnostic UI in iOS app settings to view sent diagnostics
++- ISO8601 timestamp format with Z suffix (UTC)
++- Device model examples: "iPhone14,2" (iPhone 13 Pro), "iPad13,1" (iPad Pro)
++
+
+# 2026-06-28 07:43:26.195045
++## NHR Triage Amendment
++Previous attempt failed. Root cause: The task appears to have stalled due to repeated auto-resets, indicating potential issues with the environment or dependencies not being met.
++Fix to apply: Ensure that all dependencies, particularly task #1005683 (Mac POST /diagnose endpoint), are completed and that the environment is correctly set up. Verify that the `HTTPClient.swift` file exists and is correctly referenced.
++
++Confirm that the Mac POST /diagnose endpoint is operational and that the `HTTPClient.swift` file is correctly modified. Ensure all dependencies are met before proceeding.
++
++---
++
++# Brief: Add DiagnosticSnapshot Capture in HTTPClient on URLSession Failure
++
++## Goal
++Capture DiagnosticSnapshot when URLSession requests fail and POST it to the Mac's /diagnose endpoint for debugging.
++
++## Context
++- **Repo:** `~/Projects/sonique-ios` (iOS app)
++- **File to modify:** `Sonique/HTTPClient.swift` or equivalent networking layer
++- **Dependencies:** Mac running POST /diagnose endpoint (task #1005683)
++- **Pattern:** On network failure, collect diagnostic data and POST to Mac
++- **Use case:** When voice command network request fails, automatically send diagnostic snapshot to Mac
++
++## Dependencies
++- **Files must exist:**
++  - `Sonique/HTTPClient.swift` or similar networking layer
++- **Must be completed:** Task #1005683 (Mac POST /diagnose endpoint)
++- **Frameworks:** Foundation (URLSession)
++
++## Steps
++1. **Define DiagnosticSnapshot struct** (if doesn't exist):
++   ```swift
++   struct DiagnosticSnapshot: Codable {
++       let timestamp: String  // ISO8601
++       let errorType: String
++       let errorMessage: String
++       let requestURL: String?
++       let requestMethod: String?
++       let responseStatusCode: Int?
++       let responseHeaders: [String: String]?
++       let clientInfo: ClientInfo
++       
++       struct ClientInfo: Codable {
++           let deviceModel: String
++           let osVersion: String
++           let appVersion: String
++       }
++   }
++   ```
++
++2. **Add helper to get device info:**
++   ```swift
++   func getClientInfo() -> DiagnosticSnapshot.ClientInfo {
++       let device = UIDevice.current
++       let appVersion = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "unknown"
++       
++       return DiagnosticSnapshot.ClientInfo(
++           deviceModel: device.model,
++           osVersion: device.systemVersion,
++           appVersion: appVersion
++       )
++   }
++   ```
++
++3. **Locate URLSession error handling:**
++   - Find where URLSession.dataTask completion handlers are implemented
++   - Identify error handling block
++
++4. **Add diagnostic capture on error:**
++   ```swift
++   URLSession.shared.dataTask(with: request) { data, response, error in
++       if let error = error {
++           // Capture diagnostic snapshot
++           let snapshot = DiagnosticSnapshot(
++               timestamp: ISO8601DateFormatter().string(from: Date()),
++               errorType: type(of: error).description(),
++               errorMessage: error.localizedDescription,
++               requestURL: request.url?.absoluteString,
++               requestMethod: request.httpMethod,
++               responseStatusCode: (response as? HTTPURLResponse)?.statusCode,
++               responseHeaders: (response as? HTTPURLResponse)?.allHeaderFields as? [String: String],
++               clientInfo: getClientInfo()
++           )
++           
++           // POST diagnostic to Mac
++           sendDiagnosticToMac(snapshot)
++           
++           // Continue with existing error handling
++           // ...
++       }
++   }
++   ```
++
++5. **Implement sendDiagnosticToMac function:**
++   ```swift
++   func sendDiagnosticToMac(_ snapshot: DiagnosticSnapshot) {
++       // Mac endpoint URL (use discovered Mac IP or localhost if same device)
++       guard let macURL = URL(string: "http://\(macIPAddress):8080/diagnose") else {
++           print("[Diagnostics] Invalid Mac URL")
++           return
++       }
++       
++       var request = URLRequest(url: macURL)
++       request.httpMethod = "POST"
++       request.setValue("application/json", forHTTPHeaderField: "Content-Type")
++       
++       do {
++           request.httpBody = try JSONEncoder().encode(snapshot)
++           
++           URLSession.shared.dataTask(with: request) { data, response, error in
++               if let error = error {
++                   print("[Diagnostics] Failed to send: \(error)")
++               } else {
++                   print("[Diagnostics] Snapshot sent to Mac")
++               }
++           }.resume()
++       } catch {
++           print("[Diagnostics] Failed to encode snapshot: \(error)")
++       }
++   }
++   ```
++
++6. **Add Mac IP discovery:**
++   - Use Bonjour/mDNS to discover Mac on local network
++   - OR use hardcoded IP from settings
++   - OR use UserDefaults to store Mac IP
++
++7. **Add logging:**
++   ```swift
++   print("[Diagnostics] Capturing snapshot for error: \(error.localizedDescription)")
++   print("[Diagnostics] Request: \(request.httpMethod ?? "?") \(request.url?.absoluteString ?? "?")")
++   ```
++
++8. **Handle edge cases:**
++   - Don't send diagnostic if Mac is unreachable
++   - Don't send diagnostic for diagnostic POST itself (avoid loop)
++   - Rate-limit diagnostic sends (max 1 per 10 seconds)
++
++## Potential Issues
++1. **Mac IP unknown** → Need discovery mechanism or settings entry
++2. **Infinite loop** → Diagnostic POST fails, triggers diagnostic → guard against
++3. **Network overhead** → Only send on actual failures, not cancellations
++4. **Privacy** → Don't include sensitive data in diagnostics
++
++## Expected Output
++- Modified: `Sonique/HTTPClient.swift` with diagnostic capture
++- New: DiagnosticSnapshot struct (if not exists)
++- New: sendDiagnosticToMac function
++- Diagnostics POSTed to Mac on URLSession failure
++- Build succeeds
++
++## Success Criteria
++- [ ] DiagnosticSnapshot struct defined
++- [ ] sendDiagnosticToMac function implemented
++- [ ] URLSession error handler captures diagnostic
++- [ ] Diagnostic POST includes all required fields
++- [ ] Avoids infinite loop (guards diagnostic endpoint)
++- [ ] `xcodebuild -project Sonique.xcodeproj -scheme Sonique build` exits 0
++
++## Verification
++```bash
++cd ~/Projects/sonique-ios
++
++# Verify DiagnosticSnapshot struct
++grep -q "struct DiagnosticSnapshot" Sonique/HTTPClient.swift || \
++grep -q "struct DiagnosticSnapshot" Sonique/Models/
++
++# Verify sendDiagnosticToMac function
++grep -q "func sendDiagnosticToMac" Sonique/HTTPClient.swift
++
++# Verify URLSession error capture
++grep -q "DiagnosticSnapshot" Sonique/HTTPClient.swift
++
++# Build succeeds
++xcodebuild -project Sonique.xcodeproj -scheme Sonique build
++```
++
++## QA Checklist
++- [ ] q1: DiagnosticSnapshot → `grep "struct DiagnosticSnapshot"`
++- [ ] q2: sendDiagnosticToMac → `grep "func sendDiagnosticToMac"`
++- [ ] q3: Error capture → `grep "DiagnosticSnapshot" HTTPClient.swift`
++- [ ] q4: Infinite loop guard → `grep "/diagnose" HTTPClient.swift | grep -v "sendDiagnosticToMac\|guard"`
++- [ ] q5: Build succeeds → `xcodebuild build && echo $?`
++
++## Security Review
++- **Threats:**
++  - Sensitive data in error messages
++  - Network traffic interception
++- **Mitigations:**
++  - Use HTTPS if Mac supports it
++  - Redact sensitive headers (Authorization, API keys)
++  - Local network only (no internet transit)
++- **Privacy:** Error messages may contain user data — sanitize before sending
++
++## Functional Test
++1. Ensure Mac running with POST /diagnose endpoint
++2. Build and run Sonique iOS app
++3. Configure Mac IP address (or use discovery)
++4. Trigger network error (e.g., stop Mac server)
++5. Attempt voice command
++6. Verify diagnostic sent:
++   ```bash
++   # On Mac
++   tail -f ~/Library/Application\ Support/SoniqueBar/diagnostics/*.json
++   ```
++7. Check iOS console:
++   ```
++   [Diagnostics] Capturing snapshot for error: ...
++   [Diagnostics] Snapshot sent to Mac
++   ```
++8. Verify diagnostic file created on Mac
++9. Test guard against infinite loop:
++   - Break /diagnose endpoint
++   - Verify diagnostic send fails but doesn't retry infinitely
++
++## Recovery
++If diagnostic capture crashes app:
++- Wrap JSON encoding in try-catch
++- Add nil checks for all optional fields
++- Mark NHR with diagnostic: "DiagnosticSnapshot capture crashed"
++
++## Rollback
++```bash
++cd ~/Projects/sonique-ios
++git revert HEAD
++xcodebuild -project Sonique.xcodeproj -scheme Sonique build
++```
++
++## Notes
++- Mac IP discovery: consider using Bonjour (_sonique._tcp.local)
++- Rate limiting: store last diagnostic send timestamp in memory
++- Don't send diagnostics for cancelled requests (user-initiated)
++- Consider adding diagnostic UI in iOS app settings to view sent diagnostics
++- ISO8601 timestamp format with Z suffix (UTC)
++- Device model examples: "iPhone14,2" (iPhone 13 Pro), "iPad13,1" (iPad Pro)
++
+
+# 2026-06-28 07:43:48.892909
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 07:43:48.893066
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 07:48:23.163299
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 07:48:23.163559
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 07:52:29.640476
++None\n\n## Retry Context\nCheck that the dependency Task #1005680 (artifact line parsing) is actually completed before proceeding with the overlay implementation.
+
+# 2026-06-28 07:52:29.640646
++None\n\n## Retry Context\nCheck that the dependency Task #1005680 (artifact line parsing) is actually completed before proceeding with the overlay implementation.
+
+# 2026-06-28 07:53:34.267506
++None\n\n## Retry Context\nCheck that the dependency Task #1005680 (artifact line parsing) is actually completed before proceeding with the overlay implementation.
+
+# 2026-06-28 07:53:34.267791
++None\n\n## Retry Context\nCheck that the dependency Task #1005680 (artifact line parsing) is actually completed before proceeding with the overlay implementation.
+
+# 2026-06-28 07:53:57.752642
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 07:53:57.753605
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 07:56:49.439648
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 07:56:49.443978
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 07:57:22.430835
++## NHR Triage Amendment
++Previous attempt failed. Root cause: The task appears to have stalled due to repeated auto-resets, indicating potential issues with the environment or dependencies not being met.
++Fix to apply: Ensure that all dependencies, particularly task #1005683 (Mac POST /diagnose endpoint), are completed and that the environment is correctly set up. Verify that the `HTTPClient.swift` file exists and is correctly referenced.
++
++Confirm that the Mac POST /diagnose endpoint is operational and that the `HTTPClient.swift` file is correctly modified. Ensure all dependencies are met before proceeding.
++
++---
++
++# Brief: Add DiagnosticSnapshot Capture in HTTPClient on URLSession Failure
++
++## Goal
++Capture DiagnosticSnapshot when URLSession requests fail and POST it to the Mac's /diagnose endpoint for debugging.
++
++## Context
++- **Repo:** `~/Projects/sonique-ios` (iOS app)
++- **File to modify:** `Sonique/HTTPClient.swift` or equivalent networking layer
++- **Dependencies:** Mac running POST /diagnose endpoint (task #1005683)
++- **Pattern:** On network failure, collect diagnostic data and POST to Mac
++- **Use case:** When voice command network request fails, automatically send diagnostic snapshot to Mac
++
++## Dependencies
++- **Files must exist:**
++  - `Sonique/HTTPClient.swift` or similar networking layer
++- **Must be completed:** Task #1005683 (Mac POST /diagnose endpoint)
++- **Frameworks:** Foundation (URLSession)
++
++## Steps
++1. **Define DiagnosticSnapshot struct** (if doesn't exist):
++   ```swift
++   struct DiagnosticSnapshot: Codable {
++       let timestamp: String  // ISO8601
++       let errorType: String
++       let errorMessage: String
++       let requestURL: String?
++       let requestMethod: String?
++       let responseStatusCode: Int?
++       let responseHeaders: [String: String]?
++       let clientInfo: ClientInfo
++       
++       struct ClientInfo: Codable {
++           let deviceModel: String
++           let osVersion: String
++           let appVersion: String
++       }
++   }
++   ```
++
++2. **Add helper to get device info:**
++   ```swift
++   func getClientInfo() -> DiagnosticSnapshot.ClientInfo {
++       let device = UIDevice.current
++       let appVersion = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "unknown"
++       
++       return DiagnosticSnapshot.ClientInfo(
++           deviceModel: device.model,
++           osVersion: device.systemVersion,
++           appVersion: appVersion
++       )
++   }
++   ```
++
++3. **Locate URLSession error handling:**
++   - Find where URLSession.dataTask completion handlers are implemented
++   - Identify error handling block
++
++4. **Add diagnostic capture on error:**
++   ```swift
++   URLSession.shared.dataTask(with: request) { data, response, error in
++       if let error = error {
++           // Capture diagnostic snapshot
++           let snapshot = DiagnosticSnapshot(
++               timestamp: ISO8601DateFormatter().string(from: Date()),
++               errorType: type(of: error).description(),
++               errorMessage: error.localizedDescription,
++               requestURL: request.url?.absoluteString,
++               requestMethod: request.httpMethod,
++               responseStatusCode: (response as? HTTPURLResponse)?.statusCode,
++               responseHeaders: (response as? HTTPURLResponse)?.allHeaderFields as? [String: String],
++               clientInfo: getClientInfo()
++           )
++           
++           // POST diagnostic to Mac
++           sendDiagnosticToMac(snapshot)
++           
++           // Continue with existing error handling
++           // ...
++       }
++   }
++   ```
++
++5. **Implement sendDiagnosticToMac function:**
++   ```swift
++   func sendDiagnosticToMac(_ snapshot: DiagnosticSnapshot) {
++       // Mac endpoint URL (use discovered Mac IP or localhost if same device)
++       guard let macURL = URL(string: "http://\(macIPAddress):8080/diagnose") else {
++           print("[Diagnostics] Invalid Mac URL")
++           return
++       }
++       
++       var request = URLRequest(url: macURL)
++       request.httpMethod = "POST"
++       request.setValue("application/json", forHTTPHeaderField: "Content-Type")
++       
++       do {
++           request.httpBody = try JSONEncoder().encode(snapshot)
++           
++           URLSession.shared.dataTask(with: request) { data, response, error in
++               if let error = error {
++                   print("[Diagnostics] Failed to send: \(error)")
++               } else {
++                   print("[Diagnostics] Snapshot sent to Mac")
++               }
++           }.resume()
++       } catch {
++           print("[Diagnostics] Failed to encode snapshot: \(error)")
++       }
++   }
++   ```
++
++6. **Add Mac IP discovery:**
++   - Use Bonjour/mDNS to discover Mac on local network
++   - OR use hardcoded IP from settings
++   - OR use UserDefaults to store Mac IP
++
++7. **Add logging:**
++   ```swift
++   print("[Diagnostics] Capturing snapshot for error: \(error.localizedDescription)")
++   print("[Diagnostics] Request: \(request.httpMethod ?? "?") \(request.url?.absoluteString ?? "?")")
++   ```
++
++8. **Handle edge cases:**
++   - Don't send diagnostic if Mac is unreachable
++   - Don't send diagnostic for diagnostic POST itself (avoid loop)
++   - Rate-limit diagnostic sends (max 1 per 10 seconds)
++
++## Potential Issues
++1. **Mac IP unknown** → Need discovery mechanism or settings entry
++2. **Infinite loop** → Diagnostic POST fails, triggers diagnostic → guard against
++3. **Network overhead** → Only send on actual failures, not cancellations
++4. **Privacy** → Don't include sensitive data in diagnostics
++
++## Expected Output
++- Modified: `Sonique/HTTPClient.swift` with diagnostic capture
++- New: DiagnosticSnapshot struct (if not exists)
++- New: sendDiagnosticToMac function
++- Diagnostics POSTed to Mac on URLSession failure
++- Build succeeds
++
++## Success Criteria
++- [ ] DiagnosticSnapshot struct defined
++- [ ] sendDiagnosticToMac function implemented
++- [ ] URLSession error handler captures diagnostic
++- [ ] Diagnostic POST includes all required fields
++- [ ] Avoids infinite loop (guards diagnostic endpoint)
++- [ ] `xcodebuild -project Sonique.xcodeproj -scheme Sonique build` exits 0
++
++## Verification
++```bash
++cd ~/Projects/sonique-ios
++
++# Verify DiagnosticSnapshot struct
++grep -q "struct DiagnosticSnapshot" Sonique/HTTPClient.swift || \
++grep -q "struct DiagnosticSnapshot" Sonique/Models/
++
++# Verify sendDiagnosticToMac function
++grep -q "func sendDiagnosticToMac" Sonique/HTTPClient.swift
++
++# Verify URLSession error capture
++grep -q "DiagnosticSnapshot" Sonique/HTTPClient.swift
++
++# Build succeeds
++xcodebuild -project Sonique.xcodeproj -scheme Sonique build
++```
++
++## QA Checklist
++- [ ] q1: DiagnosticSnapshot → `grep "struct DiagnosticSnapshot"`
++- [ ] q2: sendDiagnosticToMac → `grep "func sendDiagnosticToMac"`
++- [ ] q3: Error capture → `grep "DiagnosticSnapshot" HTTPClient.swift`
++- [ ] q4: Infinite loop guard → `grep "/diagnose" HTTPClient.swift | grep -v "sendDiagnosticToMac\|guard"`
++- [ ] q5: Build succeeds → `xcodebuild build && echo $?`
++
++## Security Review
++- **Threats:**
++  - Sensitive data in error messages
++  - Network traffic interception
++- **Mitigations:**
++  - Use HTTPS if Mac supports it
++  - Redact sensitive headers (Authorization, API keys)
++  - Local network only (no internet transit)
++- **Privacy:** Error messages may contain user data — sanitize before sending
++
++## Functional Test
++1. Ensure Mac running with POST /diagnose endpoint
++2. Build and run Sonique iOS app
++3. Configure Mac IP address (or use discovery)
++4. Trigger network error (e.g., stop Mac server)
++5. Attempt voice command
++6. Verify diagnostic sent:
++   ```bash
++   # On Mac
++   tail -f ~/Library/Application\ Support/SoniqueBar/diagnostics/*.json
++   ```
++7. Check iOS console:
++   ```
++   [Diagnostics] Capturing snapshot for error: ...
++   [Diagnostics] Snapshot sent to Mac
++   ```
++8. Verify diagnostic file created on Mac
++9. Test guard against infinite loop:
++   - Break /diagnose endpoint
++   - Verify diagnostic send fails but doesn't retry infinitely
++
++## Recovery
++If diagnostic capture crashes app:
++- Wrap JSON encoding in try-catch
++- Add nil checks for all optional fields
++- Mark NHR with diagnostic: "DiagnosticSnapshot capture crashed"
++
++## Rollback
++```bash
++cd ~/Projects/sonique-ios
++git revert HEAD
++xcodebuild -project Sonique.xcodeproj -scheme Sonique build
++```
++
++## Notes
++- Mac IP discovery: consider using Bonjour (_sonique._tcp.local)
++- Rate limiting: store last diagnostic send timestamp in memory
++- Don't send diagnostics for cancelled requests (user-initiated)
++- Consider adding diagnostic UI in iOS app settings to view sent diagnostics
++- ISO8601 timestamp format with Z suffix (UTC)
++- Device model examples: "iPhone14,2" (iPhone 13 Pro), "iPad13,1" (iPad Pro)
++
+
+# 2026-06-28 07:57:22.431295
++## NHR Triage Amendment
++Previous attempt failed. Root cause: The task appears to have stalled due to repeated auto-resets, indicating potential issues with the environment or dependencies not being met.
++Fix to apply: Ensure that all dependencies, particularly task #1005683 (Mac POST /diagnose endpoint), are completed and that the environment is correctly set up. Verify that the `HTTPClient.swift` file exists and is correctly referenced.
++
++Confirm that the Mac POST /diagnose endpoint is operational and that the `HTTPClient.swift` file is correctly modified. Ensure all dependencies are met before proceeding.
++
++---
++
++# Brief: Add DiagnosticSnapshot Capture in HTTPClient on URLSession Failure
++
++## Goal
++Capture DiagnosticSnapshot when URLSession requests fail and POST it to the Mac's /diagnose endpoint for debugging.
++
++## Context
++- **Repo:** `~/Projects/sonique-ios` (iOS app)
++- **File to modify:** `Sonique/HTTPClient.swift` or equivalent networking layer
++- **Dependencies:** Mac running POST /diagnose endpoint (task #1005683)
++- **Pattern:** On network failure, collect diagnostic data and POST to Mac
++- **Use case:** When voice command network request fails, automatically send diagnostic snapshot to Mac
++
++## Dependencies
++- **Files must exist:**
++  - `Sonique/HTTPClient.swift` or similar networking layer
++- **Must be completed:** Task #1005683 (Mac POST /diagnose endpoint)
++- **Frameworks:** Foundation (URLSession)
++
++## Steps
++1. **Define DiagnosticSnapshot struct** (if doesn't exist):
++   ```swift
++   struct DiagnosticSnapshot: Codable {
++       let timestamp: String  // ISO8601
++       let errorType: String
++       let errorMessage: String
++       let requestURL: String?
++       let requestMethod: String?
++       let responseStatusCode: Int?
++       let responseHeaders: [String: String]?
++       let clientInfo: ClientInfo
++       
++       struct ClientInfo: Codable {
++           let deviceModel: String
++           let osVersion: String
++           let appVersion: String
++       }
++   }
++   ```
++
++2. **Add helper to get device info:**
++   ```swift
++   func getClientInfo() -> DiagnosticSnapshot.ClientInfo {
++       let device = UIDevice.current
++       let appVersion = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "unknown"
++       
++       return DiagnosticSnapshot.ClientInfo(
++           deviceModel: device.model,
++           osVersion: device.systemVersion,
++           appVersion: appVersion
++       )
++   }
++   ```
++
++3. **Locate URLSession error handling:**
++   - Find where URLSession.dataTask completion handlers are implemented
++   - Identify error handling block
++
++4. **Add diagnostic capture on error:**
++   ```swift
++   URLSession.shared.dataTask(with: request) { data, response, error in
++       if let error = error {
++           // Capture diagnostic snapshot
++           let snapshot = DiagnosticSnapshot(
++               timestamp: ISO8601DateFormatter().string(from: Date()),
++               errorType: type(of: error).description(),
++               errorMessage: error.localizedDescription,
++               requestURL: request.url?.absoluteString,
++               requestMethod: request.httpMethod,
++               responseStatusCode: (response as? HTTPURLResponse)?.statusCode,
++               responseHeaders: (response as? HTTPURLResponse)?.allHeaderFields as? [String: String],
++               clientInfo: getClientInfo()
++           )
++           
++           // POST diagnostic to Mac
++           sendDiagnosticToMac(snapshot)
++           
++           // Continue with existing error handling
++           // ...
++       }
++   }
++   ```
++
++5. **Implement sendDiagnosticToMac function:**
++   ```swift
++   func sendDiagnosticToMac(_ snapshot: DiagnosticSnapshot) {
++       // Mac endpoint URL (use discovered Mac IP or localhost if same device)
++       guard let macURL = URL(string: "http://\(macIPAddress):8080/diagnose") else {
++           print("[Diagnostics] Invalid Mac URL")
++           return
++       }
++       
++       var request = URLRequest(url: macURL)
++       request.httpMethod = "POST"
++       request.setValue("application/json", forHTTPHeaderField: "Content-Type")
++       
++       do {
++           request.httpBody = try JSONEncoder().encode(snapshot)
++           
++           URLSession.shared.dataTask(with: request) { data, response, error in
++               if let error = error {
++                   print("[Diagnostics] Failed to send: \(error)")
++               } else {
++                   print("[Diagnostics] Snapshot sent to Mac")
++               }
++           }.resume()
++       } catch {
++           print("[Diagnostics] Failed to encode snapshot: \(error)")
++       }
++   }
++   ```
++
++6. **Add Mac IP discovery:**
++   - Use Bonjour/mDNS to discover Mac on local network
++   - OR use hardcoded IP from settings
++   - OR use UserDefaults to store Mac IP
++
++7. **Add logging:**
++   ```swift
++   print("[Diagnostics] Capturing snapshot for error: \(error.localizedDescription)")
++   print("[Diagnostics] Request: \(request.httpMethod ?? "?") \(request.url?.absoluteString ?? "?")")
++   ```
++
++8. **Handle edge cases:**
++   - Don't send diagnostic if Mac is unreachable
++   - Don't send diagnostic for diagnostic POST itself (avoid loop)
++   - Rate-limit diagnostic sends (max 1 per 10 seconds)
++
++## Potential Issues
++1. **Mac IP unknown** → Need discovery mechanism or settings entry
++2. **Infinite loop** → Diagnostic POST fails, triggers diagnostic → guard against
++3. **Network overhead** → Only send on actual failures, not cancellations
++4. **Privacy** → Don't include sensitive data in diagnostics
++
++## Expected Output
++- Modified: `Sonique/HTTPClient.swift` with diagnostic capture
++- New: DiagnosticSnapshot struct (if not exists)
++- New: sendDiagnosticToMac function
++- Diagnostics POSTed to Mac on URLSession failure
++- Build succeeds
++
++## Success Criteria
++- [ ] DiagnosticSnapshot struct defined
++- [ ] sendDiagnosticToMac function implemented
++- [ ] URLSession error handler captures diagnostic
++- [ ] Diagnostic POST includes all required fields
++- [ ] Avoids infinite loop (guards diagnostic endpoint)
++- [ ] `xcodebuild -project Sonique.xcodeproj -scheme Sonique build` exits 0
++
++## Verification
++```bash
++cd ~/Projects/sonique-ios
++
++# Verify DiagnosticSnapshot struct
++grep -q "struct DiagnosticSnapshot" Sonique/HTTPClient.swift || \
++grep -q "struct DiagnosticSnapshot" Sonique/Models/
++
++# Verify sendDiagnosticToMac function
++grep -q "func sendDiagnosticToMac" Sonique/HTTPClient.swift
++
++# Verify URLSession error capture
++grep -q "DiagnosticSnapshot" Sonique/HTTPClient.swift
++
++# Build succeeds
++xcodebuild -project Sonique.xcodeproj -scheme Sonique build
++```
++
++## QA Checklist
++- [ ] q1: DiagnosticSnapshot → `grep "struct DiagnosticSnapshot"`
++- [ ] q2: sendDiagnosticToMac → `grep "func sendDiagnosticToMac"`
++- [ ] q3: Error capture → `grep "DiagnosticSnapshot" HTTPClient.swift`
++- [ ] q4: Infinite loop guard → `grep "/diagnose" HTTPClient.swift | grep -v "sendDiagnosticToMac\|guard"`
++- [ ] q5: Build succeeds → `xcodebuild build && echo $?`
++
++## Security Review
++- **Threats:**
++  - Sensitive data in error messages
++  - Network traffic interception
++- **Mitigations:**
++  - Use HTTPS if Mac supports it
++  - Redact sensitive headers (Authorization, API keys)
++  - Local network only (no internet transit)
++- **Privacy:** Error messages may contain user data — sanitize before sending
++
++## Functional Test
++1. Ensure Mac running with POST /diagnose endpoint
++2. Build and run Sonique iOS app
++3. Configure Mac IP address (or use discovery)
++4. Trigger network error (e.g., stop Mac server)
++5. Attempt voice command
++6. Verify diagnostic sent:
++   ```bash
++   # On Mac
++   tail -f ~/Library/Application\ Support/SoniqueBar/diagnostics/*.json
++   ```
++7. Check iOS console:
++   ```
++   [Diagnostics] Capturing snapshot for error: ...
++   [Diagnostics] Snapshot sent to Mac
++   ```
++8. Verify diagnostic file created on Mac
++9. Test guard against infinite loop:
++   - Break /diagnose endpoint
++   - Verify diagnostic send fails but doesn't retry infinitely
++
++## Recovery
++If diagnostic capture crashes app:
++- Wrap JSON encoding in try-catch
++- Add nil checks for all optional fields
++- Mark NHR with diagnostic: "DiagnosticSnapshot capture crashed"
++
++## Rollback
++```bash
++cd ~/Projects/sonique-ios
++git revert HEAD
++xcodebuild -project Sonique.xcodeproj -scheme Sonique build
++```
++
++## Notes
++- Mac IP discovery: consider using Bonjour (_sonique._tcp.local)
++- Rate limiting: store last diagnostic send timestamp in memory
++- Don't send diagnostics for cancelled requests (user-initiated)
++- Consider adding diagnostic UI in iOS app settings to view sent diagnostics
++- ISO8601 timestamp format with Z suffix (UTC)
++- Device model examples: "iPhone14,2" (iPhone 13 Pro), "iPad13,1" (iPad Pro)
++
+
+# 2026-06-28 07:57:40.492171
++## NHR Triage Amendment
++Previous attempt failed. Root cause: The task appears to have stalled due to repeated auto-resets, indicating potential issues with the environment or dependencies not being met.
++Fix to apply: Ensure that all dependencies, particularly task #1005683 (Mac POST /diagnose endpoint), are completed and that the environment is correctly set up. Verify that the `HTTPClient.swift` file exists and is correctly referenced.
++
++Confirm that the Mac POST /diagnose endpoint is operational and that the `HTTPClient.swift` file is correctly modified. Ensure all dependencies are met before proceeding.
++
++---
++
++# Brief: Add DiagnosticSnapshot Capture in HTTPClient on URLSession Failure
++
++## Goal
++Capture DiagnosticSnapshot when URLSession requests fail and POST it to the Mac's /diagnose endpoint for debugging.
++
++## Context
++- **Repo:** `~/Projects/sonique-ios` (iOS app)
++- **File to modify:** `Sonique/HTTPClient.swift` or equivalent networking layer
++- **Dependencies:** Mac running POST /diagnose endpoint (task #1005683)
++- **Pattern:** On network failure, collect diagnostic data and POST to Mac
++- **Use case:** When voice command network request fails, automatically send diagnostic snapshot to Mac
++
++## Dependencies
++- **Files must exist:**
++  - `Sonique/HTTPClient.swift` or similar networking layer
++- **Must be completed:** Task #1005683 (Mac POST /diagnose endpoint)
++- **Frameworks:** Foundation (URLSession)
++
++## Steps
++1. **Define DiagnosticSnapshot struct** (if doesn't exist):
++   ```swift
++   struct DiagnosticSnapshot: Codable {
++       let timestamp: String  // ISO8601
++       let errorType: String
++       let errorMessage: String
++       let requestURL: String?
++       let requestMethod: String?
++       let responseStatusCode: Int?
++       let responseHeaders: [String: String]?
++       let clientInfo: ClientInfo
++       
++       struct ClientInfo: Codable {
++           let deviceModel: String
++           let osVersion: String
++           let appVersion: String
++       }
++   }
++   ```
++
++2. **Add helper to get device info:**
++   ```swift
++   func getClientInfo() -> DiagnosticSnapshot.ClientInfo {
++       let device = UIDevice.current
++       let appVersion = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "unknown"
++       
++       return DiagnosticSnapshot.ClientInfo(
++           deviceModel: device.model,
++           osVersion: device.systemVersion,
++           appVersion: appVersion
++       )
++   }
++   ```
++
++3. **Locate URLSession error handling:**
++   - Find where URLSession.dataTask completion handlers are implemented
++   - Identify error handling block
++
++4. **Add diagnostic capture on error:**
++   ```swift
++   URLSession.shared.dataTask(with: request) { data, response, error in
++       if let error = error {
++           // Capture diagnostic snapshot
++           let snapshot = DiagnosticSnapshot(
++               timestamp: ISO8601DateFormatter().string(from: Date()),
++               errorType: type(of: error).description(),
++               errorMessage: error.localizedDescription,
++               requestURL: request.url?.absoluteString,
++               requestMethod: request.httpMethod,
++               responseStatusCode: (response as? HTTPURLResponse)?.statusCode,
++               responseHeaders: (response as? HTTPURLResponse)?.allHeaderFields as? [String: String],
++               clientInfo: getClientInfo()
++           )
++           
++           // POST diagnostic to Mac
++           sendDiagnosticToMac(snapshot)
++           
++           // Continue with existing error handling
++           // ...
++       }
++   }
++   ```
++
++5. **Implement sendDiagnosticToMac function:**
++   ```swift
++   func sendDiagnosticToMac(_ snapshot: DiagnosticSnapshot) {
++       // Mac endpoint URL (use discovered Mac IP or localhost if same device)
++       guard let macURL = URL(string: "http://\(macIPAddress):8080/diagnose") else {
++           print("[Diagnostics] Invalid Mac URL")
++           return
++       }
++       
++       var request = URLRequest(url: macURL)
++       request.httpMethod = "POST"
++       request.setValue("application/json", forHTTPHeaderField: "Content-Type")
++       
++       do {
++           request.httpBody = try JSONEncoder().encode(snapshot)
++           
++           URLSession.shared.dataTask(with: request) { data, response, error in
++               if let error = error {
++                   print("[Diagnostics] Failed to send: \(error)")
++               } else {
++                   print("[Diagnostics] Snapshot sent to Mac")
++               }
++           }.resume()
++       } catch {
++           print("[Diagnostics] Failed to encode snapshot: \(error)")
++       }
++   }
++   ```
++
++6. **Add Mac IP discovery:**
++   - Use Bonjour/mDNS to discover Mac on local network
++   - OR use hardcoded IP from settings
++   - OR use UserDefaults to store Mac IP
++
++7. **Add logging:**
++   ```swift
++   print("[Diagnostics] Capturing snapshot for error: \(error.localizedDescription)")
++   print("[Diagnostics] Request: \(request.httpMethod ?? "?") \(request.url?.absoluteString ?? "?")")
++   ```
++
++8. **Handle edge cases:**
++   - Don't send diagnostic if Mac is unreachable
++   - Don't send diagnostic for diagnostic POST itself (avoid loop)
++   - Rate-limit diagnostic sends (max 1 per 10 seconds)
++
++## Potential Issues
++1. **Mac IP unknown** → Need discovery mechanism or settings entry
++2. **Infinite loop** → Diagnostic POST fails, triggers diagnostic → guard against
++3. **Network overhead** → Only send on actual failures, not cancellations
++4. **Privacy** → Don't include sensitive data in diagnostics
++
++## Expected Output
++- Modified: `Sonique/HTTPClient.swift` with diagnostic capture
++- New: DiagnosticSnapshot struct (if not exists)
++- New: sendDiagnosticToMac function
++- Diagnostics POSTed to Mac on URLSession failure
++- Build succeeds
++
++## Success Criteria
++- [ ] DiagnosticSnapshot struct defined
++- [ ] sendDiagnosticToMac function implemented
++- [ ] URLSession error handler captures diagnostic
++- [ ] Diagnostic POST includes all required fields
++- [ ] Avoids infinite loop (guards diagnostic endpoint)
++- [ ] `xcodebuild -project Sonique.xcodeproj -scheme Sonique build` exits 0
++
++## Verification
++```bash
++cd ~/Projects/sonique-ios
++
++# Verify DiagnosticSnapshot struct
++grep -q "struct DiagnosticSnapshot" Sonique/HTTPClient.swift || \
++grep -q "struct DiagnosticSnapshot" Sonique/Models/
++
++# Verify sendDiagnosticToMac function
++grep -q "func sendDiagnosticToMac" Sonique/HTTPClient.swift
++
++# Verify URLSession error capture
++grep -q "DiagnosticSnapshot" Sonique/HTTPClient.swift
++
++# Build succeeds
++xcodebuild -project Sonique.xcodeproj -scheme Sonique build
++```
++
++## QA Checklist
++- [ ] q1: DiagnosticSnapshot → `grep "struct DiagnosticSnapshot"`
++- [ ] q2: sendDiagnosticToMac → `grep "func sendDiagnosticToMac"`
++- [ ] q3: Error capture → `grep "DiagnosticSnapshot" HTTPClient.swift`
++- [ ] q4: Infinite loop guard → `grep "/diagnose" HTTPClient.swift | grep -v "sendDiagnosticToMac\|guard"`
++- [ ] q5: Build succeeds → `xcodebuild build && echo $?`
++
++## Security Review
++- **Threats:**
++  - Sensitive data in error messages
++  - Network traffic interception
++- **Mitigations:**
++  - Use HTTPS if Mac supports it
++  - Redact sensitive headers (Authorization, API keys)
++  - Local network only (no internet transit)
++- **Privacy:** Error messages may contain user data — sanitize before sending
++
++## Functional Test
++1. Ensure Mac running with POST /diagnose endpoint
++2. Build and run Sonique iOS app
++3. Configure Mac IP address (or use discovery)
++4. Trigger network error (e.g., stop Mac server)
++5. Attempt voice command
++6. Verify diagnostic sent:
++   ```bash
++   # On Mac
++   tail -f ~/Library/Application\ Support/SoniqueBar/diagnostics/*.json
++   ```
++7. Check iOS console:
++   ```
++   [Diagnostics] Capturing snapshot for error: ...
++   [Diagnostics] Snapshot sent to Mac
++   ```
++8. Verify diagnostic file created on Mac
++9. Test guard against infinite loop:
++   - Break /diagnose endpoint
++   - Verify diagnostic send fails but doesn't retry infinitely
++
++## Recovery
++If diagnostic capture crashes app:
++- Wrap JSON encoding in try-catch
++- Add nil checks for all optional fields
++- Mark NHR with diagnostic: "DiagnosticSnapshot capture crashed"
++
++## Rollback
++```bash
++cd ~/Projects/sonique-ios
++git revert HEAD
++xcodebuild -project Sonique.xcodeproj -scheme Sonique build
++```
++
++## Notes
++- Mac IP discovery: consider using Bonjour (_sonique._tcp.local)
++- Rate limiting: store last diagnostic send timestamp in memory
++- Don't send diagnostics for cancelled requests (user-initiated)
++- Consider adding diagnostic UI in iOS app settings to view sent diagnostics
++- ISO8601 timestamp format with Z suffix (UTC)
++- Device model examples: "iPhone14,2" (iPhone 13 Pro), "iPad13,1" (iPad Pro)
++
+
+# 2026-06-28 07:57:40.492522
++## NHR Triage Amendment
++Previous attempt failed. Root cause: The task appears to have stalled due to repeated auto-resets, indicating potential issues with the environment or dependencies not being met.
++Fix to apply: Ensure that all dependencies, particularly task #1005683 (Mac POST /diagnose endpoint), are completed and that the environment is correctly set up. Verify that the `HTTPClient.swift` file exists and is correctly referenced.
++
++Confirm that the Mac POST /diagnose endpoint is operational and that the `HTTPClient.swift` file is correctly modified. Ensure all dependencies are met before proceeding.
++
++---
++
++# Brief: Add DiagnosticSnapshot Capture in HTTPClient on URLSession Failure
++
++## Goal
++Capture DiagnosticSnapshot when URLSession requests fail and POST it to the Mac's /diagnose endpoint for debugging.
++
++## Context
++- **Repo:** `~/Projects/sonique-ios` (iOS app)
++- **File to modify:** `Sonique/HTTPClient.swift` or equivalent networking layer
++- **Dependencies:** Mac running POST /diagnose endpoint (task #1005683)
++- **Pattern:** On network failure, collect diagnostic data and POST to Mac
++- **Use case:** When voice command network request fails, automatically send diagnostic snapshot to Mac
++
++## Dependencies
++- **Files must exist:**
++  - `Sonique/HTTPClient.swift` or similar networking layer
++- **Must be completed:** Task #1005683 (Mac POST /diagnose endpoint)
++- **Frameworks:** Foundation (URLSession)
++
++## Steps
++1. **Define DiagnosticSnapshot struct** (if doesn't exist):
++   ```swift
++   struct DiagnosticSnapshot: Codable {
++       let timestamp: String  // ISO8601
++       let errorType: String
++       let errorMessage: String
++       let requestURL: String?
++       let requestMethod: String?
++       let responseStatusCode: Int?
++       let responseHeaders: [String: String]?
++       let clientInfo: ClientInfo
++       
++       struct ClientInfo: Codable {
++           let deviceModel: String
++           let osVersion: String
++           let appVersion: String
++       }
++   }
++   ```
++
++2. **Add helper to get device info:**
++   ```swift
++   func getClientInfo() -> DiagnosticSnapshot.ClientInfo {
++       let device = UIDevice.current
++       let appVersion = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "unknown"
++       
++       return DiagnosticSnapshot.ClientInfo(
++           deviceModel: device.model,
++           osVersion: device.systemVersion,
++           appVersion: appVersion
++       )
++   }
++   ```
++
++3. **Locate URLSession error handling:**
++   - Find where URLSession.dataTask completion handlers are implemented
++   - Identify error handling block
++
++4. **Add diagnostic capture on error:**
++   ```swift
++   URLSession.shared.dataTask(with: request) { data, response, error in
++       if let error = error {
++           // Capture diagnostic snapshot
++           let snapshot = DiagnosticSnapshot(
++               timestamp: ISO8601DateFormatter().string(from: Date()),
++               errorType: type(of: error).description(),
++               errorMessage: error.localizedDescription,
++               requestURL: request.url?.absoluteString,
++               requestMethod: request.httpMethod,
++               responseStatusCode: (response as? HTTPURLResponse)?.statusCode,
++               responseHeaders: (response as? HTTPURLResponse)?.allHeaderFields as? [String: String],
++               clientInfo: getClientInfo()
++           )
++           
++           // POST diagnostic to Mac
++           sendDiagnosticToMac(snapshot)
++           
++           // Continue with existing error handling
++           // ...
++       }
++   }
++   ```
++
++5. **Implement sendDiagnosticToMac function:**
++   ```swift
++   func sendDiagnosticToMac(_ snapshot: DiagnosticSnapshot) {
++       // Mac endpoint URL (use discovered Mac IP or localhost if same device)
++       guard let macURL = URL(string: "http://\(macIPAddress):8080/diagnose") else {
++           print("[Diagnostics] Invalid Mac URL")
++           return
++       }
++       
++       var request = URLRequest(url: macURL)
++       request.httpMethod = "POST"
++       request.setValue("application/json", forHTTPHeaderField: "Content-Type")
++       
++       do {
++           request.httpBody = try JSONEncoder().encode(snapshot)
++           
++           URLSession.shared.dataTask(with: request) { data, response, error in
++               if let error = error {
++                   print("[Diagnostics] Failed to send: \(error)")
++               } else {
++                   print("[Diagnostics] Snapshot sent to Mac")
++               }
++           }.resume()
++       } catch {
++           print("[Diagnostics] Failed to encode snapshot: \(error)")
++       }
++   }
++   ```
++
++6. **Add Mac IP discovery:**
++   - Use Bonjour/mDNS to discover Mac on local network
++   - OR use hardcoded IP from settings
++   - OR use UserDefaults to store Mac IP
++
++7. **Add logging:**
++   ```swift
++   print("[Diagnostics] Capturing snapshot for error: \(error.localizedDescription)")
++   print("[Diagnostics] Request: \(request.httpMethod ?? "?") \(request.url?.absoluteString ?? "?")")
++   ```
++
++8. **Handle edge cases:**
++   - Don't send diagnostic if Mac is unreachable
++   - Don't send diagnostic for diagnostic POST itself (avoid loop)
++   - Rate-limit diagnostic sends (max 1 per 10 seconds)
++
++## Potential Issues
++1. **Mac IP unknown** → Need discovery mechanism or settings entry
++2. **Infinite loop** → Diagnostic POST fails, triggers diagnostic → guard against
++3. **Network overhead** → Only send on actual failures, not cancellations
++4. **Privacy** → Don't include sensitive data in diagnostics
++
++## Expected Output
++- Modified: `Sonique/HTTPClient.swift` with diagnostic capture
++- New: DiagnosticSnapshot struct (if not exists)
++- New: sendDiagnosticToMac function
++- Diagnostics POSTed to Mac on URLSession failure
++- Build succeeds
++
++## Success Criteria
++- [ ] DiagnosticSnapshot struct defined
++- [ ] sendDiagnosticToMac function implemented
++- [ ] URLSession error handler captures diagnostic
++- [ ] Diagnostic POST includes all required fields
++- [ ] Avoids infinite loop (guards diagnostic endpoint)
++- [ ] `xcodebuild -project Sonique.xcodeproj -scheme Sonique build` exits 0
++
++## Verification
++```bash
++cd ~/Projects/sonique-ios
++
++# Verify DiagnosticSnapshot struct
++grep -q "struct DiagnosticSnapshot" Sonique/HTTPClient.swift || \
++grep -q "struct DiagnosticSnapshot" Sonique/Models/
++
++# Verify sendDiagnosticToMac function
++grep -q "func sendDiagnosticToMac" Sonique/HTTPClient.swift
++
++# Verify URLSession error capture
++grep -q "DiagnosticSnapshot" Sonique/HTTPClient.swift
++
++# Build succeeds
++xcodebuild -project Sonique.xcodeproj -scheme Sonique build
++```
++
++## QA Checklist
++- [ ] q1: DiagnosticSnapshot → `grep "struct DiagnosticSnapshot"`
++- [ ] q2: sendDiagnosticToMac → `grep "func sendDiagnosticToMac"`
++- [ ] q3: Error capture → `grep "DiagnosticSnapshot" HTTPClient.swift`
++- [ ] q4: Infinite loop guard → `grep "/diagnose" HTTPClient.swift | grep -v "sendDiagnosticToMac\|guard"`
++- [ ] q5: Build succeeds → `xcodebuild build && echo $?`
++
++## Security Review
++- **Threats:**
++  - Sensitive data in error messages
++  - Network traffic interception
++- **Mitigations:**
++  - Use HTTPS if Mac supports it
++  - Redact sensitive headers (Authorization, API keys)
++  - Local network only (no internet transit)
++- **Privacy:** Error messages may contain user data — sanitize before sending
++
++## Functional Test
++1. Ensure Mac running with POST /diagnose endpoint
++2. Build and run Sonique iOS app
++3. Configure Mac IP address (or use discovery)
++4. Trigger network error (e.g., stop Mac server)
++5. Attempt voice command
++6. Verify diagnostic sent:
++   ```bash
++   # On Mac
++   tail -f ~/Library/Application\ Support/SoniqueBar/diagnostics/*.json
++   ```
++7. Check iOS console:
++   ```
++   [Diagnostics] Capturing snapshot for error: ...
++   [Diagnostics] Snapshot sent to Mac
++   ```
++8. Verify diagnostic file created on Mac
++9. Test guard against infinite loop:
++   - Break /diagnose endpoint
++   - Verify diagnostic send fails but doesn't retry infinitely
++
++## Recovery
++If diagnostic capture crashes app:
++- Wrap JSON encoding in try-catch
++- Add nil checks for all optional fields
++- Mark NHR with diagnostic: "DiagnosticSnapshot capture crashed"
++
++## Rollback
++```bash
++cd ~/Projects/sonique-ios
++git revert HEAD
++xcodebuild -project Sonique.xcodeproj -scheme Sonique build
++```
++
++## Notes
++- Mac IP discovery: consider using Bonjour (_sonique._tcp.local)
++- Rate limiting: store last diagnostic send timestamp in memory
++- Don't send diagnostics for cancelled requests (user-initiated)
++- Consider adding diagnostic UI in iOS app settings to view sent diagnostics
++- ISO8601 timestamp format with Z suffix (UTC)
++- Device model examples: "iPhone14,2" (iPhone 13 Pro), "iPad13,1" (iPad Pro)
++
+
+# 2026-06-28 07:58:03.708423
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 07:58:03.708591
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 08:02:20.139462
++## NHR Triage Amendment
++Previous attempt failed. Root cause: The task appears to have stalled due to repeated auto-resets, indicating potential issues with the environment or dependencies not being met.
++Fix to apply: Ensure that all dependencies, particularly task #1005683 (Mac POST /diagnose endpoint), are completed and that the environment is correctly set up. Verify that the `HTTPClient.swift` file exists and is correctly referenced.
++
++Confirm that the Mac POST /diagnose endpoint is operational and that the `HTTPClient.swift` file is correctly modified. Ensure all dependencies are met before proceeding.
++
++---
++
++# Brief: Add DiagnosticSnapshot Capture in HTTPClient on URLSession Failure
++
++## Goal
++Capture DiagnosticSnapshot when URLSession requests fail and POST it to the Mac's /diagnose endpoint for debugging.
++
++## Context
++- **Repo:** `~/Projects/sonique-ios` (iOS app)
++- **File to modify:** `Sonique/HTTPClient.swift` or equivalent networking layer
++- **Dependencies:** Mac running POST /diagnose endpoint (task #1005683)
++- **Pattern:** On network failure, collect diagnostic data and POST to Mac
++- **Use case:** When voice command network request fails, automatically send diagnostic snapshot to Mac
++
++## Dependencies
++- **Files must exist:**
++  - `Sonique/HTTPClient.swift` or similar networking layer
++- **Must be completed:** Task #1005683 (Mac POST /diagnose endpoint)
++- **Frameworks:** Foundation (URLSession)
++
++## Steps
++1. **Define DiagnosticSnapshot struct** (if doesn't exist):
++   ```swift
++   struct DiagnosticSnapshot: Codable {
++       let timestamp: String  // ISO8601
++       let errorType: String
++       let errorMessage: String
++       let requestURL: String?
++       let requestMethod: String?
++       let responseStatusCode: Int?
++       let responseHeaders: [String: String]?
++       let clientInfo: ClientInfo
++       
++       struct ClientInfo: Codable {
++           let deviceModel: String
++           let osVersion: String
++           let appVersion: String
++       }
++   }
++   ```
++
++2. **Add helper to get device info:**
++   ```swift
++   func getClientInfo() -> DiagnosticSnapshot.ClientInfo {
++       let device = UIDevice.current
++       let appVersion = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "unknown"
++       
++       return DiagnosticSnapshot.ClientInfo(
++           deviceModel: device.model,
++           osVersion: device.systemVersion,
++           appVersion: appVersion
++       )
++   }
++   ```
++
++3. **Locate URLSession error handling:**
++   - Find where URLSession.dataTask completion handlers are implemented
++   - Identify error handling block
++
++4. **Add diagnostic capture on error:**
++   ```swift
++   URLSession.shared.dataTask(with: request) { data, response, error in
++       if let error = error {
++           // Capture diagnostic snapshot
++           let snapshot = DiagnosticSnapshot(
++               timestamp: ISO8601DateFormatter().string(from: Date()),
++               errorType: type(of: error).description(),
++               errorMessage: error.localizedDescription,
++               requestURL: request.url?.absoluteString,
++               requestMethod: request.httpMethod,
++               responseStatusCode: (response as? HTTPURLResponse)?.statusCode,
++               responseHeaders: (response as? HTTPURLResponse)?.allHeaderFields as? [String: String],
++               clientInfo: getClientInfo()
++           )
++           
++           // POST diagnostic to Mac
++           sendDiagnosticToMac(snapshot)
++           
++           // Continue with existing error handling
++           // ...
++       }
++   }
++   ```
++
++5. **Implement sendDiagnosticToMac function:**
++   ```swift
++   func sendDiagnosticToMac(_ snapshot: DiagnosticSnapshot) {
++       // Mac endpoint URL (use discovered Mac IP or localhost if same device)
++       guard let macURL = URL(string: "http://\(macIPAddress):8080/diagnose") else {
++           print("[Diagnostics] Invalid Mac URL")
++           return
++       }
++       
++       var request = URLRequest(url: macURL)
++       request.httpMethod = "POST"
++       request.setValue("application/json", forHTTPHeaderField: "Content-Type")
++       
++       do {
++           request.httpBody = try JSONEncoder().encode(snapshot)
++           
++           URLSession.shared.dataTask(with: request) { data, response, error in
++               if let error = error {
++                   print("[Diagnostics] Failed to send: \(error)")
++               } else {
++                   print("[Diagnostics] Snapshot sent to Mac")
++               }
++           }.resume()
++       } catch {
++           print("[Diagnostics] Failed to encode snapshot: \(error)")
++       }
++   }
++   ```
++
++6. **Add Mac IP discovery:**
++   - Use Bonjour/mDNS to discover Mac on local network
++   - OR use hardcoded IP from settings
++   - OR use UserDefaults to store Mac IP
++
++7. **Add logging:**
++   ```swift
++   print("[Diagnostics] Capturing snapshot for error: \(error.localizedDescription)")
++   print("[Diagnostics] Request: \(request.httpMethod ?? "?") \(request.url?.absoluteString ?? "?")")
++   ```
++
++8. **Handle edge cases:**
++   - Don't send diagnostic if Mac is unreachable
++   - Don't send diagnostic for diagnostic POST itself (avoid loop)
++   - Rate-limit diagnostic sends (max 1 per 10 seconds)
++
++## Potential Issues
++1. **Mac IP unknown** → Need discovery mechanism or settings entry
++2. **Infinite loop** → Diagnostic POST fails, triggers diagnostic → guard against
++3. **Network overhead** → Only send on actual failures, not cancellations
++4. **Privacy** → Don't include sensitive data in diagnostics
++
++## Expected Output
++- Modified: `Sonique/HTTPClient.swift` with diagnostic capture
++- New: DiagnosticSnapshot struct (if not exists)
++- New: sendDiagnosticToMac function
++- Diagnostics POSTed to Mac on URLSession failure
++- Build succeeds
++
++## Success Criteria
++- [ ] DiagnosticSnapshot struct defined
++- [ ] sendDiagnosticToMac function implemented
++- [ ] URLSession error handler captures diagnostic
++- [ ] Diagnostic POST includes all required fields
++- [ ] Avoids infinite loop (guards diagnostic endpoint)
++- [ ] `xcodebuild -project Sonique.xcodeproj -scheme Sonique build` exits 0
++
++## Verification
++```bash
++cd ~/Projects/sonique-ios
++
++# Verify DiagnosticSnapshot struct
++grep -q "struct DiagnosticSnapshot" Sonique/HTTPClient.swift || \
++grep -q "struct DiagnosticSnapshot" Sonique/Models/
++
++# Verify sendDiagnosticToMac function
++grep -q "func sendDiagnosticToMac" Sonique/HTTPClient.swift
++
++# Verify URLSession error capture
++grep -q "DiagnosticSnapshot" Sonique/HTTPClient.swift
++
++# Build succeeds
++xcodebuild -project Sonique.xcodeproj -scheme Sonique build
++```
++
++## QA Checklist
++- [ ] q1: DiagnosticSnapshot → `grep "struct DiagnosticSnapshot"`
++- [ ] q2: sendDiagnosticToMac → `grep "func sendDiagnosticToMac"`
++- [ ] q3: Error capture → `grep "DiagnosticSnapshot" HTTPClient.swift`
++- [ ] q4: Infinite loop guard → `grep "/diagnose" HTTPClient.swift | grep -v "sendDiagnosticToMac\|guard"`
++- [ ] q5: Build succeeds → `xcodebuild build && echo $?`
++
++## Security Review
++- **Threats:**
++  - Sensitive data in error messages
++  - Network traffic interception
++- **Mitigations:**
++  - Use HTTPS if Mac supports it
++  - Redact sensitive headers (Authorization, API keys)
++  - Local network only (no internet transit)
++- **Privacy:** Error messages may contain user data — sanitize before sending
++
++## Functional Test
++1. Ensure Mac running with POST /diagnose endpoint
++2. Build and run Sonique iOS app
++3. Configure Mac IP address (or use discovery)
++4. Trigger network error (e.g., stop Mac server)
++5. Attempt voice command
++6. Verify diagnostic sent:
++   ```bash
++   # On Mac
++   tail -f ~/Library/Application\ Support/SoniqueBar/diagnostics/*.json
++   ```
++7. Check iOS console:
++   ```
++   [Diagnostics] Capturing snapshot for error: ...
++   [Diagnostics] Snapshot sent to Mac
++   ```
++8. Verify diagnostic file created on Mac
++9. Test guard against infinite loop:
++   - Break /diagnose endpoint
++   - Verify diagnostic send fails but doesn't retry infinitely
++
++## Recovery
++If diagnostic capture crashes app:
++- Wrap JSON encoding in try-catch
++- Add nil checks for all optional fields
++- Mark NHR with diagnostic: "DiagnosticSnapshot capture crashed"
++
++## Rollback
++```bash
++cd ~/Projects/sonique-ios
++git revert HEAD
++xcodebuild -project Sonique.xcodeproj -scheme Sonique build
++```
++
++## Notes
++- Mac IP discovery: consider using Bonjour (_sonique._tcp.local)
++- Rate limiting: store last diagnostic send timestamp in memory
++- Don't send diagnostics for cancelled requests (user-initiated)
++- Consider adding diagnostic UI in iOS app settings to view sent diagnostics
++- ISO8601 timestamp format with Z suffix (UTC)
++- Device model examples: "iPhone14,2" (iPhone 13 Pro), "iPad13,1" (iPad Pro)
++
+
+# 2026-06-28 08:02:20.139771
++## NHR Triage Amendment
++Previous attempt failed. Root cause: The task appears to have stalled due to repeated auto-resets, indicating potential issues with the environment or dependencies not being met.
++Fix to apply: Ensure that all dependencies, particularly task #1005683 (Mac POST /diagnose endpoint), are completed and that the environment is correctly set up. Verify that the `HTTPClient.swift` file exists and is correctly referenced.
++
++Confirm that the Mac POST /diagnose endpoint is operational and that the `HTTPClient.swift` file is correctly modified. Ensure all dependencies are met before proceeding.
++
++---
++
++# Brief: Add DiagnosticSnapshot Capture in HTTPClient on URLSession Failure
++
++## Goal
++Capture DiagnosticSnapshot when URLSession requests fail and POST it to the Mac's /diagnose endpoint for debugging.
++
++## Context
++- **Repo:** `~/Projects/sonique-ios` (iOS app)
++- **File to modify:** `Sonique/HTTPClient.swift` or equivalent networking layer
++- **Dependencies:** Mac running POST /diagnose endpoint (task #1005683)
++- **Pattern:** On network failure, collect diagnostic data and POST to Mac
++- **Use case:** When voice command network request fails, automatically send diagnostic snapshot to Mac
++
++## Dependencies
++- **Files must exist:**
++  - `Sonique/HTTPClient.swift` or similar networking layer
++- **Must be completed:** Task #1005683 (Mac POST /diagnose endpoint)
++- **Frameworks:** Foundation (URLSession)
++
++## Steps
++1. **Define DiagnosticSnapshot struct** (if doesn't exist):
++   ```swift
++   struct DiagnosticSnapshot: Codable {
++       let timestamp: String  // ISO8601
++       let errorType: String
++       let errorMessage: String
++       let requestURL: String?
++       let requestMethod: String?
++       let responseStatusCode: Int?
++       let responseHeaders: [String: String]?
++       let clientInfo: ClientInfo
++       
++       struct ClientInfo: Codable {
++           let deviceModel: String
++           let osVersion: String
++           let appVersion: String
++       }
++   }
++   ```
++
++2. **Add helper to get device info:**
++   ```swift
++   func getClientInfo() -> DiagnosticSnapshot.ClientInfo {
++       let device = UIDevice.current
++       let appVersion = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "unknown"
++       
++       return DiagnosticSnapshot.ClientInfo(
++           deviceModel: device.model,
++           osVersion: device.systemVersion,
++           appVersion: appVersion
++       )
++   }
++   ```
++
++3. **Locate URLSession error handling:**
++   - Find where URLSession.dataTask completion handlers are implemented
++   - Identify error handling block
++
++4. **Add diagnostic capture on error:**
++   ```swift
++   URLSession.shared.dataTask(with: request) { data, response, error in
++       if let error = error {
++           // Capture diagnostic snapshot
++           let snapshot = DiagnosticSnapshot(
++               timestamp: ISO8601DateFormatter().string(from: Date()),
++               errorType: type(of: error).description(),
++               errorMessage: error.localizedDescription,
++               requestURL: request.url?.absoluteString,
++               requestMethod: request.httpMethod,
++               responseStatusCode: (response as? HTTPURLResponse)?.statusCode,
++               responseHeaders: (response as? HTTPURLResponse)?.allHeaderFields as? [String: String],
++               clientInfo: getClientInfo()
++           )
++           
++           // POST diagnostic to Mac
++           sendDiagnosticToMac(snapshot)
++           
++           // Continue with existing error handling
++           // ...
++       }
++   }
++   ```
++
++5. **Implement sendDiagnosticToMac function:**
++   ```swift
++   func sendDiagnosticToMac(_ snapshot: DiagnosticSnapshot) {
++       // Mac endpoint URL (use discovered Mac IP or localhost if same device)
++       guard let macURL = URL(string: "http://\(macIPAddress):8080/diagnose") else {
++           print("[Diagnostics] Invalid Mac URL")
++           return
++       }
++       
++       var request = URLRequest(url: macURL)
++       request.httpMethod = "POST"
++       request.setValue("application/json", forHTTPHeaderField: "Content-Type")
++       
++       do {
++           request.httpBody = try JSONEncoder().encode(snapshot)
++           
++           URLSession.shared.dataTask(with: request) { data, response, error in
++               if let error = error {
++                   print("[Diagnostics] Failed to send: \(error)")
++               } else {
++                   print("[Diagnostics] Snapshot sent to Mac")
++               }
++           }.resume()
++       } catch {
++           print("[Diagnostics] Failed to encode snapshot: \(error)")
++       }
++   }
++   ```
++
++6. **Add Mac IP discovery:**
++   - Use Bonjour/mDNS to discover Mac on local network
++   - OR use hardcoded IP from settings
++   - OR use UserDefaults to store Mac IP
++
++7. **Add logging:**
++   ```swift
++   print("[Diagnostics] Capturing snapshot for error: \(error.localizedDescription)")
++   print("[Diagnostics] Request: \(request.httpMethod ?? "?") \(request.url?.absoluteString ?? "?")")
++   ```
++
++8. **Handle edge cases:**
++   - Don't send diagnostic if Mac is unreachable
++   - Don't send diagnostic for diagnostic POST itself (avoid loop)
++   - Rate-limit diagnostic sends (max 1 per 10 seconds)
++
++## Potential Issues
++1. **Mac IP unknown** → Need discovery mechanism or settings entry
++2. **Infinite loop** → Diagnostic POST fails, triggers diagnostic → guard against
++3. **Network overhead** → Only send on actual failures, not cancellations
++4. **Privacy** → Don't include sensitive data in diagnostics
++
++## Expected Output
++- Modified: `Sonique/HTTPClient.swift` with diagnostic capture
++- New: DiagnosticSnapshot struct (if not exists)
++- New: sendDiagnosticToMac function
++- Diagnostics POSTed to Mac on URLSession failure
++- Build succeeds
++
++## Success Criteria
++- [ ] DiagnosticSnapshot struct defined
++- [ ] sendDiagnosticToMac function implemented
++- [ ] URLSession error handler captures diagnostic
++- [ ] Diagnostic POST includes all required fields
++- [ ] Avoids infinite loop (guards diagnostic endpoint)
++- [ ] `xcodebuild -project Sonique.xcodeproj -scheme Sonique build` exits 0
++
++## Verification
++```bash
++cd ~/Projects/sonique-ios
++
++# Verify DiagnosticSnapshot struct
++grep -q "struct DiagnosticSnapshot" Sonique/HTTPClient.swift || \
++grep -q "struct DiagnosticSnapshot" Sonique/Models/
++
++# Verify sendDiagnosticToMac function
++grep -q "func sendDiagnosticToMac" Sonique/HTTPClient.swift
++
++# Verify URLSession error capture
++grep -q "DiagnosticSnapshot" Sonique/HTTPClient.swift
++
++# Build succeeds
++xcodebuild -project Sonique.xcodeproj -scheme Sonique build
++```
++
++## QA Checklist
++- [ ] q1: DiagnosticSnapshot → `grep "struct DiagnosticSnapshot"`
++- [ ] q2: sendDiagnosticToMac → `grep "func sendDiagnosticToMac"`
++- [ ] q3: Error capture → `grep "DiagnosticSnapshot" HTTPClient.swift`
++- [ ] q4: Infinite loop guard → `grep "/diagnose" HTTPClient.swift | grep -v "sendDiagnosticToMac\|guard"`
++- [ ] q5: Build succeeds → `xcodebuild build && echo $?`
++
++## Security Review
++- **Threats:**
++  - Sensitive data in error messages
++  - Network traffic interception
++- **Mitigations:**
++  - Use HTTPS if Mac supports it
++  - Redact sensitive headers (Authorization, API keys)
++  - Local network only (no internet transit)
++- **Privacy:** Error messages may contain user data — sanitize before sending
++
++## Functional Test
++1. Ensure Mac running with POST /diagnose endpoint
++2. Build and run Sonique iOS app
++3. Configure Mac IP address (or use discovery)
++4. Trigger network error (e.g., stop Mac server)
++5. Attempt voice command
++6. Verify diagnostic sent:
++   ```bash
++   # On Mac
++   tail -f ~/Library/Application\ Support/SoniqueBar/diagnostics/*.json
++   ```
++7. Check iOS console:
++   ```
++   [Diagnostics] Capturing snapshot for error: ...
++   [Diagnostics] Snapshot sent to Mac
++   ```
++8. Verify diagnostic file created on Mac
++9. Test guard against infinite loop:
++   - Break /diagnose endpoint
++   - Verify diagnostic send fails but doesn't retry infinitely
++
++## Recovery
++If diagnostic capture crashes app:
++- Wrap JSON encoding in try-catch
++- Add nil checks for all optional fields
++- Mark NHR with diagnostic: "DiagnosticSnapshot capture crashed"
++
++## Rollback
++```bash
++cd ~/Projects/sonique-ios
++git revert HEAD
++xcodebuild -project Sonique.xcodeproj -scheme Sonique build
++```
++
++## Notes
++- Mac IP discovery: consider using Bonjour (_sonique._tcp.local)
++- Rate limiting: store last diagnostic send timestamp in memory
++- Don't send diagnostics for cancelled requests (user-initiated)
++- Consider adding diagnostic UI in iOS app settings to view sent diagnostics
++- ISO8601 timestamp format with Z suffix (UTC)
++- Device model examples: "iPhone14,2" (iPhone 13 Pro), "iPad13,1" (iPad Pro)
++
+
+# 2026-06-28 08:03:21.551535
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 08:03:21.551740
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 08:06:58.401595
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 08:06:58.402309
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 08:10:06.166484
++None\n\n## Retry Context\nCheck that the dependency Task #1005680 (artifact line parsing) is actually completed before proceeding with the overlay implementation.
+
+# 2026-06-28 08:10:06.168679
++None\n\n## Retry Context\nCheck that the dependency Task #1005680 (artifact line parsing) is actually completed before proceeding with the overlay implementation.
+
+# 2026-06-28 08:10:40.314070
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 08:10:40.314294
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 08:13:46.233798
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 08:13:46.235384
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 08:16:09.641013
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 08:16:09.641252
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 08:18:46.528842
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 08:18:46.529031
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 08:22:38.328555
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 08:22:38.329518
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 08:26:08.009283
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 08:26:08.010325
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 08:29:14.079834
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 08:29:14.080548
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 08:32:21.197866
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 08:32:21.198181
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 08:35:49.191581
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 08:35:49.192121
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 08:38:20.106366
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 08:38:20.106539
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 08:40:44.868402
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 08:40:44.868710
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 08:43:40.245425
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 08:43:40.246555
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 08:44:07.946976
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 08:44:07.948086
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 08:48:38.458765
++None\n\n## Retry Context\nCheck that the dependency Task #1005680 (artifact line parsing) is actually completed before proceeding with the overlay implementation.
+
+# 2026-06-28 08:48:38.458903
++None\n\n## Retry Context\nCheck that the dependency Task #1005680 (artifact line parsing) is actually completed before proceeding with the overlay implementation.
+
+# 2026-06-28 08:51:23.279453
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 08:51:23.279613
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 08:55:26.274199
++None\n\n## Retry Context\nCheck that the dependency Task #1005680 (artifact line parsing) is actually completed before proceeding with the overlay implementation.
+
+# 2026-06-28 08:55:26.274707
++None\n\n## Retry Context\nCheck that the dependency Task #1005680 (artifact line parsing) is actually completed before proceeding with the overlay implementation.
+
+# 2026-06-28 08:57:57.786204
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 08:57:57.786483
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 09:02:33.287106
++None\n\n## Retry Context\nCheck that the dependency Task #1005680 (artifact line parsing) is actually completed before proceeding with the overlay implementation.
+
+# 2026-06-28 09:02:33.287525
++None\n\n## Retry Context\nCheck that the dependency Task #1005680 (artifact line parsing) is actually completed before proceeding with the overlay implementation.
+
+# 2026-06-28 09:05:21.374923
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 09:05:21.375848
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 09:06:43.548075
++None\n\n## Retry Context\nCheck that the dependency Task #1005680 (artifact line parsing) is actually completed before proceeding with the overlay implementation.
+
+# 2026-06-28 09:06:43.548285
++None\n\n## Retry Context\nCheck that the dependency Task #1005680 (artifact line parsing) is actually completed before proceeding with the overlay implementation.
+
+# 2026-06-28 09:07:35.342119
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 09:07:35.345924
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 09:10:42.541642
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 09:10:42.543145
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 09:13:05.568939
++None\n\n## Retry Context\nCheck that the dependency Task #1005680 (artifact line parsing) is actually completed before proceeding with the overlay implementation.
+
+# 2026-06-28 09:13:05.569105
++None\n\n## Retry Context\nCheck that the dependency Task #1005680 (artifact line parsing) is actually completed before proceeding with the overlay implementation.
+
+# 2026-06-28 09:14:06.366979
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 09:14:06.367196
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 09:16:14.716820
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 09:16:14.716997
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 09:18:57.048462
++None\n\n## Retry Context\nCheck that the dependency Task #1005680 (artifact line parsing) is actually completed before proceeding with the overlay implementation.
+
+# 2026-06-28 09:18:57.050836
++None\n\n## Retry Context\nCheck that the dependency Task #1005680 (artifact line parsing) is actually completed before proceeding with the overlay implementation.
+
+# 2026-06-28 09:19:18.773603
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 09:19:18.773889
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 09:22:31.451389
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 09:22:31.451588
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 09:25:00.180004
++None\n\n## Retry Context\nCheck that the dependency Task #1005680 (artifact line parsing) is actually completed before proceeding with the overlay implementation.
+
+# 2026-06-28 09:25:00.180246
++None\n\n## Retry Context\nCheck that the dependency Task #1005680 (artifact line parsing) is actually completed before proceeding with the overlay implementation.
+
+# 2026-06-28 09:27:32.765670
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 09:27:32.765922
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 09:30:19.825602
++None\n\n## Retry Context\nCheck that the dependency Task #1005680 (artifact line parsing) is actually completed before proceeding with the overlay implementation.
+
+# 2026-06-28 09:30:19.825859
++None\n\n## Retry Context\nCheck that the dependency Task #1005680 (artifact line parsing) is actually completed before proceeding with the overlay implementation.
+
+# 2026-06-28 09:33:06.663542
++None\n\n## Retry Context\nCheck that the dependency Task #1005680 (artifact line parsing) is actually completed before proceeding with the overlay implementation.
+
+# 2026-06-28 09:33:06.663726
++None\n\n## Retry Context\nCheck that the dependency Task #1005680 (artifact line parsing) is actually completed before proceeding with the overlay implementation.
+
+# 2026-06-28 09:33:31.381584
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 09:33:31.381703
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 09:33:59.716390
++None\n\n## Retry Context\nCheck that the dependency Task #1005680 (artifact line parsing) is actually completed before proceeding with the overlay implementation.
+
+# 2026-06-28 09:33:59.716681
++None\n\n## Retry Context\nCheck that the dependency Task #1005680 (artifact line parsing) is actually completed before proceeding with the overlay implementation.
+
+# 2026-06-28 09:34:24.842969
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 09:34:24.843252
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 09:37:29.599938
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 09:37:29.600145
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 09:40:06.396351
++None\n\n## Retry Context\nCheck that the dependency Task #1005680 (artifact line parsing) is actually completed before proceeding with the overlay implementation.
+
+# 2026-06-28 09:40:06.396544
++None\n\n## Retry Context\nCheck that the dependency Task #1005680 (artifact line parsing) is actually completed before proceeding with the overlay implementation.
+
+# 2026-06-28 09:40:36.831394
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 09:40:36.831552
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 09:43:14.535843
++None\n\n## Retry Context\nCheck that the dependency Task #1005680 (artifact line parsing) is actually completed before proceeding with the overlay implementation.
+
+# 2026-06-28 09:43:14.536208
++None\n\n## Retry Context\nCheck that the dependency Task #1005680 (artifact line parsing) is actually completed before proceeding with the overlay implementation.
+
+# 2026-06-28 09:43:40.125105
++None\n\n## Retry Context\nCheck that the dependency Task #1005680 (artifact line parsing) is actually completed before proceeding with the overlay implementation.
+
+# 2026-06-28 09:43:40.125232
++None\n\n## Retry Context\nCheck that the dependency Task #1005680 (artifact line parsing) is actually completed before proceeding with the overlay implementation.
+
+# 2026-06-28 09:44:00.223888
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 09:44:00.224067
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 09:46:54.168517
++None\n\n## Retry Context\nCheck that the dependency Task #1005680 (artifact line parsing) is actually completed before proceeding with the overlay implementation.
+
+# 2026-06-28 09:46:54.168700
++None\n\n## Retry Context\nCheck that the dependency Task #1005680 (artifact line parsing) is actually completed before proceeding with the overlay implementation.
+
+# 2026-06-28 09:47:29.484946
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 09:47:29.485230
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 09:50:19.178680
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 09:50:19.178876
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 09:53:20.772941
++None\n\n## Retry Context\nCheck that the dependency Task #1005680 (artifact line parsing) is actually completed before proceeding with the overlay implementation.
+
+# 2026-06-28 09:53:20.773271
++None\n\n## Retry Context\nCheck that the dependency Task #1005680 (artifact line parsing) is actually completed before proceeding with the overlay implementation.
+
+# 2026-06-28 09:53:43.059993
++None\n\n## Retry Context\nCheck that the dependency Task #1005680 (artifact line parsing) is actually completed before proceeding with the overlay implementation.
+
+# 2026-06-28 09:53:43.060160
++None\n\n## Retry Context\nCheck that the dependency Task #1005680 (artifact line parsing) is actually completed before proceeding with the overlay implementation.
+
+# 2026-06-28 09:54:20.149149
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 09:54:20.149318
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 09:57:31.093169
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 09:57:31.093361
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 10:00:15.747529
++None\n\n## Retry Context\nCheck that the dependency Task #1005680 (artifact line parsing) is actually completed before proceeding with the overlay implementation.
+
+# 2026-06-28 10:00:15.748600
++None\n\n## Retry Context\nCheck that the dependency Task #1005680 (artifact line parsing) is actually completed before proceeding with the overlay implementation.
+
+# 2026-06-28 10:00:53.261949
++None\n\n## Retry Context\nCheck that the dependency Task #1005680 (artifact line parsing) is actually completed before proceeding with the overlay implementation.
+
+# 2026-06-28 10:00:53.262803
++None\n\n## Retry Context\nCheck that the dependency Task #1005680 (artifact line parsing) is actually completed before proceeding with the overlay implementation.
+
+# 2026-06-28 10:01:38.831959
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 10:01:38.832437
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 10:04:24.995442
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 10:04:24.995644
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 10:07:21.033472
++None\n\n## Retry Context\nCheck that the dependency Task #1005680 (artifact line parsing) is actually completed before proceeding with the overlay implementation.
+
+# 2026-06-28 10:07:21.033674
++None\n\n## Retry Context\nCheck that the dependency Task #1005680 (artifact line parsing) is actually completed before proceeding with the overlay implementation.
+
+# 2026-06-28 10:07:47.708537
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 10:07:47.708624
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 10:10:15.235323
++None\n\n## Retry Context\nCheck that the dependency Task #1005680 (artifact line parsing) is actually completed before proceeding with the overlay implementation.
+
+# 2026-06-28 10:10:15.235471
++None\n\n## Retry Context\nCheck that the dependency Task #1005680 (artifact line parsing) is actually completed before proceeding with the overlay implementation.
+
+# 2026-06-28 10:12:04.205662
++None\n\n## Retry Context\nCheck that the dependency Task #1005680 (artifact line parsing) is actually completed before proceeding with the overlay implementation.
+
+# 2026-06-28 10:12:04.205861
++None\n\n## Retry Context\nCheck that the dependency Task #1005680 (artifact line parsing) is actually completed before proceeding with the overlay implementation.
+
+# 2026-06-28 10:16:05.890754
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 10:16:05.891152
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 10:21:09.385967
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 10:21:09.388774
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 10:26:51.071016
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 10:26:51.071490
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 10:35:20.835971
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 10:35:20.836825
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 10:40:12.973992
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 10:40:12.974889
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 10:45:54.634333
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 10:45:54.634527
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 10:53:54.021298
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 10:53:54.021523
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 11:02:46.059322
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 11:02:46.059518
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 11:08:30.423814
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 11:08:30.424086
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 11:13:02.117435
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 11:13:02.117718
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 11:18:50.197581
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 11:18:50.197960
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 11:23:19.115234
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 11:23:19.115531
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 11:33:37.407475
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 11:33:37.410540
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 11:37:47.235333
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 11:37:47.235573
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 11:43:43.822343
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 11:43:43.823144
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 11:48:05.905184
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 11:48:05.905356
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 11:57:39.879010
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 11:57:39.879182
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 12:02:01.543111
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 12:02:01.543331
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 12:08:34.375459
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 12:08:34.375694
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 12:17:48.252267
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 12:17:48.252690
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 12:29:24.301536
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 12:29:24.302100
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 12:35:00.704157
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 12:35:00.704329
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 12:41:53.265119
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 12:41:53.265381
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 12:52:27.024670
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 12:52:27.025064
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 12:56:43.842455
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 12:56:43.842645
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 13:03:15.074088
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 13:03:15.074258
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 13:08:29.350870
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 13:08:29.351225
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 13:19:49.951233
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 13:19:49.951505
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 13:24:22.964408
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 13:24:22.965050
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 13:29:46.832246
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 13:29:46.832528
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 13:35:30.600667
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 13:35:30.601001
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 13:39:05.714320
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 13:39:05.714598
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 13:47:00.468309
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 13:47:00.468608
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 13:50:48.492816
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 13:50:48.493082
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 13:58:50.831750
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 13:58:50.832218
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 14:03:56.473769
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 14:03:56.474598
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 14:09:07.772616
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 14:09:07.772775
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 14:18:03.639348
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 14:18:03.639557
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 14:21:15.253233
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 14:21:15.254982
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 14:27:10.659511
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 14:27:10.660343
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 14:34:19.463465
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 14:34:19.463725
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 14:37:23.793510
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 14:37:23.793672
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 14:47:15.113077
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 14:47:15.113249
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 14:51:42.632460
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 14:51:42.632708
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 15:00:51.485622
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 15:00:51.485894
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 15:05:13.527321
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 15:05:13.527575
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 15:10:52.323906
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 15:10:52.324296
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 15:17:19.338728
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 15:17:19.340227
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 15:21:44.608912
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 15:21:44.609109
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 15:27:36.559903
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 15:27:36.560125
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 15:31:18.552389
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 15:31:18.552624
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 15:40:25.402140
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 15:40:25.402451
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 15:44:34.060335
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 15:44:34.060608
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 15:50:23.789508
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 15:50:23.789693
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 15:57:08.626709
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 15:57:08.626881
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 16:06:51.077209
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 16:06:51.077367
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 16:10:45.317204
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 16:10:45.317676
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 16:20:51.361424
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 16:20:51.363136
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 16:29:33.752700
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 16:29:33.752906
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 16:37:46.213334
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 16:37:46.213566
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 16:48:09.885191
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 16:48:09.885461
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 16:59:37.347307
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 16:59:37.347604
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 17:04:13.095756
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 17:04:13.096008
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 17:10:07.503345
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 17:10:07.503517
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 17:20:27.526482
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 17:20:27.529483
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 17:24:38.706723
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 17:24:38.707035
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 17:32:44.723761
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 17:32:44.727732
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 17:36:51.030220
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 17:36:51.030395
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 17:44:03.511257
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 17:44:03.512119
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 17:49:57.990291
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 17:49:57.990614
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 17:54:46.978848
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 17:54:46.979883
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 17:59:48.489282
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 17:59:48.489493
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 18:06:52.787683
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 18:06:52.788183
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 18:11:16.773798
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 18:11:16.774105
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 18:19:13.636950
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 18:19:13.637506
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 18:22:21.724146
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 18:22:21.724311
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 18:29:45.031895
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 18:29:45.032110
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 18:33:21.501349
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 18:33:21.501558
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 18:39:25.106264
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 18:39:25.106614
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 18:52:20.151722
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 18:52:20.152599
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 18:59:41.076096
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 18:59:41.076318
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 19:02:21.994543
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 19:02:21.994898
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 19:05:57.550629
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 19:05:57.550864
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 19:14:58.380179
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 19:14:58.380537
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 19:16:15.759128
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 19:16:15.763065
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 19:25:51.247658
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 19:25:51.248578
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 19:29:43.497543
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 19:29:43.497708
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 19:34:41.749563
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 19:34:41.749724
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 19:38:41.237459
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 19:38:41.237604
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 19:39:28.061699
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 19:39:28.062049
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 19:46:01.064877
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 19:46:01.065126
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 19:48:35.607472
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 19:48:35.607617
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 19:49:58.214320
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 19:49:58.214770
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 19:52:25.170463
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 19:52:25.170757
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 19:54:51.413155
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 19:54:51.413332
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 19:56:09.472701
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 19:56:09.472843
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 20:00:54.505998
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 20:00:54.506177
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 20:05:48.425052
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 20:05:48.427909
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 20:10:48.926285
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
+
+# 2026-06-28 20:10:48.926448
++None\n\n## Retry Context\nEnsure the task includes a timeout mechanism to prevent future stalls.
