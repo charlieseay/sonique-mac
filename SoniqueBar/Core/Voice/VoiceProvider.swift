@@ -78,8 +78,8 @@ class VoiceRouter: ObservableObject {
 
     private func registerProviders() {
         providers = [
-            // KokoroProvider(),         // TODO: Enable once SPM dependency resolved
-            ElevenLabsProvider(),     // Cloud TTS (current)
+            KokoroProvider(),         // Embedded TTS (App Store compatible)
+            ElevenLabsProvider(),     // Cloud TTS (fallback)
             OpenAITTSProvider(),      // Alternative cloud
             SystemVoiceProvider()     // System fallback
         ]

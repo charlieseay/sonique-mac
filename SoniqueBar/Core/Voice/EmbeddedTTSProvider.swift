@@ -23,21 +23,53 @@ class EmbeddedTTSProvider: NSObject {
     private var isReady = false
     private var startupQueue = DispatchQueue(label: "com.seayniclabs.soniquebar.tts.startup")
 
+    // MARK: - Debug Logging
+
+    private func logToFile(_ path: URL, _ message: String) {
+        let timestamp = ISO8601DateFormatter().string(from: Date())
+        let line = "[\(timestamp)] \(message)\n"
+        if let data = line.data(using: .utf8) {
+            if FileManager.default.fileExists(atPath: path.path) {
+                if let handle = try? FileHandle(forWritingTo: path) {
+                    handle.seekToEndOfFile()
+                    handle.write(data)
+                    try? handle.close()
+                }
+            } else {
+                try? data.write(to: path)
+            }
+        }
+    }
+
     // MARK: - Lifecycle
 
     func start() throws {
         logger.info("Starting embedded TTS engine...")
 
+        // Log to file for debugging
+        let logPath = FileManager.default.temporaryDirectory.appendingPathComponent("embedded-tts-debug.log")
+        logToFile(logPath, "=== TTS Engine Start ===")
+        logToFile(logPath, "Timestamp: \(Date())")
+
         // Find the embedded binary
         guard let binaryPath = Bundle.main.path(forResource: "sonique-tts", ofType: nil) else {
+            logToFile(logPath, "ERROR: Binary not found in bundle")
             throw TTSError.binaryNotFound
         }
 
         logger.info("Binary found at: \(binaryPath)")
+        logToFile(logPath, "Binary path: \(binaryPath)")
 
         // Create process
         let proc = Process()
         proc.executableURL = URL(fileURLWithPath: binaryPath)
+
+        // Set working directory to Resources folder (binary needs to run from there)
+        if let resourcesPath = Bundle.main.resourcePath {
+            proc.currentDirectoryURL = URL(fileURLWithPath: resourcesPath)
+            logger.info("Working directory set to: \(resourcesPath)")
+        }
+
         proc.standardInput = stdinPipe
         proc.standardOutput = stdoutPipe
         proc.standardError = stderrPipe
@@ -64,18 +96,27 @@ class EmbeddedTTSProvider: NSObject {
         }
 
         // Start process
-        try proc.run()
-        self.process = proc
-
-        logger.info("TTS process started (PID: \(proc.processIdentifier))")
+        do {
+            try proc.run()
+            self.process = proc
+            logger.info("TTS process started (PID: \(proc.processIdentifier))")
+            logToFile(logPath, "Process started (PID: \(proc.processIdentifier))")
+        } catch {
+            logToFile(logPath, "ERROR: Failed to start process: \(error)")
+            throw error
+        }
 
         // Wait for READY signal (timeout after 30 seconds)
+        logToFile(logPath, "Waiting for READY signal...")
         let deadline = DispatchTime.now() + .seconds(30)
         while !isReady && DispatchTime.now() < deadline {
             Thread.sleep(forTimeInterval: 0.1)
         }
 
-        guard isReady else {
+        if isReady {
+            logToFile(logPath, "✅ READY signal received")
+        } else {
+            logToFile(logPath, "❌ Timeout waiting for READY signal")
             throw TTSError.startupTimeout
         }
     }

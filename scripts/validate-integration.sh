@@ -7,7 +7,7 @@ echo "==========================================="
 echo ""
 
 PROJECT_DIR="$HOME/Projects/sonique-mac"
-APP_PATH="$PROJECT_DIR/build/SoniqueBar.app"
+APP_PATH="$PROJECT_DIR/build/Debug/SoniqueBar.app"
 
 # Test 1: App bundle exists
 echo "✓ Test 1: App bundle"

@@ -1,10 +1,8 @@
 import Foundation
 import AVFoundation
-// Using Python FastAPI service instead of direct MLX integration
-// import Kokoro
 
 /// Kokoro local TTS provider
-/// Uses kokoro-swift for fast, offline, high-quality synthesis
+/// Uses embedded standalone binary for App Store-compatible, offline TTS
 class KokoroProvider: NSObject, VoiceProvider, AVAudioPlayerDelegate {
     let name = "Kokoro"
     let supportsStreaming = false
@@ -26,37 +24,26 @@ class KokoroProvider: NSObject, VoiceProvider, AVAudioPlayerDelegate {
 
     private var audioPlayer: AVAudioPlayer?
     private var currentlySpeaking = false
-
-    // HTTP service URL
-    private let serviceURL = "http://localhost:5903"
+    private var ttsEngine: EmbeddedTTSProvider?
 
     // MARK: - Initialization
 
-    /// Get model directory
-    private var modelDirectory: URL {
-        FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
-            .appendingPathComponent("SoniqueBar/Kokoro")
-    }
-
-    /// Check if Kokoro models are available
-    var isAvailable: Bool {
-        let segmentedDir = modelDirectory.appendingPathComponent("CoreML_ANE/segmented")
-        let configFile = modelDirectory.appendingPathComponent("config.json")
-
-        return FileManager.default.fileExists(atPath: segmentedDir.path) &&
-               FileManager.default.fileExists(atPath: configFile.path)
-    }
-
-    /// Check if Kokoro service is available
-    private func checkService() async -> Bool {
-        guard let url = URL(string: "\(serviceURL)/health") else { return false }
-
-        do {
-            let (_, response) = try await URLSession.shared.data(from: url)
-            return (response as? HTTPURLResponse)?.statusCode == 200
-        } catch {
-            return false
+    private func startEngineIfNeeded() async throws {
+        if ttsEngine == nil {
+            ttsEngine = EmbeddedTTSProvider()
         }
+        do {
+            try ttsEngine?.start()
+            print("[KokoroProvider] ✅ Embedded TTS engine started successfully")
+        } catch {
+            print("[KokoroProvider] ❌ Failed to start embedded TTS: \(error)")
+            throw error
+        }
+    }
+
+    var isAvailable: Bool {
+        // Always available - binary is embedded in app bundle
+        return true
     }
 
     // MARK: - VoiceProvider Implementation
@@ -86,36 +73,47 @@ class KokoroProvider: NSObject, VoiceProvider, AVAudioPlayerDelegate {
         let kokoroVoice = await ConfigManager.shared.config.user.kokoroVoice
         let selectedVoice = voice ?? kokoroVoice ?? "af_bella"
 
-        print("[KokoroProvider] Synthesizing with voice: \(selectedVoice)")
+        print("[KokoroProvider] 🎙️ Synthesizing '\(text.prefix(50))...' with voice: \(selectedVoice)")
 
         let startTime = Date()
 
-        // Call Python FastAPI service (http://localhost:5903)
-        let url = URL(string: "http://localhost:5903/synthesize")!
-        var request = URLRequest(url: url)
-        request.httpMethod = "POST"
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        // Ensure embedded engine is running
+        do {
+            try await startEngineIfNeeded()
+        } catch {
+            print("[KokoroProvider] ❌ Failed to start engine: \(error)")
+            throw error
+        }
 
-        let requestBody = ["text": text, "voice": selectedVoice]
-        request.httpBody = try JSONSerialization.data(withJSONObject: requestBody)
-
-        let (data, response) = try await URLSession.shared.data(for: request)
-
-        guard let httpResponse = response as? HTTPURLResponse,
-              httpResponse.statusCode == 200 else {
-            throw VoiceError.synthesisFailedError("Kokoro service returned error")
+        // Synthesize using embedded binary
+        guard let buffer = try await ttsEngine?.synthesize(text: text, voice: selectedVoice) else {
+            print("[KokoroProvider] ❌ Synthesis returned nil")
+            throw VoiceError.synthesisFailedError("Failed to synthesize audio")
         }
 
         let synthesisTime = Date().timeIntervalSince(startTime)
-        print("[KokoroProvider] Synthesis completed in \(Int(synthesisTime * 1000))ms")
+        print("[KokoroProvider] ✅ Synthesis completed in \(Int(synthesisTime * 1000))ms")
 
-        // Save to temp file
+        // Convert buffer to WAV file
         let tempURL = FileManager.default.temporaryDirectory
             .appendingPathComponent(UUID().uuidString + ".wav")
 
-        try data.write(to: tempURL)
+        try writeBufferToWAV(buffer: buffer, url: tempURL)
 
         return tempURL
+    }
+
+    private func writeBufferToWAV(buffer: AVAudioPCMBuffer, url: URL) throws {
+        let settings: [String: Any] = [
+            AVFormatIDKey: kAudioFormatLinearPCM,
+            AVSampleRateKey: buffer.format.sampleRate,
+            AVNumberOfChannelsKey: buffer.format.channelCount,
+            AVLinearPCMBitDepthKey: 16,
+            AVLinearPCMIsFloatKey: false,
+            AVLinearPCMIsBigEndianKey: false
+        ]
+        let audioFile = try AVAudioFile(forWriting: url, settings: settings)
+        try audioFile.write(from: buffer)
     }
 
     func stop() async {
@@ -126,12 +124,13 @@ class KokoroProvider: NSObject, VoiceProvider, AVAudioPlayerDelegate {
     }
 
     func healthCheck() async -> Bool {
-        // Check if HTTP service is available
-        let healthy = await checkService()
-        if !healthy {
-            print("[KokoroProvider] Health check failed: Service not available at \(serviceURL)")
-        }
-        return healthy
+        // Embedded binary is always available
+        return true
+    }
+
+    deinit {
+        // Shutdown engine on cleanup
+        ttsEngine?.shutdown()
     }
 
     // MARK: - AVAudioPlayerDelegate

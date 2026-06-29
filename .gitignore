@@ -6,3 +6,10 @@
 # Xcode archives / local build products
 /build/
 SoniqueBar/Resources/*.gguf
+
+# TTS engine build artifacts (exceed GitHub 100MB limit)
+tts-engine/build/
+tts-engine/dist/
+tts-engine/venv/
+*.pkg
+*.pyz
