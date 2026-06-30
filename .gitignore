@@ -13,3 +13,9 @@ tts-engine/dist/
 tts-engine/venv/
 *.pkg
 *.pyz
+
+# TTS Engine Build Artifacts (too large for GitHub)
+tts-engine/dist/
+tts-engine/build/
+tts-engine/venv/
+tts-engine/__pycache__/
