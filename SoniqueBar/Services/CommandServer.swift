@@ -236,6 +236,8 @@ class CommandServer: ObservableObject {
             await handleHealth(connection)
         } else if method == "GET" && path == "/config" {
             await handleConfig(connection)
+        } else if method == "GET" && path == "/voices" {
+            await handleVoices(connection)
         } else if method == "GET" && path == "/capabilities" {
             await handleCapabilities(connection)
         } else if method == "POST" && path == "/command" {
@@ -254,6 +256,8 @@ class CommandServer: ObservableObject {
             await handleDiagnose(data, connection)
         } else if method == "POST" && path == "/remediate" {
             await handleRemediate(data, connection)
+        } else if method == "POST" && path == "/synthesize" {
+            await handleSynthesize(data, connection)
         } else {
             sendResponse("HTTP/1.1 404 Not Found\r\n\r\n", to: connection)
         }
@@ -327,6 +331,38 @@ class CommandServer: ObservableObject {
         Content-Length: \(responseJSON.utf8.count)\r
         \r
         \(responseJSON)
+        """
+
+        sendResponse(response, to: connection)
+    }
+
+    private func handleVoices(_ connection: NWConnection) async {
+        // Return list of available ElevenLabs voices
+        let voices = [
+            ["id": "cgSgspJ2msm6clMCkdW9", "name": "Jessica"],
+            ["id": "21m00Tcm4TlvDq8ikWAM", "name": "Rachel"],
+            ["id": "pNInz6obpgDQGcFmaJgB", "name": "Adam"],
+            ["id": "N2lVS1w4EtoT3dr4eOWO", "name": "Callum"],
+            ["id": "XB0fDUnXU5powFXDhCwa", "name": "Charlotte"],
+            ["id": "iP95p4xoKVk53GoZ742B", "name": "Chris"],
+            ["id": "nPczCjzI2devNBz1zQrb", "name": "Brian"],
+            ["id": "EXAVITQu4vr4xnSDxMaL", "name": "Sarah"],
+            ["id": "MF3mGyEYCl7XYWbV9V6O", "name": "Elli"],
+            ["id": "TxGEqnHWrfWFTfGW9XjX", "name": "Josh"]
+        ]
+
+        guard let jsonData = try? JSONSerialization.data(withJSONObject: ["voices": voices]),
+              let jsonString = String(data: jsonData, encoding: .utf8) else {
+            sendResponse("HTTP/1.1 500 Internal Server Error\r\n\r\n", to: connection)
+            return
+        }
+
+        let response = """
+        HTTP/1.1 200 OK\r
+        Content-Type: application/json\r
+        Content-Length: \(jsonString.utf8.count)\r
+        \r
+        \(jsonString)
         """
 
         sendResponse(response, to: connection)
@@ -2176,6 +2212,94 @@ class CommandServer: ObservableObject {
         } catch {
             NSLog("[CommandServer] Failed to decode diagnosis: \(error)")
             sendResponse("HTTP/1.1 400 Bad Request\r\n\r\n{\"error\":\"Invalid diagnosis\"}", to: connection)
+        }
+    }
+
+    // MARK: - TTS Synthesis Endpoint
+
+    private func handleSynthesize(_ data: Data, _ connection: NWConnection) async {
+        guard let requestString = String(data: data, encoding: .utf8) else {
+            sendResponse("HTTP/1.1 400 Bad Request\r\n\r\n", to: connection)
+            return
+        }
+
+        let components = requestString.components(separatedBy: "\r\n\r\n")
+        guard components.count >= 2,
+              let bodyData = components[1].data(using: .utf8),
+              let json = try? JSONSerialization.jsonObject(with: bodyData) as? [String: Any],
+              let text = json["text"] as? String else {
+            sendResponse("HTTP/1.1 400 Bad Request\r\n\r\n{\"error\":\"Missing 'text' field\"}", to: connection)
+            return
+        }
+
+        let provider = json["provider"] as? String  // Optional provider override
+        let voice = json["voice"] as? String        // Optional voice override
+
+        print("[CommandServer] /synthesize request: provider=\(provider ?? "default"), text='\(text.prefix(50))...'")
+
+        do {
+            // Use VoiceRouter to synthesize
+            let audioURL: URL
+            if let providerName = provider {
+                // Use specific provider
+                guard let voiceProvider = await VoiceRouter.shared.getProvider(providerName) else {
+                    sendResponse("HTTP/1.1 404 Not Found\r\n\r\n{\"error\":\"Provider '\(providerName)' not found\"}", to: connection)
+                    return
+                }
+                audioURL = try await voiceProvider.synthesize(text: text, voice: voice)
+            } else {
+                // Use default provider
+                guard let defaultProvider = await VoiceRouter.shared.getProvider(VoiceRouter.shared.defaultProvider) else {
+                    sendResponse("HTTP/1.1 500 Internal Server Error\r\n\r\n{\"error\":\"No TTS provider available\"}", to: connection)
+                    return
+                }
+                audioURL = try await defaultProvider.synthesize(text: text, voice: voice)
+            }
+
+            // Read audio file and send as response
+            let audioData = try Data(contentsOf: audioURL)
+
+            // Determine content type based on file extension
+            let contentType: String
+            if audioURL.pathExtension == "wav" {
+                contentType = "audio/wav"
+            } else if audioURL.pathExtension == "mp3" {
+                contentType = "audio/mpeg"
+            } else {
+                contentType = "application/octet-stream"
+            }
+
+            let response = """
+            HTTP/1.1 200 OK\r
+            Content-Type: \(contentType)\r
+            Content-Length: \(audioData.count)\r
+            \r
+
+            """
+
+            guard let responseData = response.data(using: .utf8) else {
+                sendResponse("HTTP/1.1 500 Internal Server Error\r\n\r\n", to: connection)
+                return
+            }
+
+            // Send headers + audio data
+            var fullResponse = responseData
+            fullResponse.append(audioData)
+            connection.send(content: fullResponse, completion: .contentProcessed { error in
+                if let error = error {
+                    NSLog("[CommandServer] Failed to send synthesized audio: \(error)")
+                }
+                connection.cancel()
+            })
+
+            // Clean up temp file
+            try? FileManager.default.removeItem(at: audioURL)
+
+            print("[CommandServer] ✅ Sent \(audioData.count) bytes of audio (\(contentType))")
+
+        } catch {
+            print("[CommandServer] ❌ Synthesis failed: \(error)")
+            sendResponse("HTTP/1.1 500 Internal Server Error\r\n\r\n{\"error\":\"Synthesis failed: \(error.localizedDescription)\"}", to: connection)
         }
     }
 }

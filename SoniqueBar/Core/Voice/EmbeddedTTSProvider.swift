@@ -16,9 +16,9 @@ class EmbeddedTTSProvider: NSObject {
     private let logger = Logger(subsystem: "com.seayniclabs.SoniqueBar", category: "EmbeddedTTS")
 
     private var process: Process?
-    private var stdinPipe = Pipe()
-    private var stdoutPipe = Pipe()
-    private var stderrPipe = Pipe()
+    private var stdinPipe: Pipe?
+    private var stdoutPipe: Pipe?
+    private var stderrPipe: Pipe?
 
     private var isReady = false
     private var startupQueue = DispatchQueue(label: "com.seayniclabs.soniquebar.tts.startup")
@@ -60,6 +60,11 @@ class EmbeddedTTSProvider: NSObject {
         logger.info("Binary found at: \(binaryPath)")
         logToFile(logPath, "Binary path: \(binaryPath)")
 
+        // Create fresh pipes for each start
+        stdinPipe = Pipe()
+        stdoutPipe = Pipe()
+        stderrPipe = Pipe()
+
         // Create process
         let proc = Process()
         proc.executableURL = URL(fileURLWithPath: binaryPath)
@@ -75,7 +80,7 @@ class EmbeddedTTSProvider: NSObject {
         proc.standardError = stderrPipe
 
         // Monitor stderr for READY signal and logs
-        stderrPipe.fileHandleForReading.readabilityHandler = { [weak self] handle in
+        stderrPipe?.fileHandleForReading.readabilityHandler = { [weak self] handle in
             let data = handle.availableData
             guard !data.isEmpty else { return }
 
@@ -124,8 +129,12 @@ class EmbeddedTTSProvider: NSObject {
     func shutdown() {
         logger.info("Shutting down TTS engine...")
 
-        // Close pipes
-        stdinPipe.fileHandleForWriting.closeFile()
+        // Close pipes safely
+        do {
+            try stdinPipe?.fileHandleForWriting.close()
+        } catch {
+            logger.warning("Error closing stdin: \(error)")
+        }
 
         // Terminate process
         process?.terminate()
@@ -144,6 +153,9 @@ class EmbeddedTTSProvider: NSObject {
 
         isReady = false
         process = nil
+        stdinPipe = nil
+        stdoutPipe = nil
+        stderrPipe = nil
 
         logger.info("TTS engine shut down")
     }
@@ -151,6 +163,12 @@ class EmbeddedTTSProvider: NSObject {
     // MARK: - Synthesis
 
     func synthesize(text: String, voice: String = "af_bella") async throws -> AVAudioPCMBuffer {
+        // Check if process is still running, restart if needed
+        if process?.isRunning != true {
+            logger.warning("Process died, restarting...")
+            try start()
+        }
+
         guard isReady else {
             throw TTSError.engineNotReady
         }
@@ -165,6 +183,12 @@ class EmbeddedTTSProvider: NSObject {
                 }
 
                 do {
+                    // Double-check process is alive before attempting I/O
+                    guard self.process?.isRunning == true else {
+                        self.logger.error("Process died before synthesis")
+                        throw TTSError.engineNotReady
+                    }
+
                     // Create request
                     let request: [String: String] = ["text": text, "voice": voice]
                     let jsonData = try JSONEncoder().encode(request)
@@ -172,11 +196,30 @@ class EmbeddedTTSProvider: NSObject {
                     // Send request (JSON line)
                     var lineData = jsonData
                     lineData.append(0x0A) // newline
-                    self.stdinPipe.fileHandleForWriting.write(lineData)
+
+                    do {
+                        self.stdinPipe?.fileHandleForWriting.write(lineData)
+                    } catch {
+                        self.logger.error("Failed to write to stdin: \(error)")
+                        self.isReady = false
+                        throw TTSError.invalidResponse("Failed to send request: \(error.localizedDescription)")
+                    }
 
                     // Read response: 4-byte length + audio bytes
-                    let lengthData = self.stdoutPipe.fileHandleForReading.readData(ofLength: 4)
+                    let lengthData: Data
+                    do {
+                        guard let lengthBytes = self.stdoutPipe?.fileHandleForReading.readData(ofLength: 4) else {
+                            throw TTSError.invalidResponse("stdout pipe closed")
+                        }
+                        lengthData = lengthBytes
+                    } catch {
+                        self.logger.error("Failed to read from stdout: \(error)")
+                        self.isReady = false
+                        throw TTSError.invalidResponse("Failed to read response: \(error.localizedDescription)")
+                    }
+
                     guard lengthData.count == 4 else {
+                        self.logger.error("Got \(lengthData.count) bytes, expected 4 for length prefix")
                         throw TTSError.invalidResponse("Failed to read length prefix")
                     }
 
@@ -184,8 +227,12 @@ class EmbeddedTTSProvider: NSObject {
                     self.logger.debug("Reading \(length) bytes of audio data")
 
                     // Read audio data
-                    let audioData = self.stdoutPipe.fileHandleForReading.readData(ofLength: Int(length))
+                    guard let audioBytes = self.stdoutPipe?.fileHandleForReading.readData(ofLength: Int(length)) else {
+                        throw TTSError.invalidResponse("stdout pipe closed while reading audio")
+                    }
+                    let audioData = audioBytes
                     guard audioData.count == length else {
+                        self.logger.error("Expected \(length) bytes, got \(audioData.count)")
                         throw TTSError.invalidResponse("Expected \(length) bytes, got \(audioData.count)")
                     }
 

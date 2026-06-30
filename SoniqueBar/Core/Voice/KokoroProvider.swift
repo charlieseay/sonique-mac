@@ -29,9 +29,15 @@ class KokoroProvider: NSObject, VoiceProvider, AVAudioPlayerDelegate {
     // MARK: - Initialization
 
     private func startEngineIfNeeded() async throws {
-        if ttsEngine == nil {
-            ttsEngine = EmbeddedTTSProvider()
+        // For stability, restart engine for each synthesis
+        // TODO: Optimize to reuse subprocess once pipe handling is more robust
+        if ttsEngine != nil {
+            ttsEngine?.shutdown()
+            ttsEngine = nil
         }
+
+        ttsEngine = EmbeddedTTSProvider()
+
         do {
             try ttsEngine?.start()
             print("[KokoroProvider] ✅ Embedded TTS engine started successfully")
@@ -69,6 +75,12 @@ class KokoroProvider: NSObject, VoiceProvider, AVAudioPlayerDelegate {
     }
 
     func synthesize(text: String, voice: String?) async throws -> URL {
+        // Debug logging
+        let logPath = FileManager.default.temporaryDirectory.appendingPathComponent("kokoro-provider-debug.log")
+        let timestamp = ISO8601DateFormatter().string(from: Date())
+        let logLine = "[\(timestamp)] synthesize() called with text: '\(text.prefix(50))...'\n"
+        try? logLine.data(using: .utf8)?.write(to: logPath, options: .atomic)
+
         // Use configured voice or default to af_bella (best match to Jessica)
         let kokoroVoice = await ConfigManager.shared.config.user.kokoroVoice
         let selectedVoice = voice ?? kokoroVoice ?? "af_bella"
@@ -99,6 +111,10 @@ class KokoroProvider: NSObject, VoiceProvider, AVAudioPlayerDelegate {
             .appendingPathComponent(UUID().uuidString + ".wav")
 
         try writeBufferToWAV(buffer: buffer, url: tempURL)
+
+        // Clean up engine after synthesis for stability
+        ttsEngine?.shutdown()
+        ttsEngine = nil
 
         return tempURL
     }
