@@ -35,7 +35,8 @@ struct GitHubConnector: ActionConnector {
                 parameters: [
                     .init(name: "repo", type: .string, required: true, description: "Repository (owner/repo)"),
                     .init(name: "title", type: .string, required: true, description: "Issue title"),
-                    .init(name: "body", type: .string, required: false, description: "Issue body")
+                    .init(name: "body", type: .string, required: false, description: "Issue body"),
+                    .init(name: "assignee", type: .string, required: false, description: "GitHub username to assign")
                 ],
                 requiredAuth: .none, // gh CLI handles auth
                 mutates: true
@@ -95,10 +96,14 @@ struct GitHubConnector: ActionConnector {
         }
 
         let body = params["body"] as? String ?? ""
+        let assignee = params["assignee"] as? String
 
         var command = "gh issue create --repo \(repo) --title \"\(title)\""
         if !body.isEmpty {
             command += " --body \"\(body)\""
+        }
+        if let assignee, !assignee.isEmpty {
+            command += " --assignee \"\(assignee)\""
         }
 
         let result = await shell(command)

@@ -253,10 +253,11 @@ enum IntentHandlers {
 
         let repo = sanitizeRepo(params["repo"] as? String ?? "charlieseay/sonique-ios")
         let body = params["body"] as? String ?? ""
+        let assignee = params["assignee"] as? String ?? "charlieseay"
         let connector = GitHubConnector()
 
         do {
-            var issueParams: [String: Any] = ["repo": repo, "title": title]
+            var issueParams: [String: Any] = ["repo": repo, "title": title, "assignee": assignee]
             if !body.isEmpty { issueParams["body"] = body }
             let result = try await connector.execute("create_issue", parameters: issueParams)
             if result.success {
@@ -332,8 +333,21 @@ enum IntentHandlers {
 
     private static func sanitizeRepo(_ repo: String) -> String {
         let trimmed = repo.trimmingCharacters(in: .whitespacesAndNewlines)
-        let allowed = CharacterSet.alphanumerics.union(CharacterSet(charactersIn: "-_/"))
-        return String(trimmed.unicodeScalars.filter { allowed.contains($0) })
+        let stopChars = CharacterSet(charactersIn: ";|&$`\"'<>()")
+        let truncated = String(trimmed.unicodeScalars.prefix { !stopChars.contains($0) })
+        let segmentAllowed = CharacterSet.alphanumerics.union(CharacterSet(charactersIn: "-_."))
+        let parts = truncated.split(separator: "/", maxSplits: 1).map(String.init)
+        guard parts.count == 2 else { return "" }
+
+        func cleanSegment(_ segment: String) -> String {
+            let cleaned = String(segment.unicodeScalars.filter { segmentAllowed.contains($0) })
+            return cleaned.contains("..") ? "" : cleaned
+        }
+
+        let owner = cleanSegment(parts[0])
+        let name = cleanSegment(parts[1])
+        guard !owner.isEmpty, !name.isEmpty else { return "" }
+        return "\(owner)/\(name)"
     }
 
     private static func stringData(_ data: [String: Any]?) -> [String: String]? {

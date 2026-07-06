@@ -290,6 +290,9 @@ These run via iOS App Intents → SoniqueBar HTTP. Require SoniqueBar on port 88
 - **"Search GitHub for pull requests labeled bug"** → `GitHubSearchIntent(query: "bug", label: "bug")`
 - **"GitHub search: open PRs in sonique-ios"** → lists open PRs with count
 - **"Find GitHub pull requests labeled enhancement"** → filtered PR search
+- **"Create GitHub issue: fix microphone echo"** → `GitHubCreateIssueIntent(title: "fix microphone echo")`
+- **"New GitHub issue: Tailscale reconnect bug"** → creates issue in default repo
+- **"GitHub issue: improve barge-in latency"** → same intent, optional body
 
 ### Notion
 - **"Create Notion page: weekly standup notes"** → `NotionCreateIntent(title: "weekly standup notes")`
@@ -307,7 +310,7 @@ These run via iOS App Intents → SoniqueBar HTTP. Require SoniqueBar on port 88
 - Notion rate limit → **"Creating note — Notion is busy."**
 
 ### Shortcuts App
-Open Shortcuts → Sonique actions: **Post to Slack**, **Create Linear Task**, **Search GitHub**, **Create Notion Page**, **List Docker**
+Open Shortcuts → Sonique actions: **Post to Slack**, **Create Linear Task**, **Search GitHub**, **Create GitHub Issue**, **Create Notion Page**, **List Docker**
 
 ---
 
