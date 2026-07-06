@@ -1,29 +1,44 @@
 import Foundation
 
-/// Connector for Obsidian vault operations
-/// Allows Quinn to create notes and search the vault
+/// Connector for Obsidian / Logseq / plain markdown vault operations.
+/// Allows Sonique to create notes and search the knowledge vault.
 struct ObsidianConnector: ActionConnector {
     let id = UUID()
-    let name = "Obsidian"
-    let version = "1.0.0"
-    let description = "Create and search Obsidian vault notes"
+    let name = "Knowledge Vault"
+    let version = "1.1.0"
+    let description = "Create and search Obsidian/Logseq vault notes"
     let category: ConnectorCategory = .knowledge
     var isEnabled: Bool
 
     private let vaultPath: String
     private let defaultFolder: String
+    private let kind: String
 
     /// Initialize with config (preferred)
     init(config: ObsidianConfig, enabled: Bool = true) {
         self.vaultPath = (config.vaultPath as NSString).expandingTildeInPath
         self.defaultFolder = config.defaultFolder
+        self.kind = config.kind ?? Self.detectKind(at: self.vaultPath)
         self.isEnabled = enabled
     }
 
-    /// Initialize with legacy hardcoded values (fallback)
+    /// Fallback: linked example vault, then legacy personal path if present.
     init() {
-        self.vaultPath = "/Users/charlieseay/Library/Mobile Documents/iCloud~md~obsidian/Documents/SeaynicNet"
-        self.defaultFolder = "Projects"
+        let linked = (NSString(string: "~/.sonique/vault")).expandingTildeInPath
+        let legacy = (NSString(string: "~/Library/Mobile Documents/iCloud~md~obsidian/Documents/SeaynicNet")).expandingTildeInPath
+        if FileManager.default.fileExists(atPath: linked) {
+            self.vaultPath = linked
+            self.defaultFolder = "Ideas"
+            self.kind = Self.detectKind(at: linked)
+        } else if FileManager.default.fileExists(atPath: legacy) {
+            self.vaultPath = legacy
+            self.defaultFolder = "Projects"
+            self.kind = "obsidian"
+        } else {
+            self.vaultPath = linked
+            self.defaultFolder = "Ideas"
+            self.kind = "hybrid"
+        }
         self.isEnabled = true
     }
 
@@ -78,9 +93,27 @@ struct ObsidianConnector: ActionConnector {
     }
 
     func healthCheck() async -> Bool {
-        // Check if vault path exists
         var isDirectory: ObjCBool = false
         return FileManager.default.fileExists(atPath: vaultPath, isDirectory: &isDirectory) && isDirectory.boolValue
+    }
+
+    // MARK: - Detection
+
+    static func detectKind(at path: String) -> String {
+        let fm = FileManager.default
+        let hasObsidian = fm.fileExists(atPath: (path as NSString).appendingPathComponent(".obsidian"))
+        let hasLogseqDir = fm.fileExists(atPath: (path as NSString).appendingPathComponent("logseq"))
+        let hasPages = fm.fileExists(atPath: (path as NSString).appendingPathComponent("pages"))
+        let hasJournals = fm.fileExists(atPath: (path as NSString).appendingPathComponent("journals"))
+        let hasLogseq = hasLogseqDir || (hasPages && hasJournals)
+        if hasObsidian && hasLogseq { return "hybrid" }
+        if hasObsidian { return "obsidian" }
+        if hasLogseq { return "logseq" }
+        return "markdown"
+    }
+
+    static func defaultFolder(forKind kind: String) -> String {
+        kind == "logseq" ? "pages" : "Ideas"
     }
 
     // MARK: - Private Implementation
@@ -93,7 +126,6 @@ struct ObsidianConnector: ActionConnector {
         let content = params["content"] as? String ?? ""
         let folder = params["folder"] as? String ?? defaultFolder
 
-        // Sanitize filename
         let filename = title.replacingOccurrences(of: "/", with: "-")
             .replacingOccurrences(of: ":", with: "-")
             .trimmingCharacters(in: .whitespacesAndNewlines)
@@ -101,11 +133,9 @@ struct ObsidianConnector: ActionConnector {
         let folderPath = "\(vaultPath)/\(folder)"
         let notePath = "\(folderPath)/\(filename).md"
 
-        // Create folder if it doesn't exist
         try? FileManager.default.createDirectory(atPath: folderPath, withIntermediateDirectories: true)
 
-        // Create note with frontmatter
-        let now = ISO8601DateFormatter().string(from: Date()).prefix(10) // YYYY-MM-DD
+        let now = ISO8601DateFormatter().string(from: Date()).prefix(10)
         let noteContent = """
         ---
         tags: [note]
@@ -121,7 +151,7 @@ struct ObsidianConnector: ActionConnector {
 
         return .success(
             message: "Created note '\(title)'",
-            data: ["path": notePath]
+            data: ["path": notePath, "kind": kind]
         )
     }
 
@@ -130,8 +160,8 @@ struct ObsidianConnector: ActionConnector {
             throw ConnectorError.missingParameter("query")
         }
 
-        // Use grep to search vault
-        let command = "grep -r -i -l \"\(query)\" \"\(vaultPath)\" --include=\"*.md\" | head -10"
+        let escaped = query.replacingOccurrences(of: "\"", with: "\\\"")
+        let command = "grep -r -i -l \"\(escaped)\" \"\(vaultPath)\" --include=\"*.md\" | head -10"
         let result = await shell(command)
 
         let matches = result.stdout
@@ -159,12 +189,10 @@ struct ObsidianConnector: ActionConnector {
             throw ConnectorError.invalidParameter("path", expected: "existing note", got: path)
         }
 
-        // Read existing content
         guard var existing = try? String(contentsOfFile: fullPath, encoding: .utf8) else {
             throw ConnectorError.invalidResponse("Could not read note")
         }
 
-        // Append new content
         existing += "\n\n\(content)"
 
         try existing.write(toFile: fullPath, atomically: true, encoding: .utf8)

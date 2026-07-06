@@ -72,11 +72,12 @@ struct ConnectorConfigs: Codable {
             )
         ),
         knowledge: KnowledgeConfig(
-            provider: "obsidian",
+            provider: "vault",
             enabled: true,
             obsidianConfig: ObsidianConfig(
-                vaultPath: "~/Library/Mobile Documents/iCloud~md~obsidian/Documents/SeaynicNet",
-                defaultFolder: "Projects"
+                vaultPath: "~/.sonique/vault",
+                defaultFolder: "Ideas",
+                kind: "hybrid"
             )
         ),
         containers: ContainerConfig(
@@ -159,6 +160,14 @@ struct KnowledgeConfig: Codable {
 struct ObsidianConfig: Codable {
     var vaultPath: String
     var defaultFolder: String
+    /// obsidian | logseq | hybrid | markdown
+    var kind: String?
+
+    init(vaultPath: String, defaultFolder: String, kind: String? = nil) {
+        self.vaultPath = vaultPath
+        self.defaultFolder = defaultFolder
+        self.kind = kind
+    }
 }
 
 struct NotionConfig: Codable {

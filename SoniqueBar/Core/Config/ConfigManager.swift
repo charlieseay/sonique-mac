@@ -57,11 +57,12 @@ struct ConnectorConfigs: Codable {
             )
         ),
         knowledge: KnowledgeConfig(
-            provider: "obsidian",
+            provider: "vault",
             enabled: true,
             obsidianConfig: ObsidianConfig(
-                vaultPath: "~/Library/Mobile Documents/iCloud~md~obsidian/Documents/SeaynicNet",
-                defaultFolder: "Projects"
+                vaultPath: "~/.sonique/vault",
+                defaultFolder: "Ideas",
+                kind: "hybrid"
             )
         ),
         containers: ContainerConfig(
