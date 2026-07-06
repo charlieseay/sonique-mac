@@ -272,6 +272,45 @@ Quinn routes intelligently, but you can prefer specific providers:
 
 ---
 
+## 📲 iOS App Intents (Siri / Shortcuts)
+
+These run via iOS App Intents → SoniqueBar HTTP. Require SoniqueBar on port 8890.
+
+### Slack
+- **"Post to Slack: hello team"** → `SlackPostIntent(message: "hello team")` → posts to #sonique
+- **"Post to Slack in cael: deploy done"** → posts to #cael channel
+- **"Slack message: standup in 5"** → same intent, default channel
+
+### Linear
+- **"Create Linear task: fix barge-in latency"** → `LinearCreateIntent(title: "fix barge-in latency")`
+- **"New Linear issue: microphone echo"** → same intent
+- **"Linear task: investigate Tailscale timeout"** → creates Linear issue via API/CLI
+
+### GitHub
+- **"Search GitHub for pull requests labeled bug"** → `GitHubSearchIntent(query: "bug", label: "bug")`
+- **"GitHub search: open PRs in sonique-ios"** → lists open PRs with count
+- **"Find GitHub pull requests labeled enhancement"** → filtered PR search
+
+### Notion
+- **"Create Notion page: weekly standup notes"** → `NotionCreateIntent(title: "weekly standup notes")`
+- **"New Notion entry: QW2 retrospective"** → creates database page
+- **"Notion page: meeting action items"** → with optional body text
+
+### Docker
+- **"List Docker containers"** → `DockerListIntent(showAll: false)` → running containers
+- **"Show all Docker containers"** → includes stopped containers
+
+### Offline / Errors
+- SoniqueBar offline → **"I can't reach the brain right now."**
+- Missing Slack token → **"Slack token missing. Check Settings on the Mac."**
+- Linear not configured → **"Linear CLI not found. Add linear_api_key to secrets."**
+- Notion rate limit → **"Creating note — Notion is busy."**
+
+### Shortcuts App
+Open Shortcuts → Sonique actions: **Post to Slack**, **Create Linear Task**, **Search GitHub**, **Create Notion Page**, **List Docker**
+
+---
+
 ## 📝 Version
 - **Build:** 58
 - **Release:** v1.1.0-quinn

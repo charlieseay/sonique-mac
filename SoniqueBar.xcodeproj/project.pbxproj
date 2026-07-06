@@ -55,6 +55,7 @@
 		F5FE4AE5BCE56A7CEF27C4A8 /* DiagnosticAgent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 14DD10989B88085D88EAECBC /* DiagnosticAgent.swift */; };
 		F845AB412F437944A72BFE21 /* NVIDIAProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 62EDE6B3A6B2D265A95368B2 /* NVIDIAProvider.swift */; };
 		FA925571F17B6BA9C9106F30 /* CommandServer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 51CF32BB11AD3B053074E4B1 /* CommandServer.swift */; };
+		INTHNDLR01B000000000001 /* IntentHandlers.swift in Sources */ = {isa = PBXBuildFile; fileRef = INTHNDLR01A000000000001 /* IntentHandlers.swift */; };
 		FB4A785BC5C0C1732655A2E1 /* TaskDispatcher.swift in Sources */ = {isa = PBXBuildFile; fileRef = 52B477ED8413E4F7FC7A7216 /* TaskDispatcher.swift */; };
 		FDEB1550A3C56FEC61801B17 /* BackgroundMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = C97BFF455FB039ADE8EBB91B /* BackgroundMonitor.swift */; };
 /* End PBXBuildFile section */
@@ -81,6 +82,7 @@
 		48B8F20B305375C0346D76A6 /* ConnectorRegistry.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ConnectorRegistry.swift; sourceTree = "<group>"; };
 		494F35B4BE46B07DF2067516 /* VoiceProvider.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = VoiceProvider.swift; path = SoniqueBar/Core/Voice/VoiceProvider.swift; sourceTree = "<group>"; };
 		51CF32BB11AD3B053074E4B1 /* CommandServer.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = CommandServer.swift; path = SoniqueBar/Services/CommandServer.swift; sourceTree = "<group>"; };
+		INTHNDLR01A000000000001 /* IntentHandlers.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = IntentHandlers.swift; path = SoniqueBar/Services/IntentHandlers.swift; sourceTree = "<group>"; };
 		52B477ED8413E4F7FC7A7216 /* TaskDispatcher.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = TaskDispatcher.swift; path = SoniqueBar/Services/TaskDispatcher.swift; sourceTree = "<group>"; };
 		5DEA084A43571FB8B79A50BC /* LabStatusService.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = LabStatusService.swift; path = SoniqueBar/Services/LabStatusService.swift; sourceTree = "<group>"; };
 		62EDE6B3A6B2D265A95368B2 /* NVIDIAProvider.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = NVIDIAProvider.swift; path = SoniqueBar/Core/LLM/NVIDIAProvider.swift; sourceTree = "<group>"; };
@@ -174,6 +176,7 @@
 				52B477ED8413E4F7FC7A7216 /* TaskDispatcher.swift */,
 				BA21E3093DCCF2B341C15CE1 /* LiveScreenCapture.swift */,
 				51CF32BB11AD3B053074E4B1 /* CommandServer.swift */,
+				INTHNDLR01A000000000001 /* IntentHandlers.swift */,
 				6FBD7A75A1EDDC8CA45A63F3 /* ConnectorProtocol.swift */,
 				89DEBB87C22A05AAC4B97019 /* ConnectorRegistry.swift */,
 				0624918F9F9BB6FB1FB7015A /* HelmsmanConnector.swift */,
@@ -381,6 +384,7 @@
 				FB4A785BC5C0C1732655A2E1 /* TaskDispatcher.swift in Sources */,
 				C308D4E93103213839A27FFD /* LiveScreenCapture.swift in Sources */,
 				FA925571F17B6BA9C9106F30 /* CommandServer.swift in Sources */,
+				INTHNDLR01B000000000001 /* IntentHandlers.swift in Sources */,
 				4B102F62A9EF98A44E5C888D /* InitializationScript.swift in Sources */,
 				D0AB5C222768661355C09820 /* VaultReader.swift in Sources */,
 				F207771755EE5599B4947268 /* MCPProxyClient.swift in Sources */,

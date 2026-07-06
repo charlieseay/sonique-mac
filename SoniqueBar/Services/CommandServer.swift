@@ -258,6 +258,8 @@ class CommandServer: ObservableObject {
             await handleRemediate(data, connection)
         } else if method == "POST" && path == "/synthesize" {
             await handleSynthesize(data, connection)
+        } else if method == "POST" && path.hasPrefix("/intent/") {
+            await handleIntent(path: path, data: data, connection: connection)
         } else {
             sendResponse("HTTP/1.1 404 Not Found\r\n\r\n", to: connection)
         }
@@ -2213,6 +2215,62 @@ class CommandServer: ObservableObject {
             NSLog("[CommandServer] Failed to decode diagnosis: \(error)")
             sendResponse("HTTP/1.1 400 Bad Request\r\n\r\n{\"error\":\"Invalid diagnosis\"}", to: connection)
         }
+    }
+
+    // MARK: - App Intent Endpoints (iOS Siri shortcuts)
+
+    /// POST /intent/<name> — dispatches iOS App Intent actions to connectors/CLI.
+    private func handleIntent(path: String, data: Data, connection: NWConnection) async {
+        let name = String(path.dropFirst("/intent/".count))
+        guard ["slack", "linear", "github", "notion", "docker"].contains(name) else {
+            sendIntentJSON(IntentHandlers.Response.fail("unknown_intent", message: "Unknown intent: \(name)"), status: 404, to: connection)
+            return
+        }
+
+        guard let body = extractJSONBody(from: data) else {
+            sendIntentJSON(IntentHandlers.Response.fail("bad_request", message: "Invalid JSON body."), status: 400, to: connection)
+            return
+        }
+
+        let response: IntentHandlers.Response
+        switch name {
+        case "slack":   response = await IntentHandlers.handleSlack(body)
+        case "linear":  response = await IntentHandlers.handleLinear(body)
+        case "github":  response = await IntentHandlers.handleGitHub(body)
+        case "notion":  response = await IntentHandlers.handleNotion(body)
+        case "docker":  response = await IntentHandlers.handleDocker(body)
+        default:        response = .fail("unknown_intent", message: "Unknown intent.")
+        }
+
+        let status = response.success ? 200 : 422
+        sendIntentJSON(response, status: status, to: connection)
+    }
+
+    private func extractJSONBody(from data: Data) -> [String: Any]? {
+        guard let requestString = String(data: data, encoding: .utf8) else { return nil }
+        let components = requestString.components(separatedBy: "\r\n\r\n")
+        guard components.count >= 2,
+              let bodyData = components[1].data(using: .utf8),
+              let json = try? JSONSerialization.jsonObject(with: bodyData) as? [String: Any] else {
+            return nil
+        }
+        return json
+    }
+
+    private func sendIntentJSON(_ response: IntentHandlers.Response, status: Int, to connection: NWConnection) {
+        guard let jsonData = try? JSONEncoder().encode(response),
+              let jsonString = String(data: jsonData, encoding: .utf8) else {
+            sendResponse("HTTP/1.1 500 Internal Server Error\r\n\r\n", to: connection)
+            return
+        }
+        let http = """
+        HTTP/1.1 \(status) \(status == 200 ? "OK" : "Unprocessable Entity")\r
+        Content-Type: application/json\r
+        Content-Length: \(jsonString.utf8.count)\r
+        \r
+        \(jsonString)
+        """
+        sendResponse(http, to: connection)
     }
 
     // MARK: - TTS Synthesis Endpoint
