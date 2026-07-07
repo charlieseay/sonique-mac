@@ -147,8 +147,98 @@ enum MCPToolSchemas {
         ]
     )
 
+    // MARK: - macOS System Tool Schemas
+
+    static let takeScreenshot = MCPToolDefinition(
+        name: "take_screenshot",
+        description: "Capture the current screen to the clipboard using screencapture. Use when the user says 'take a screenshot', 'screenshot', or 'capture screen'. Requires Screen Recording permission.",
+        inputSchema: [
+            "type": "object",
+            "properties": [:] as [String: Any],
+            "required": [] as [String]
+        ]
+    )
+
+    static let fileSearch = MCPToolDefinition(
+        name: "file_search",
+        description: "Search for files on the Mac using Spotlight (mdfind). Use when the user asks to find or search for files by name or content.",
+        inputSchema: [
+            "type": "object",
+            "properties": [
+                "query": [
+                    "type": "string",
+                    "description": "The filename or keyword to search for."
+                ]
+            ] as [String: Any],
+            "required": ["query"]
+        ]
+    )
+
+    static let appControl = MCPToolDefinition(
+        name: "app_control",
+        description: "Open an app or run an AppleScript. Use 'open' action to launch apps by name (e.g. Safari, Mail, Finder). Use 'run_script' to execute AppleScript for automation.",
+        inputSchema: [
+            "type": "object",
+            "properties": [
+                "action": [
+                    "type": "string",
+                    "description": "Either 'open' to launch an app, or 'run_script' to run AppleScript.",
+                    "enum": ["open", "run_script"]
+                ],
+                "app": [
+                    "type": "string",
+                    "description": "App name to open (e.g. 'Safari', 'Mail'). Required when action is 'open'."
+                ],
+                "script": [
+                    "type": "string",
+                    "description": "AppleScript text to execute. Required when action is 'run_script'."
+                ]
+            ] as [String: Any],
+            "required": ["action"]
+        ]
+    )
+
+    static let systemInfo = MCPToolDefinition(
+        name: "system_info",
+        description: "Get macOS system information: disk space (df), memory (sysctl), CPU details (sysctl), or uptime. Use when the user asks about disk space, storage, RAM, CPU, or how long the Mac has been running.",
+        inputSchema: [
+            "type": "object",
+            "properties": [
+                "query": [
+                    "type": "string",
+                    "description": "What to report: 'disk', 'memory', 'cpu', 'uptime', or 'all' for a summary.",
+                    "enum": ["disk", "memory", "cpu", "uptime", "all"]
+                ]
+            ] as [String: Any],
+            "required": ["query"]
+        ]
+    )
+
+    static let clipboard = MCPToolDefinition(
+        name: "clipboard",
+        description: "Read from or write to the macOS clipboard using pbpaste/pbcopy. Only read the clipboard when the user explicitly asks what's on it. Never expose clipboard contents unprompted.",
+        inputSchema: [
+            "type": "object",
+            "properties": [
+                "action": [
+                    "type": "string",
+                    "description": "Either 'read' to get clipboard contents, or 'write' to set clipboard contents.",
+                    "enum": ["read", "write"]
+                ],
+                "text": [
+                    "type": "string",
+                    "description": "Text to write to clipboard. Required when action is 'write'."
+                ]
+            ] as [String: Any],
+            "required": ["action"]
+        ]
+    )
+
     /// All three P1 tools as an array for API injection.
-    static let all: [MCPToolDefinition] = [slackPostMessage, vaultSearch, notebooklmQuery]
+    static let all: [MCPToolDefinition] = [
+        slackPostMessage, vaultSearch, notebooklmQuery,
+        takeScreenshot, fileSearch, appControl, systemInfo, clipboard
+    ]
 
     /// Returns all tools as JSON-serialisable objects ready for Anthropic API `tools` array.
     static func allAsJSONObjects() -> [[String: Any]] {

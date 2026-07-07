@@ -585,6 +585,7 @@ struct InfrastructureExecutor {
         }
     }
 
+
     /// Extracts channel name and message text from a Slack command string.
     private static func extractSlackParams(from query: String) -> (channel: String, message: String) {
         let lower = query.lowercased()
@@ -1118,6 +1119,38 @@ struct InfrastructureExecutor {
         }
 
         return nil
+    }
+
+    // MARK: - Native macOS Tool Dispatch
+
+    /// Routes an LLM tool-use block to the appropriate native macOS tool executor.
+    static func executeNativeTool(name: String, input: [String: Any]) async -> String {
+        print("[NativeTool] Executing: \(name)")
+        switch name {
+        case ScreenshotTool.toolName:
+            return await ScreenshotTool.execute(input: input)
+        case FileSearchTool.toolName:
+            return await FileSearchTool.execute(input: input)
+        case AppControlTool.toolName:
+            return await AppControlTool.execute(input: input)
+        case SystemInfoTool.toolName:
+            return await SystemInfoTool.execute(input: input)
+        case ClipboardTool.toolName:
+            return await ClipboardTool.execute(input: input)
+        default:
+            return "Unknown native tool: \(name)"
+        }
+    }
+
+    /// Returns true if `name` is one of the five native macOS tools.
+    static func isNativeTool(_ name: String) -> Bool {
+        [
+            ScreenshotTool.toolName,
+            FileSearchTool.toolName,
+            AppControlTool.toolName,
+            SystemInfoTool.toolName,
+            ClipboardTool.toolName
+        ].contains(name)
     }
 
     // MARK: - Shell Helper

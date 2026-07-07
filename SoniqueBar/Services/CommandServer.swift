@@ -1424,7 +1424,23 @@ class CommandServer: ObservableObject {
           ~/Library/Mobile Documents/iCloud~md~obsidian/Documents/SeaynicNet/ using grep. \
           Example: grep -ri '<query>' ~/Library/Mobile\\ Documents/iCloud~md~obsidian/Documents/SeaynicNet/ --include='*.md' | head -5
         - **notebooklm_query (via Bash + WebFetch)**: For NotebookLM queries, use WebFetch or \
-          the Bash tool to research the topic. NotebookLM content can be cross-referenced via vault.\(skillsSection)
+          the Bash tool to research the topic. NotebookLM content can be cross-referenced via vault.
+
+        ## macOS Native Tools
+        Five native macOS tools are available for direct system interaction (no Bash required):
+        - **take_screenshot**: Capture the screen to clipboard using /usr/sbin/screencapture. \
+          Use when the user says "take a screenshot", "screenshot", or "capture the screen".
+        - **file_search** (query: string): Search files by name using Spotlight (/usr/bin/mdfind). \
+          Use when the user says "find files named X" or "search for X".
+        - **app_control** (action: "open"|"run_script", app: string, script: string): \
+          Open an app with /usr/bin/open or run AppleScript via /usr/bin/osascript. \
+          Use when the user says "open [App]" or for AppleScript automation.
+        - **system_info** (query: "disk"|"memory"|"cpu"|"uptime"|"all"): \
+          Get system stats via /bin/df, /usr/sbin/sysctl, /usr/bin/uptime. \
+          Use when the user asks about disk space, RAM, CPU, or uptime.
+        - **clipboard** (action: "read"|"write", text: string for write): \
+          Read or write the clipboard via /usr/bin/pbpaste and /usr/bin/pbcopy. \
+          ONLY read clipboard when explicitly asked. Never log clipboard contents.\(skillsSection)
         """
 
         // Combine system + persona + working memory + request into one prompt for Bedrock
@@ -1797,10 +1813,12 @@ class CommandServer: ObservableObject {
         // vault_search / notebooklm_query are handled natively by MCPToolExecutor before this path,
         // but we include their names so the LLM knows it has them if routing falls through to LLM.
         let mcpTools = "mcp__Slack__slack_post_message mcp__Slack__slack_list_channels"
+        // Native macOS tools (executed by InfrastructureExecutor.executeNativeTool)
+        let nativeToolNames = "take_screenshot file_search app_control system_info clipboard"
         let cmd = """
-        timeout 45 '\(claudePath)' --print --verbose --model haiku --allowedTools 'Bash \(mcpTools)' --permission-mode acceptEdits --output-format stream-json --append-system-prompt '\(escapedSystem)' '\(escapedUser)' 2>&1
+        timeout 45 '\(claudePath)' --print --verbose --model haiku --allowedTools 'Bash \(mcpTools) \(nativeToolNames)' --permission-mode acceptEdits --output-format stream-json --append-system-prompt '\(escapedSystem)' '\(escapedUser)' 2>&1
         """
-        print("[LLMProvider] Tool call received from LLM — MCP tools enabled: \(mcpTools)")
+        print("[LLMProvider] Tool call received from LLM — MCP tools enabled: \(mcpTools), native tools: \(nativeToolNames)")
 
         await MainActor.run {
             Self.logEntries.append("[CommandServer] Calling Claude with \(userPrompt.count) char prompt")
@@ -1905,6 +1923,26 @@ class CommandServer: ObservableObject {
                                         let (sentences, remainder) = self.extractCompleteSentences(from: sentenceBuffer)
                                         sentenceBuffer = remainder
 
+                                        for sentence in sentences {
+                                            self.sendSentenceChunk(sentence, index: chunkIndex, to: connection)
+                                            chunkIndex += 1
+                                        }
+                                    }
+                                }
+
+                                // Dispatch native macOS tool_use blocks
+                                if block["type"] as? String == "tool_use",
+                                   let toolName = block["name"] as? String,
+                                   InfrastructureExecutor.isNativeTool(toolName) {
+                                    let toolInput = block["input"] as? [String: Any] ?? [:]
+                                    let toolResult = await InfrastructureExecutor.executeNativeTool(
+                                        name: toolName, input: toolInput
+                                    )
+                                    await MainActor.run {
+                                        accumulatedText += toolResult
+                                        sentenceBuffer += toolResult
+                                        let (sentences, remainder) = self.extractCompleteSentences(from: sentenceBuffer)
+                                        sentenceBuffer = remainder
                                         for sentence in sentences {
                                             self.sendSentenceChunk(sentence, index: chunkIndex, to: connection)
                                             chunkIndex += 1

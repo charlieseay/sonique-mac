@@ -60,6 +60,11 @@
 		CNEHNDLR01B000000000001 /* ConnectorErrorHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = CNEHNDLR01A000000000001 /* ConnectorErrorHandler.swift */; };
 		FB4A785BC5C0C1732655A2E1 /* TaskDispatcher.swift in Sources */ = {isa = PBXBuildFile; fileRef = 52B477ED8413E4F7FC7A7216 /* TaskDispatcher.swift */; };
 		FDEB1550A3C56FEC61801B17 /* BackgroundMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = C97BFF455FB039ADE8EBB91B /* BackgroundMonitor.swift */; };
+		TOOL001B000000000000001 /* ScreenshotTool.swift in Sources */ = {isa = PBXBuildFile; fileRef = TOOL001A000000000000001 /* ScreenshotTool.swift */; };
+		TOOL002B000000000000002 /* FileSearchTool.swift in Sources */ = {isa = PBXBuildFile; fileRef = TOOL002A000000000000002 /* FileSearchTool.swift */; };
+		TOOL003B000000000000003 /* AppControlTool.swift in Sources */ = {isa = PBXBuildFile; fileRef = TOOL003A000000000000003 /* AppControlTool.swift */; };
+		TOOL004B000000000000004 /* SystemInfoTool.swift in Sources */ = {isa = PBXBuildFile; fileRef = TOOL004A000000000000004 /* SystemInfoTool.swift */; };
+		TOOL005B000000000000005 /* ClipboardTool.swift in Sources */ = {isa = PBXBuildFile; fileRef = TOOL005A000000000000005 /* ClipboardTool.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -127,6 +132,11 @@
 		F29D445D763F2FF764C645F4 /* ProactiveBriefing.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ProactiveBriefing.swift; path = SoniqueBar/Services/ProactiveBriefing.swift; sourceTree = "<group>"; };
 		F642E9115684301FB74E47CC /* PredictiveNotifications.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = PredictiveNotifications.swift; path = SoniqueBar/Services/PredictiveNotifications.swift; sourceTree = "<group>"; };
 		F66032BAA7F8170D24F8DE7D /* HelmsmanConnector.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = HelmsmanConnector.swift; path = SoniqueBar/Connectors/HelmsmanConnector.swift; sourceTree = "<group>"; };
+		TOOL001A000000000000001 /* ScreenshotTool.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ScreenshotTool.swift; path = SoniqueBar/Tools/ScreenshotTool.swift; sourceTree = "<group>"; };
+		TOOL002A000000000000002 /* FileSearchTool.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = FileSearchTool.swift; path = SoniqueBar/Tools/FileSearchTool.swift; sourceTree = "<group>"; };
+		TOOL003A000000000000003 /* AppControlTool.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = AppControlTool.swift; path = SoniqueBar/Tools/AppControlTool.swift; sourceTree = "<group>"; };
+		TOOL004A000000000000004 /* SystemInfoTool.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = SystemInfoTool.swift; path = SoniqueBar/Tools/SystemInfoTool.swift; sourceTree = "<group>"; };
+		TOOL005A000000000000005 /* ClipboardTool.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ClipboardTool.swift; path = SoniqueBar/Tools/ClipboardTool.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -228,8 +238,21 @@
 				BB000013000000000000013 /* Resources */,
 				80D05008DB8908C6DA27ADF8 /* Core */,
 				A8FDEB0EF88E210590423D84 /* Connectors */,
+				TOOLGRP00000000000000001 /* Tools */,
 			);
 			name = SoniqueBar;
+			sourceTree = "<group>";
+		};
+		TOOLGRP00000000000000001 /* Tools */ = {
+			isa = PBXGroup;
+			children = (
+				TOOL001A000000000000001 /* ScreenshotTool.swift */,
+				TOOL002A000000000000002 /* FileSearchTool.swift */,
+				TOOL003A000000000000003 /* AppControlTool.swift */,
+				TOOL004A000000000000004 /* SystemInfoTool.swift */,
+				TOOL005A000000000000005 /* ClipboardTool.swift */,
+			);
+			name = Tools;
 			sourceTree = "<group>";
 		};
 		BB000010000000000000010 /* Models */ = {
@@ -421,6 +444,11 @@
 				5DC3D2FFABFCAD03F51408E1 /* ProactiveBriefing.swift in Sources */,
 				3A121A1AADE60097A524D566 /* ScreenAnalyzer.swift in Sources */,
 				D0B7D3F118FF0142505C9C15 /* QuickCommands.swift in Sources */,
+				TOOL001B000000000000001 /* ScreenshotTool.swift in Sources */,
+				TOOL002B000000000000002 /* FileSearchTool.swift in Sources */,
+				TOOL003B000000000000003 /* AppControlTool.swift in Sources */,
+				TOOL004B000000000000004 /* SystemInfoTool.swift in Sources */,
+				TOOL005B000000000000005 /* ClipboardTool.swift in Sources */,
 				F44AB9BAABB229C347FBB494 /* HelmsmanIntegration.swift in Sources */,
 				E60358D4EEE1AC559B00B834 /* CodeAnalyzer.swift in Sources */,
 				576A4E75D41FB3E23ECEFB0C /* DeviceOrchestrator.swift in Sources */,
