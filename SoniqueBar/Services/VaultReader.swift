@@ -3,23 +3,25 @@ import Foundation
 /// Read access to the linked knowledge vault (Obsidian / Logseq / markdown).
 struct VaultReader {
 
-    /// Active vault root from connector config, linked example, or legacy path.
-    @MainActor static var vaultPath: String {
+    /// Active vault root. Resolves the well-known iCloud/Obsidian paths without touching
+    /// ConfigManager so it's safe to call from any context (sync, nonisolated, async).
+    /// For the config-aware version use `vaultPathAsync()`.
+    static var vaultPath: String {
+        let linked = (NSString(string: "~/.sonique/vault")).expandingTildeInPath
+        if FileManager.default.fileExists(atPath: linked) { return linked }
+        let legacy = (NSString(string: "~/Library/Mobile Documents/iCloud~md~obsidian/Documents/SeaynicNet")).expandingTildeInPath
+        if FileManager.default.fileExists(atPath: legacy) { return legacy }
+        return linked
+    }
+
+    /// Config-aware vault root (reads ConfigManager on the main actor).
+    @MainActor
+    static func vaultPathAsync() -> String {
         if let configured = ConfigManager.shared.config.connectors.knowledge?.obsidianConfig?.vaultPath {
             let expanded = (configured as NSString).expandingTildeInPath
-            if FileManager.default.fileExists(atPath: expanded) {
-                return expanded
-            }
+            if FileManager.default.fileExists(atPath: expanded) { return expanded }
         }
-        let linked = (NSString(string: "~/.sonique/vault")).expandingTildeInPath
-        if FileManager.default.fileExists(atPath: linked) {
-            return linked
-        }
-        let legacy = (NSString(string: "~/Library/Mobile Documents/iCloud~md~obsidian/Documents/SeaynicNet")).expandingTildeInPath
-        if FileManager.default.fileExists(atPath: legacy) {
-            return legacy
-        }
-        return linked
+        return vaultPath
     }
 
     /// Read a Standards/ document
