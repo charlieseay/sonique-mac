@@ -48,7 +48,7 @@ class KokoroProvider: NSObject, VoiceProvider, AVAudioPlayerDelegate {
     }
 
     var isAvailable: Bool {
-        // Always available - binary is embedded in app bundle
+        // Optimistic default; true availability determined by checkHealth()
         return true
     }
 
@@ -139,9 +139,18 @@ class KokoroProvider: NSObject, VoiceProvider, AVAudioPlayerDelegate {
         }
     }
 
+    /// Verifies the embedded TTS binary can start and accepts synthesis.
+    /// Returns false if the binary is missing, corrupt, or fails to initialize.
     func healthCheck() async -> Bool {
-        // Embedded binary is always available
-        return true
+        let probe = EmbeddedTTSProvider()
+        do {
+            try probe.start()
+            probe.shutdown()
+            return true
+        } catch {
+            print("[KokoroProvider] healthCheck failed: \(error)")
+            return false
+        }
     }
 
     deinit {

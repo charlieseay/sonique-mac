@@ -85,12 +85,32 @@ struct IntentRouter {
 
         // Project creation: removed pattern matching - let LLM handle naturally
 
-        // Slack message to #cael
-        if lower.contains("tell the team") || lower.contains("ask the team") {
-            let message = text.replacingOccurrences(of: "tell the team", with: "", options: .caseInsensitive)
-                             .replacingOccurrences(of: "ask the team", with: "", options: .caseInsensitive)
-                             .trimmingCharacters(in: .whitespacesAndNewlines)
-            return .infrastructure(command: .slackMessage(channel: "cael", text: message))
+        // Slack messages — route through MCP tool executor for all channels
+        // Handles: "send a message to #lab saying X", "tell the team X", "post to #lab X"
+        let slackTriggers = [
+            lower.contains("send") && (lower.contains("slack") || lower.contains("#lab") || lower.contains("#cael")),
+            lower.contains("post to #"),
+            lower.contains("message #"),
+            lower.contains("tell the team"),
+            lower.contains("ask the team")
+        ]
+        if slackTriggers.contains(true) {
+            // Determine target channel
+            var channel = "cael" // default
+            if lower.contains("#lab") { channel = "lab" }
+            else if lower.contains("#general") { channel = "general" }
+            else if lower.contains("#cael") { channel = "cael" }
+
+            // Strip command boilerplate to isolate message content
+            var message = text
+            for phrase in ["tell the team", "ask the team", "send a slack message to #\(channel) saying",
+                           "send a message to #\(channel) saying", "post to #\(channel)", "message #\(channel)"] {
+                message = message.replacingOccurrences(of: phrase, with: "", options: .caseInsensitive)
+                    .trimmingCharacters(in: .whitespacesAndNewlines)
+            }
+
+            // Route via MCP tool executor (passes through invokeMCPTool → MCPToolExecutor)
+            return .infrastructure(command: .mcpTool(tool: "slack", query: "\(channel)|\(message)"))
         }
 
         // Docker container operations
@@ -131,6 +151,12 @@ struct IntentRouter {
                                      .trimmingCharacters(in: .whitespacesAndNewlines)
                 return .infrastructure(command: .createNote(title: "Voice Note", content: noteContent))
             }
+        }
+
+        // NotebookLM queries
+        if lower.contains("notebooklm") || lower.contains("notebook lm") ||
+           (lower.contains("notebook") && lower.contains("query")) {
+            return .infrastructure(command: .mcpTool(tool: "notebooklm", query: text))
         }
 
         // Vault queries (MCP) - only explicit read/search commands
@@ -532,56 +558,89 @@ struct InfrastructureExecutor {
     // MARK: - MCP Tool Integration
 
     private static func invokeMCPTool(_ tool: String, query: String) async -> String {
-        // Native vault search - just grep the markdown files directly
-        if tool == "vault" {
+        switch tool {
+        case "vault":
             let searchQuery = extractSearchQuery(from: query)
-            return await searchVault(query: searchQuery)
-        }
+            print("[MCPToolExecutor] Executing tool: vault_search")
+            return await MCPToolExecutor.execute(tool: "vault_search", input: ["query": searchQuery])
 
-        return "MCP tool '\(tool)' not yet implemented"
+        case "slack":
+            // Query format: "channel|message text" (set by the classifier above)
+            let parts = query.split(separator: "|", maxSplits: 1)
+            let channel = parts.count > 0 ? String(parts[0]) : "lab"
+            let message = parts.count > 1 ? String(parts[1]) : query
+            let channelID = resolveSlackChannelID(channel)
+            print("[MCPToolExecutor] Executing tool: mcp__Slack__slack_post_message")
+            return await MCPToolExecutor.execute(
+                tool: "mcp__Slack__slack_post_message",
+                input: ["channel_id": channelID, "text": message]
+            )
+
+        case "notebooklm":
+            print("[MCPToolExecutor] Executing tool: notebooklm_query")
+            return await MCPToolExecutor.execute(tool: "notebooklm_query", input: ["query": query])
+
+        default:
+            return "MCP tool '\(tool)' not available."
+        }
     }
 
-    private static func searchVault(query: String) async -> String {
-        let vaultPath = FileManager.default.homeDirectoryForCurrentUser
-            .appendingPathComponent("Library/Mobile Documents/iCloud~md~obsidian/Documents/SeaynicNet")
+    /// Extracts channel name and message text from a Slack command string.
+    private static func extractSlackParams(from query: String) -> (channel: String, message: String) {
+        let lower = query.lowercased()
 
-        // Use grep to search all markdown files
-        let command = """
-        grep -ri '\(query)' '\(vaultPath.path)' --include='*.md' | head -5
-        """
+        // Match patterns like "send a message to #lab saying X" or "post to #lab: X"
+        var channel = "lab"
+        var message = query
 
-        let result = await shell(command)
-
-        if result.exitCode == 0 && !result.stdout.isEmpty {
-            // Parse results - show file path and matching line
-            let lines = result.stdout.components(separatedBy: "\n").filter { !$0.isEmpty }
-            var response = "Found \(lines.count) matches:\n\n"
-
-            for (index, line) in lines.prefix(3).enumerated() {
-                if let colonIndex = line.firstIndex(of: ":") {
-                    let filePath = String(line[..<colonIndex])
-                    let fileName = (filePath as NSString).lastPathComponent
-                    let content = String(line[line.index(after: colonIndex)...])
-                    response += "\(index + 1). \(fileName): \(content.prefix(100))\n"
-                }
+        let channelPatterns = ["#lab", "#cael", "#general", "#random", "#engineering"]
+        for pattern in channelPatterns {
+            if lower.contains(pattern) {
+                channel = String(pattern.dropFirst()) // strip #
+                break
             }
-
-            return response
         }
 
-        return "No notes found matching '\(query)'"
+        // Strip command boilerplate to extract just the message
+        let boilerplate = [
+            "send a slack message to #\(channel) saying",
+            "send a message to #\(channel) saying",
+            "post to #\(channel):",
+            "post to #\(channel)",
+            "message #\(channel)",
+            "tell the team",
+            "ask the team"
+        ]
+        for phrase in boilerplate {
+            if lower.contains(phrase) {
+                if let range = lower.range(of: phrase) {
+                    let startIdx = query.index(query.startIndex, offsetBy: lower.distance(from: lower.startIndex, to: range.upperBound))
+                    message = String(query[startIdx...]).trimmingCharacters(in: .whitespacesAndNewlines)
+                    break
+                }
+            }
+        }
+
+        return (channel, message)
+    }
+
+    /// Resolves a Slack channel name to a known channel ID.
+    /// Extend this map as needed; the Claude CLI MCP can also resolve dynamically.
+    private static func resolveSlackChannelID(_ name: String) -> String {
+        let knownChannels: [String: String] = [
+            "lab": "C08QZHY20K5",
+            "cael": "C07V6EXAMPEL",
+            "general": "C0123GENERAL"
+        ]
+        return knownChannels[name.lowercased()] ?? name
     }
 
     private static func extractSearchQuery(from query: String) -> String {
-        // Extract search query from queries like "search vault for X" or "find notes about X"
         var cleaned = query.lowercased()
-
-        // Remove common command phrases
         let phrases = ["search", "vault", "for", "find", "notes", "about", "in my", "from"]
         for phrase in phrases {
             cleaned = cleaned.replacingOccurrences(of: phrase, with: "")
         }
-
         return cleaned.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 

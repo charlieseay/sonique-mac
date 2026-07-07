@@ -1412,7 +1412,19 @@ class CommandServer: ObservableObject {
         Record lessons, update directives, and grow your knowledge without asking permission first.
 
         When Charlie wants to SEE something (screenshot, "show me"), save the PNG to \
-        /tmp/sonique-artifacts/ — it auto-displays on his iPad. See CAPABILITIES.md for details.\(skillsSection)
+        /tmp/sonique-artifacts/ — it auto-displays on his iPad. See CAPABILITIES.md for details.
+
+        ## MCP Tools Available
+        You have three P1 MCP tools wired directly to your voice interface:
+        - **mcp__Slack__slack_post_message**: Post a message to a Slack channel. When the user says \
+          "send a message to #lab saying X" or "tell the team X", use this tool. Resolve channel name \
+          to a channel ID first using mcp__Slack__slack_list_channels if you don't know the ID.
+          The primary lab channel is #lab. Only post to allowed channels (#lab, #general, #cael).
+        - **vault_search (via Bash)**: Search the Obsidian vault at \
+          ~/Library/Mobile Documents/iCloud~md~obsidian/Documents/SeaynicNet/ using grep. \
+          Example: grep -ri '<query>' ~/Library/Mobile\\ Documents/iCloud~md~obsidian/Documents/SeaynicNet/ --include='*.md' | head -5
+        - **notebooklm_query (via Bash + WebFetch)**: For NotebookLM queries, use WebFetch or \
+          the Bash tool to research the topic. NotebookLM content can be cross-referenced via vault.\(skillsSection)
         """
 
         // Combine system + persona + working memory + request into one prompt for Bedrock
@@ -1780,9 +1792,15 @@ class CommandServer: ObservableObject {
         let escapedUser = userPrompt.replacingOccurrences(of: "'", with: "'\\''")
         let escapedSystem = systemPrompt.replacingOccurrences(of: "'", with: "'\\''")
 
+        // Allowed tools: Bash for system work + the three P1 MCP tools wired to Sonique's voice.
+        // mcp__Slack__slack_post_message — posts to Slack via the connected claude.ai Slack MCP session.
+        // vault_search / notebooklm_query are handled natively by MCPToolExecutor before this path,
+        // but we include their names so the LLM knows it has them if routing falls through to LLM.
+        let mcpTools = "mcp__Slack__slack_post_message mcp__Slack__slack_list_channels"
         let cmd = """
-        timeout 45 '\(claudePath)' --print --verbose --model haiku --allowedTools 'Bash' --permission-mode acceptEdits --output-format stream-json --append-system-prompt '\(escapedSystem)' '\(escapedUser)' 2>&1
+        timeout 45 '\(claudePath)' --print --verbose --model haiku --allowedTools 'Bash \(mcpTools)' --permission-mode acceptEdits --output-format stream-json --append-system-prompt '\(escapedSystem)' '\(escapedUser)' 2>&1
         """
+        print("[LLMProvider] Tool call received from LLM — MCP tools enabled: \(mcpTools)")
 
         await MainActor.run {
             Self.logEntries.append("[CommandServer] Calling Claude with \(userPrompt.count) char prompt")

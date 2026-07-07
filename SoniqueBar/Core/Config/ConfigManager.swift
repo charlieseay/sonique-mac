@@ -1,5 +1,26 @@
 import Foundation
 
+// MARK: - Config Architecture (Build 127+)
+//
+// There are two config-related files:
+//
+//   1. Core/Config/ConfigManager.swift  ← THIS FILE
+//      • Defines SoniqueBarConfig, UserConfig (without TTS fields), ConnectorConfigs, and
+//        all sub-config structs (HelmsmanConfig, SlackConfig, etc.)
+//      • Owns the ConfigManager @MainActor singleton that persists to
+//        ~/Library/Application Support/SoniqueBar/config.json
+//      • Should be the single source of truth for ALL config structs.
+//
+//   2. Core/Connectors/ConnectorRegistry.swift
+//      • Re-declares UserConfig with additional TTS fields (ttsProvider, elevenLabsVoiceID,
+//        kokoroVoice) that are missing here, plus the ConnectorRegistry runtime registry.
+//      • AUTHORITATIVE for TTS config until this file is updated to include those fields.
+//
+// TODO (post Build 127): Merge TTS fields from ConnectorRegistry.UserConfig into the
+// UserConfig below, then remove the duplicate declaration from ConnectorRegistry.swift.
+// Risk: circular init if ConfigManager.shared is called during registry construction.
+// Approach: Move TTSProvider enum here; ConnectorRegistry imports via typealias.
+
 /// Complete SoniqueBar configuration
 struct SoniqueBarConfig: Codable {
     var user: UserConfig

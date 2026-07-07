@@ -118,10 +118,20 @@ class VoiceRouter: ObservableObject {
         providers.first { $0.name.lowercased() == name.lowercased() }
     }
 
-    /// Speak with default provider
+    /// Speak with default provider, falling back to ElevenLabs if the primary provider is unavailable.
     func speak(text: String, voice: String? = nil) async throws {
         guard let provider = getProvider(defaultProvider) else {
             throw VoiceError.notAvailable
+        }
+
+        let isHealthy = await provider.healthCheck()
+        if !isHealthy && defaultProvider != "elevenlabs" {
+            print("[VoiceRouter] \(defaultProvider) unavailable, falling back to ElevenLabs")
+            if let fallback = getProvider("elevenlabs") {
+                let fallbackVoice = voice ?? defaultVoice["elevenlabs"]
+                try await fallback.speak(text: text, voice: fallbackVoice)
+                return
+            }
         }
 
         let selectedVoice = voice ?? defaultVoice[defaultProvider]

@@ -4,8 +4,8 @@ import Foundation
 struct VaultReader {
 
     /// Active vault root from connector config, linked example, or legacy path.
-    static var vaultPath: String {
-        if let configured = ConnectorRegistry.shared.config.knowledge?.obsidianConfig?.vaultPath {
+    @MainActor static var vaultPath: String {
+        if let configured = ConfigManager.shared.config.connectors.knowledge?.obsidianConfig?.vaultPath {
             let expanded = (configured as NSString).expandingTildeInPath
             if FileManager.default.fileExists(atPath: expanded) {
                 return expanded
@@ -189,7 +189,7 @@ enum VaultLinker {
 
     private static func applyToRegistry(_ result: LinkResult) {
         Task { @MainActor in
-            var config = ConnectorRegistry.shared.config
+            var config = ConfigManager.shared.config.connectors
             var knowledge = config.knowledge ?? KnowledgeConfig(provider: "vault", enabled: true, obsidianConfig: nil, notionConfig: nil)
             knowledge.provider = "vault"
             knowledge.enabled = true
@@ -199,7 +199,8 @@ enum VaultLinker {
                 kind: result.kind
             )
             config.knowledge = knowledge
-            ConnectorRegistry.shared.config = config
+            ConfigManager.shared.config.connectors = config
+            ConfigManager.shared.save()
             // Re-register connector with new path
             ConnectorRegistry.shared.register(
                 ObsidianConnector(config: knowledge.obsidianConfig!, enabled: true)

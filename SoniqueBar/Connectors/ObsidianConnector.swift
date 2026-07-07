@@ -80,6 +80,9 @@ struct ObsidianConnector: ActionConnector {
     // MARK: - Execution
 
     func execute(_ capability: String, parameters: [String: Any]) async throws -> ConnectorResult {
+        guard await healthCheck() else {
+            throw ConnectorError.serviceUnavailable
+        }
         switch capability {
         case "create_note":
             return try await createNote(parameters)

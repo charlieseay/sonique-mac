@@ -106,10 +106,20 @@ struct GitHubConnector: ActionConnector {
             command += " --assignee \"\(assignee)\""
         }
 
-        let result = await shell(command)
+        let result = try await ConnectorErrorHandler.withRetry(connectorName: name) {
+            let r = await self.shell(command)
+            if r.exitCode != 0 {
+                // Auth errors should not be retried
+                if r.stderr.contains("401") || r.stderr.lowercased().contains("auth") {
+                    throw ConnectorError.authenticationFailed
+                }
+                throw ConnectorError.connectionFailed
+            }
+            return r
+        }
 
         guard result.exitCode == 0 else {
-            throw ConnectorError.invalidResponse(result.stderr)
+            throw ConnectorError.invalidResponse("gh exited \(result.exitCode)")
         }
 
         // Extract issue URL from output
@@ -126,10 +136,14 @@ struct GitHubConnector: ActionConnector {
             throw ConnectorError.missingParameter("repo")
         }
 
-        let result = await shell("gh pr list --repo \(repo) --json number,title,author,state --limit 10")
+        let result = try await ConnectorErrorHandler.withRetry(connectorName: name) {
+            let r = await self.shell("gh pr list --repo \(repo) --json number,title,author,state --limit 10")
+            if r.exitCode != 0 { throw ConnectorError.connectionFailed }
+            return r
+        }
 
         guard result.exitCode == 0 else {
-            throw ConnectorError.invalidResponse(result.stderr)
+            throw ConnectorError.invalidResponse("gh exited \(result.exitCode)")
         }
 
         guard let data = result.stdout.data(using: .utf8),
@@ -152,10 +166,14 @@ struct GitHubConnector: ActionConnector {
             throw ConnectorError.missingParameter("repo or pr")
         }
 
-        let result = await shell("gh pr checks \(prNumber) --repo \(repo)")
+        let result = try await ConnectorErrorHandler.withRetry(connectorName: name) {
+            let r = await self.shell("gh pr checks \(prNumber) --repo \(repo)")
+            if r.exitCode != 0 { throw ConnectorError.connectionFailed }
+            return r
+        }
 
         guard result.exitCode == 0 else {
-            throw ConnectorError.invalidResponse(result.stderr)
+            throw ConnectorError.invalidResponse("gh exited \(result.exitCode)")
         }
 
         let output = result.stdout.trimmingCharacters(in: .whitespacesAndNewlines)

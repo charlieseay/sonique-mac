@@ -64,20 +64,12 @@ struct SlackConnector: ActionConnector {
     }
 
     func healthCheck() async -> Bool {
-        // Test Slack API connectivity
-        guard let url = URL(string: "https://slack.com/api/auth.test") else {
-            return false
-        }
-
-        var request = URLRequest(url: url)
+        guard let url = URL(string: "https://slack.com/api/auth.test") else { return false }
+        var request = ConnectorErrorHandler.request(url: url)
         request.setValue("Bearer \(getSlackToken())", forHTTPHeaderField: "Authorization")
-
         do {
             let (_, response) = try await URLSession.shared.data(for: request)
-            guard let httpResponse = response as? HTTPURLResponse else {
-                return false
-            }
-            return httpResponse.statusCode == 200
+            return (response as? HTTPURLResponse)?.statusCode == 200
         } catch {
             return false
         }
@@ -109,31 +101,39 @@ struct SlackConnector: ActionConnector {
             throw ConnectorError.connectionFailed
         }
 
-        let payload: [String: Any] = [
-            "channel": channel,
-            "text": text
-        ]
+        let payload: [String: Any] = ["channel": channel, "text": text]
 
-        var request = URLRequest(url: url)
-        request.httpMethod = "POST"
+        var request = ConnectorErrorHandler.request(url: url, method: "POST")
         request.setValue("Bearer \(getSlackToken())", forHTTPHeaderField: "Authorization")
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.httpBody = try JSONSerialization.data(withJSONObject: payload)
 
-        let (data, response) = try await URLSession.shared.data(for: request)
+        let (data, response) = try await ConnectorErrorHandler.withRetry(connectorName: name) {
+            try await URLSession.shared.data(for: request)
+        }
 
-        guard let httpResponse = response as? HTTPURLResponse,
-              httpResponse.statusCode == 200 else {
+        guard let httpResponse = response as? HTTPURLResponse else {
             throw ConnectorError.connectionFailed
         }
 
+        switch httpResponse.statusCode {
+        case 200:
+            break
+        case 401, 403:
+            throw ConnectorError.authenticationFailed
+        case 429:
+            throw ConnectorError.rateLimitExceeded
+        default:
+            throw ConnectorError.invalidResponse("HTTP \(httpResponse.statusCode)")
+        }
+
         if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-           let ok = json["ok"] as? Bool,
-           ok {
+           let ok = json["ok"] as? Bool, ok {
             return .success(message: "Posted to #\(channel)")
         }
 
-        throw ConnectorError.invalidResponse("Slack API returned error")
+        // Slack returns 200 even for API errors; check the error field without logging token or body
+        throw ConnectorError.invalidResponse("Slack API returned ok=false")
     }
 
     private func listChannels() async throws -> ConnectorResult {
@@ -141,10 +141,12 @@ struct SlackConnector: ActionConnector {
             throw ConnectorError.connectionFailed
         }
 
-        var request = URLRequest(url: url)
+        var request = ConnectorErrorHandler.request(url: url)
         request.setValue("Bearer \(getSlackToken())", forHTTPHeaderField: "Authorization")
 
-        let (data, response) = try await URLSession.shared.data(for: request)
+        let (data, response) = try await ConnectorErrorHandler.withRetry(connectorName: name) {
+            try await URLSession.shared.data(for: request)
+        }
 
         guard let httpResponse = response as? HTTPURLResponse,
               httpResponse.statusCode == 200 else {

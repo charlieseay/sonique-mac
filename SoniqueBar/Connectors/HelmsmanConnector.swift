@@ -83,17 +83,11 @@ struct HelmsmanConnector: ActionConnector {
     }
 
     func healthCheck() async -> Bool {
-        // Check if helmsman-db REST API is reachable
-        guard let url = URL(string: "\(queryEndpoint)/health") else {
-            return false
-        }
-
+        guard let url = URL(string: "\(queryEndpoint)/health") else { return false }
         do {
-            let (_, response) = try await URLSession.shared.data(from: url)
-            guard let httpResponse = response as? HTTPURLResponse else {
-                return false
-            }
-            return httpResponse.statusCode == 200
+            let request = ConnectorErrorHandler.request(url: url)
+            let (_, response) = try await URLSession.shared.data(for: request)
+            return (response as? HTTPURLResponse)?.statusCode == 200
         } catch {
             return false
         }
@@ -127,22 +121,30 @@ struct HelmsmanConnector: ActionConnector {
             throw ConnectorError.connectionFailed
         }
 
-        var request = URLRequest(url: url)
-        request.httpMethod = "POST"
+        var request = ConnectorErrorHandler.request(url: url, method: "POST")
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.setValue("Bearer \(secret)", forHTTPHeaderField: "Authorization")
         request.httpBody = try JSONSerialization.data(withJSONObject: payload)
 
-        // Execute
-        let (data, response) = try await URLSession.shared.data(for: request)
+        let (data, response) = try await ConnectorErrorHandler.withRetry(connectorName: name) {
+            try await URLSession.shared.data(for: request)
+        }
 
         guard let httpResponse = response as? HTTPURLResponse else {
             throw ConnectorError.connectionFailed
         }
 
-        guard httpResponse.statusCode == 200 else {
-            let errorMessage = String(data: data, encoding: .utf8) ?? "Unknown error"
-            throw ConnectorError.invalidResponse("HTTP \(httpResponse.statusCode): \(errorMessage)")
+        switch httpResponse.statusCode {
+        case 200, 201:
+            break
+        case 401, 403:
+            throw ConnectorError.authenticationFailed
+        case 429:
+            throw ConnectorError.rateLimitExceeded
+        case 503:
+            throw ConnectorError.serviceUnavailable
+        default:
+            throw ConnectorError.invalidResponse("HTTP \(httpResponse.statusCode)")
         }
 
         // Parse response
@@ -179,8 +181,10 @@ struct HelmsmanConnector: ActionConnector {
             throw ConnectorError.connectionFailed
         }
 
-        // Execute query
-        let (data, response) = try await URLSession.shared.data(from: url)
+        let request = ConnectorErrorHandler.request(url: url)
+        let (data, response) = try await ConnectorErrorHandler.withRetry(connectorName: name) {
+            try await URLSession.shared.data(for: request)
+        }
 
         guard let httpResponse = response as? HTTPURLResponse,
               httpResponse.statusCode == 200 else {
@@ -208,7 +212,10 @@ struct HelmsmanConnector: ActionConnector {
             throw ConnectorError.connectionFailed
         }
 
-        let (data, response) = try await URLSession.shared.data(from: url)
+        let request = ConnectorErrorHandler.request(url: url)
+        let (data, response) = try await ConnectorErrorHandler.withRetry(connectorName: name) {
+            try await URLSession.shared.data(for: request)
+        }
 
         guard let httpResponse = response as? HTTPURLResponse,
               httpResponse.statusCode == 200 else {

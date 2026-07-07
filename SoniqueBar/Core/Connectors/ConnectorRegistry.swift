@@ -2,6 +2,11 @@ import Foundation
 import SwiftUI
 
 // MARK: - Configuration System
+//
+// NOTE: This file re-declares UserConfig with TTS-specific fields (ttsProvider,
+// elevenLabsVoiceID, kokoroVoice) that are not yet present in Core/Config/ConfigManager.swift.
+// These declarations are authoritative for TTS until the two files are merged.
+// See Core/Config/ConfigManager.swift for the full architecture note.
 
 /// Complete SoniqueBar configuration
 struct SoniqueBarConfig: Codable {
