@@ -1818,7 +1818,7 @@ class CommandServer: ObservableObject {
         let cmd = """
         timeout 45 '\(claudePath)' --print --verbose --model haiku --allowedTools 'Bash \(mcpTools) \(nativeToolNames)' --permission-mode acceptEdits --output-format stream-json --append-system-prompt '\(escapedSystem)' '\(escapedUser)' 2>&1
         """
-        print("[LLMProvider] Tool call received from LLM — MCP tools enabled: \(mcpTools), native tools: \(nativeToolNames)")
+        print("[LLMProvider] Starting agentic call — MCP tools: \(mcpTools), native tools: \(nativeToolNames)")
 
         await MainActor.run {
             Self.logEntries.append("[CommandServer] Calling Claude with \(userPrompt.count) char prompt")
@@ -1930,14 +1930,20 @@ class CommandServer: ObservableObject {
                                     }
                                 }
 
-                                // Dispatch native macOS tool_use blocks
+                                // Dispatch tool_use blocks — native macOS tools + P1 MCP tools
                                 if block["type"] as? String == "tool_use",
-                                   let toolName = block["name"] as? String,
-                                   InfrastructureExecutor.isNativeTool(toolName) {
+                                   let toolName = block["name"] as? String {
                                     let toolInput = block["input"] as? [String: Any] ?? [:]
-                                    let toolResult = await InfrastructureExecutor.executeNativeTool(
-                                        name: toolName, input: toolInput
-                                    )
+                                    print("[LLMProvider] Tool call received from LLM — tool: \(toolName)")
+                                    let toolResult: String
+                                    if InfrastructureExecutor.isNativeTool(toolName) {
+                                        toolResult = await InfrastructureExecutor.executeNativeTool(
+                                            name: toolName, input: toolInput
+                                        )
+                                    } else {
+                                        // MCP tools (vault_search, notebooklm_query, etc.)
+                                        toolResult = await MCPToolExecutor.execute(tool: toolName, input: toolInput)
+                                    }
                                     await MainActor.run {
                                         accumulatedText += toolResult
                                         sentenceBuffer += toolResult

@@ -625,13 +625,12 @@ struct InfrastructureExecutor {
         return (channel, message)
     }
 
-    /// Resolves a Slack channel name to a known channel ID.
-    /// Extend this map as needed; the Claude CLI MCP can also resolve dynamically.
+    /// Resolves a Slack channel name to a verified channel ID.
+    /// Only #lab has a confirmed ID; other channels fall through to the raw name so the
+    /// Claude CLI MCP path can resolve them dynamically via slack_list_channels.
     private static func resolveSlackChannelID(_ name: String) -> String {
         let knownChannels: [String: String] = [
-            "lab": "C08QZHY20K5",
-            "cael": "C07V6EXAMPEL",
-            "general": "C0123GENERAL"
+            "lab": "C08QZHY20K5"
         ]
         return knownChannels[name.lowercased()] ?? name
     }
