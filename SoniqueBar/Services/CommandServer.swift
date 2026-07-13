@@ -30,9 +30,15 @@ class CommandServer: ObservableObject {
     // Model escalation state (auto-reverts to haiku after escalated request completes)
     private var sessionModel: String = "haiku"
 
+    // Bonjour service for auto-discovery by iOS clients
+    private let bonjourService = BonjourService()
+
     private init() {
         setupListener()
         startHealthCheck()
+
+        // Start Bonjour advertisement
+        bonjourService.start()
 
         // Load rules at startup
         Task {
@@ -50,6 +56,7 @@ class CommandServer: ObservableObject {
     deinit {
         // Can't call @MainActor methods from deinit
         listener?.cancel()
+        bonjourService.stop()
     }
 
     // MARK: - Golden Rules Loading
