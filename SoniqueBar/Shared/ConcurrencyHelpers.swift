@@ -47,9 +47,6 @@ public enum TimeoutError: Error, LocalizedError {
             case "readTodaysNotes()", "readTodaysNotes.vaultPath": friendlyLabel = "reading today's notes"
             case "calculateMath(from:)": friendlyLabel = "the calculation"
 
-            // PatternClassifier labels
-            case "PatternClassifier.classify": friendlyLabel = "classifying the command"
-
             default: friendlyLabel = "an operation"
             }
             let capitalizedLabel = friendlyLabel.prefix(1).capitalized + friendlyLabel.dropFirst()

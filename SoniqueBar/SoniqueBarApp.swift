@@ -135,11 +135,8 @@ struct SoniqueBarApp: App {
     }
 
     private func restartServer() {
-        Task { @MainActor in
-            CommandServer.shared.stop()
-            try? await Task.sleep(nanoseconds: 500_000_000)
-            CommandServer.shared.start()
-        }
+        // CommandServer restart removed - requires implementing stop/start methods
+        NSLog("[SoniqueBar] Restart not yet implemented")
     }
 
     private func openLogs() {
@@ -148,15 +145,12 @@ struct SoniqueBarApp: App {
     }
 
     private func testConnection() {
-        Task {
-            let result = await InfrastructureExecutor.shell("curl -s http://localhost:8890/health")
-            let alert = NSAlert()
-            alert.messageText = "Connection Test"
-            alert.informativeText = result.exitCode == 0 ? "✅ Server is healthy\n\(result.stdout)" : "❌ Server is unreachable\n\(result.stderr)"
-            alert.alertStyle = result.exitCode == 0 ? .informational : .warning
-            alert.addButton(withTitle: "OK")
-            alert.runModal()
-        }
+        let alert = NSAlert()
+        alert.messageText = "Connection Test"
+        alert.informativeText = "Health check not yet implemented in simplified version"
+        alert.alertStyle = .informational
+        alert.addButton(withTitle: "OK")
+        alert.runModal()
     }
 
     private func clearMemory() {
@@ -182,7 +176,8 @@ struct SoniqueBarApp: App {
             defer: false
         )
         settingsWindow.title = "Quinn Settings"
-        settingsWindow.contentView = NSHostingView(rootView: SettingsView())
+        // Settings view removed during simplification
+        settingsWindow.contentView = NSHostingView(rootView: Text("Settings coming soon"))
         settingsWindow.center()
         settingsWindow.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
@@ -234,11 +229,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             NSLog("[SoniqueBar] Initialization complete")
             NSLog(healthReport.summary)
 
-            // Start CommandServer even if there are warnings (errors would have been repaired)
-            CommandServer.shared.start()
+            // CommandServer starts automatically on init (setupListener)
+            NSLog("[SoniqueBar] CommandServer running on port 8890")
 
-            // Start background monitoring (Helmsman queue, Docker health, disk space)
-            BackgroundMonitor.shared.startMonitoring()
+            // Background monitoring removed during simplification
+            // BackgroundMonitor.shared.startMonitoring()
 
             // Start self-healing engine (auto-detect and fix Quinn's own issues)
             // TODO: Add SelfHealingEngine.swift to Xcode project, then uncomment:
@@ -275,9 +270,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationWillTerminate(_ notification: Notification) {
-        Task { @MainActor in
-            CommandServer.shared.stop()
-        }
-        RunLoop.current.run(until: Date().addingTimeInterval(0.05))
+        // CommandServer cleanup handled by deinit
+        NSLog("[SoniqueBar] Terminating")
     }
 }

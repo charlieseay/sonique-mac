@@ -78,8 +78,7 @@ class VoiceRouter: ObservableObject {
 
     private func registerProviders() {
         providers = [
-            KokoroProvider(),         // Embedded TTS (App Store compatible)
-            ElevenLabsProvider(),     // Cloud TTS (fallback)
+            ElevenLabsProvider(),     // Cloud TTS (primary)
             OpenAITTSProvider(),      // Alternative cloud
             SystemVoiceProvider()     // System fallback
         ]
@@ -87,30 +86,13 @@ class VoiceRouter: ObservableObject {
 
     /// Load TTS provider preference from config
     private func loadProviderFromConfig() {
-        let config = ConfigManager.shared.config.user
-        defaultProvider = config.ttsProvider.rawValue
-
-        // Load voice preferences
-        if let elevenLabsVoice = config.elevenLabsVoiceID {
-            defaultVoice["elevenlabs"] = elevenLabsVoice
-        }
-        if let kokoroVoice = config.kokoroVoice {
-            defaultVoice["kokoro"] = kokoroVoice
-        }
+        // No config manager for now - using hardcoded defaults
     }
 
     /// Update config when provider changes
     func setProvider(_ providerName: String) {
         defaultProvider = providerName
-        // Update config
-        Task {
-            await MainActor.run {
-                if let provider = UserConfig.TTSProvider(rawValue: providerName) {
-                    ConfigManager.shared.config.user.ttsProvider = provider
-                    ConfigManager.shared.save()
-                }
-            }
-        }
+        // Config persistence removed - just update in-memory
     }
 
     /// Get provider by name
