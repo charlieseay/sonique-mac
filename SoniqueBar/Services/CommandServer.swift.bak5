@@ -2188,10 +2188,10 @@ class CommandServer: ObservableObject {
             NSLog("[CommandServer] Diagnosis: \(diagnosis.diagnosis) (confidence: \(diagnosis.confidence))")
 
             // Attempt auto-remediation if applicable
-            var remediationResult: RemediationEngineStub.RemediationResult? = nil
+            var remediationResult: RemediationEngine.RemediationResult? = nil
             if diagnosis.remediation.autoFixable {
                 NSLog("[CommandServer] Attempting auto-remediation...")
-                remediationResult = await RemediationEngineStub.remediate(diagnosis: diagnosis)
+                remediationResult = await RemediationEngine.remediate(diagnosis: diagnosis)
                 NSLog("[CommandServer] Remediation result: \(remediationResult?.success == true ? "success" : "failed")")
             }
 
@@ -2260,7 +2260,7 @@ class CommandServer: ObservableObject {
             NSLog("[CommandServer] Received remediation request for: \(diagnosis.diagnosis)")
 
             // Attempt remediation
-            let result = await RemediationEngineStub.remediate(diagnosis: diagnosis)
+            let result = await RemediationEngine.remediate(diagnosis: diagnosis)
 
             NSLog("[CommandServer] Remediation result: \(result.success ? "success" : "failed")")
 

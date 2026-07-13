@@ -74,8 +74,8 @@ struct IntentRouter {
         }
 
         // Reload rules/identity/capabilities from iCloud
-        if false && lower.matches(pattern: "(reload|refresh|reinitialize|re-initialize|reset).*(rules|identity|capabilities|config)") ||
-           false && lower.matches(pattern: "(rules|identity|capabilities).*(reload|refresh)") {
+        if lower.matches(pattern: "(reload|refresh|reinitialize|re-initialize|reset).*(rules|identity|capabilities|config)") ||
+           lower.matches(pattern: "(rules|identity|capabilities).*(reload|refresh)") {
             return .infrastructure(command: .reloadRules)
         }
 

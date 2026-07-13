@@ -2178,20 +2178,20 @@ class CommandServer: ObservableObject {
         do {
             let decoder = JSONDecoder()
             decoder.dateDecodingStrategy = .iso8601
-            let snapshot = try decoder.decode(DiagnosticAgentStub.Snapshot.self, from: bodyData)
+            let snapshot = try decoder.decode(DiagnosticAgent.Snapshot.self, from: bodyData)
 
             NSLog("[CommandServer] Received diagnostic snapshot: \(snapshot.errorType)")
 
             // Run diagnostic analysis
-            let diagnosis = await DiagnosticAgentStub.diagnose(snapshot)
+            let diagnosis = await DiagnosticAgent.diagnose(snapshot)
 
             NSLog("[CommandServer] Diagnosis: \(diagnosis.diagnosis) (confidence: \(diagnosis.confidence))")
 
             // Attempt auto-remediation if applicable
-            var remediationResult: RemediationEngineStub.RemediationResult? = nil
+            var remediationResult: RemediationEngine.RemediationResult? = nil
             if diagnosis.remediation.autoFixable {
                 NSLog("[CommandServer] Attempting auto-remediation...")
-                remediationResult = await RemediationEngineStub.remediate(diagnosis: diagnosis)
+                remediationResult = await RemediationEngine.remediate(diagnosis: diagnosis)
                 NSLog("[CommandServer] Remediation result: \(remediationResult?.success == true ? "success" : "failed")")
             }
 
@@ -2255,12 +2255,12 @@ class CommandServer: ObservableObject {
         do {
             let decoder = JSONDecoder()
             decoder.dateDecodingStrategy = .iso8601
-            let diagnosis = try decoder.decode(DiagnosticAgentStub.Diagnosis.self, from: bodyData)
+            let diagnosis = try decoder.decode(DiagnosticAgent.Diagnosis.self, from: bodyData)
 
             NSLog("[CommandServer] Received remediation request for: \(diagnosis.diagnosis)")
 
             // Attempt remediation
-            let result = await RemediationEngineStub.remediate(diagnosis: diagnosis)
+            let result = await RemediationEngine.remediate(diagnosis: diagnosis)
 
             NSLog("[CommandServer] Remediation result: \(result.success ? "success" : "failed")")
 

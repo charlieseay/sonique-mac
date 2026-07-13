@@ -1034,7 +1034,7 @@ class CommandServer: ObservableObject {
         // DEVICES: List connected devices
         if lower.contains("connected devices") || lower.contains("available devices") || lower.contains("list devices") {
             logger.info("⚡ DEVICES: list connected")
-            let devices = DeviceOrchestratorStub.connectedDevices
+            let devices = DeviceOrchestrator.shared.connectedDevices
             if devices.isEmpty {
                 return "No other devices connected"
             } else {
@@ -1061,47 +1061,47 @@ class CommandServer: ObservableObject {
                 .replacingOccurrences(of: "what device for ", with: "", options: .caseInsensitive)
                 .trimmingCharacters(in: .whitespaces)
 
-            let device = DeviceOrchestratorStub.routeTask(taskDesc)
+            let device = DeviceOrchestrator.shared.routeTask(taskDesc)
             return "Best device for that: \(device)"
         }
 
         // COLLABORATION: Start/stop monitoring
         if lower.contains("start monitoring") || lower.contains("watch my screen") {
             logger.info("⚡ COLLAB: start monitoring")
-            CollaborationEngineStub.startMonitoring()
+            CollaborationEngine.shared.startMonitoring()
             return "Monitoring started. I'll watch for issues."
         }
 
         if lower.contains("stop monitoring") || lower.contains("stop watching") {
             logger.info("⚡ COLLAB: stop monitoring")
-            CollaborationEngineStub.stopMonitoring()
+            CollaborationEngine.shared.stopMonitoring()
             return "Monitoring stopped"
         }
 
         // COLLABORATION: Enable/disable autonomous mode
         if lower.contains("autonomous mode on") || lower.contains("enable autonomous") {
             logger.info("⚡ COLLAB: enable autonomous")
-            CollaborationEngineStub.enableAutonomousMode()
+            CollaborationEngine.shared.enableAutonomousMode()
             return "Autonomous mode enabled. I'll fix issues automatically."
         }
 
         if lower.contains("autonomous mode off") || lower.contains("disable autonomous") {
             logger.info("⚡ COLLAB: disable autonomous")
-            CollaborationEngineStub.disableAutonomousMode()
+            CollaborationEngine.shared.disableAutonomousMode()
             return "Autonomous mode disabled"
         }
 
         // COLLABORATION: Find refactoring opportunities
         if lower.contains("refactoring opportunities") || lower.contains("code smells") {
             logger.info("⚡ COLLAB: find refactoring")
-            return await CollaborationEngineStub.findRefactoringOpportunities()
+            return await CollaborationEngine.shared.findRefactoringOpportunities()
         }
 
         // COLLABORATION: Review live changes
         if lower.contains("review my changes live") || lower.contains("check what i changed") {
             logger.info("⚡ COLLAB: live review")
             if let activeFile = await CodeAnalyzerStub.getActiveFile() {
-                return await CollaborationEngineStub.reviewLiveChanges(file: activeFile)
+                return await CollaborationEngine.shared.reviewLiveChanges(file: activeFile)
             } else {
                 return "I can't see what file you're editing"
             }
@@ -2178,20 +2178,20 @@ class CommandServer: ObservableObject {
         do {
             let decoder = JSONDecoder()
             decoder.dateDecodingStrategy = .iso8601
-            let snapshot = try decoder.decode(DiagnosticAgentStub.Snapshot.self, from: bodyData)
+            let snapshot = try decoder.decode(DiagnosticAgent.Snapshot.self, from: bodyData)
 
             NSLog("[CommandServer] Received diagnostic snapshot: \(snapshot.errorType)")
 
             // Run diagnostic analysis
-            let diagnosis = await DiagnosticAgentStub.diagnose(snapshot)
+            let diagnosis = await DiagnosticAgent.diagnose(snapshot)
 
             NSLog("[CommandServer] Diagnosis: \(diagnosis.diagnosis) (confidence: \(diagnosis.confidence))")
 
             // Attempt auto-remediation if applicable
-            var remediationResult: RemediationEngineStub.RemediationResult? = nil
+            var remediationResult: RemediationEngine.RemediationResult? = nil
             if diagnosis.remediation.autoFixable {
                 NSLog("[CommandServer] Attempting auto-remediation...")
-                remediationResult = await RemediationEngineStub.remediate(diagnosis: diagnosis)
+                remediationResult = await RemediationEngine.remediate(diagnosis: diagnosis)
                 NSLog("[CommandServer] Remediation result: \(remediationResult?.success == true ? "success" : "failed")")
             }
 
@@ -2255,12 +2255,12 @@ class CommandServer: ObservableObject {
         do {
             let decoder = JSONDecoder()
             decoder.dateDecodingStrategy = .iso8601
-            let diagnosis = try decoder.decode(DiagnosticAgentStub.Diagnosis.self, from: bodyData)
+            let diagnosis = try decoder.decode(DiagnosticAgent.Diagnosis.self, from: bodyData)
 
             NSLog("[CommandServer] Received remediation request for: \(diagnosis.diagnosis)")
 
             // Attempt remediation
-            let result = await RemediationEngineStub.remediate(diagnosis: diagnosis)
+            let result = await RemediationEngine.remediate(diagnosis: diagnosis)
 
             NSLog("[CommandServer] Remediation result: \(result.success ? "success" : "failed")")
 
