@@ -136,19 +136,27 @@ struct MCPToolExecutor {
     private static func executeNotebookLMQuery(query: String) async -> String {
         guard !query.isEmpty else { return "No query provided for NotebookLM." }
 
-        let safeQuery = query.replacingOccurrences(of: "\"", with: "\\\"").replacingOccurrences(of: "'", with: "\\'")
-
         // Query the projects notebook
         let projectsNotebookID = "201885bd-9c21-4d6d-ad7d-bb69e72d11df"
-        let cmd = "/Users/charlieseay/.local/bin/nlm notebook query \(projectsNotebookID) \"\(safeQuery)\""
 
         logger.info("[MCPToolExecutor] Querying NotebookLM projects notebook: \(query)")
-        let result = await shell(cmd)
+
+        // Use Process with array arguments (no shell, no injection possible)
+        let result = await executeProcess(
+            executable: "/Users/charlieseay/.local/bin/nlm",
+            arguments: ["notebook", "query", projectsNotebookID, query],
+            timeout: 10.0
+        )
 
         if result.exitCode == 0 && !result.stdout.isEmpty {
             let response = result.stdout.trimmingCharacters(in: .whitespacesAndNewlines)
             logger.info("[MCPToolExecutor] NotebookLM response: \(response.prefix(200))")
             return response
+        }
+
+        if result.exitCode == 124 {
+            logger.error("[MCPToolExecutor] NotebookLM query timed out after 10s")
+            return "NotebookLM query timed out. Try a simpler question."
         }
 
         // If NotebookLM CLI failed, fall back to vault search
@@ -199,6 +207,82 @@ struct MCPToolExecutor {
         """
 
         return await shell(cmd)
+    }
+
+    // MARK: - Process Execution Helpers
+
+    /// Execute a process with array arguments (no shell, no injection).
+    /// Uses async streaming to avoid blocking the main thread.
+    private static func executeProcess(
+        executable: String,
+        arguments: [String],
+        timeout: TimeInterval = 30.0
+    ) async -> (stdout: String, stderr: String, exitCode: Int32) {
+        return await withCheckedContinuation { continuation in
+            let process = Process()
+            process.executableURL = URL(fileURLWithPath: executable)
+            process.arguments = arguments
+
+            let homeDir = FileManager.default.homeDirectoryForCurrentUser.path
+            var env = ProcessInfo.processInfo.environment
+            env["PATH"] = "\(homeDir)/.local/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
+            if let dockerHost = env["DOCKER_HOST"], dockerHost.contains("podman") {
+                env.removeValue(forKey: "DOCKER_HOST")
+            }
+            process.environment = env
+
+            let stdoutPipe = Pipe()
+            let stderrPipe = Pipe()
+            process.standardOutput = stdoutPipe
+            process.standardError = stderrPipe
+
+            var stdoutData = Data()
+            var stderrData = Data()
+            var didComplete = false
+
+            // Async streaming (non-blocking)
+            stdoutPipe.fileHandleForReading.readabilityHandler = { handle in
+                stdoutData.append(handle.availableData)
+            }
+
+            stderrPipe.fileHandleForReading.readabilityHandler = { handle in
+                stderrData.append(handle.availableData)
+            }
+
+            process.terminationHandler = { process in
+                guard !didComplete else { return }
+                didComplete = true
+
+                let stdout = String(data: stdoutData, encoding: .utf8) ?? ""
+                let stderr = String(data: stderrData, encoding: .utf8) ?? ""
+                continuation.resume(returning: (
+                    stdout.trimmingCharacters(in: .whitespacesAndNewlines),
+                    stderr.trimmingCharacters(in: .whitespacesAndNewlines),
+                    process.terminationStatus
+                ))
+            }
+
+            do {
+                try process.run()
+
+                // Async timeout (doesn't block)
+                Task {
+                    try? await Task.sleep(nanoseconds: UInt64(timeout * 1_000_000_000))
+                    if process.isRunning {
+                        process.terminate()
+                        if !didComplete {
+                            didComplete = true
+                            continuation.resume(returning: ("", "Process timed out", 124))
+                        }
+                    }
+                }
+            } catch {
+                if !didComplete {
+                    didComplete = true
+                    continuation.resume(returning: ("", error.localizedDescription, -1))
+                }
+            }
+        }
     }
 
     // MARK: - Shell Helper
