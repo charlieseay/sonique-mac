@@ -130,25 +130,30 @@ struct MCPToolExecutor {
 
     // MARK: - NotebookLM Query
 
-    /// Queries NotebookLM via the Claude CLI. NotebookLM doesn't expose a standard MCP endpoint,
-    /// so we rely on Claude's browser tool to navigate and query it, or fall back to a vault search.
+    /// Queries NotebookLM via the nlm CLI (notebooklm-mcp-cli).
+    /// Uses the projects notebook (201885bd-9c21-4d6d-ad7d-bb69e72d11df) which contains
+    /// Bridge, Hone, Enchapter, StdOut, Sonique, Talos, and other active projects.
     private static func executeNotebookLMQuery(query: String) async -> String {
         guard !query.isEmpty else { return "No query provided for NotebookLM." }
 
-        let safeQuery = query.replacingOccurrences(of: "'", with: "\\'")
-        let prompt = "The user wants to query their NotebookLM notebooks. Query: \(safeQuery). Use your available tools to answer this from their notebooks or research materials. Summarise in 2-3 sentences."
+        let safeQuery = query.replacingOccurrences(of: "\"", with: "\\\"").replacingOccurrences(of: "'", with: "\\'")
 
-        let result = await runClaudeCLI(
-            prompt: prompt,
-            allowedTools: "Bash WebFetch"
-        )
+        // Query the projects notebook
+        let projectsNotebookID = "201885bd-9c21-4d6d-ad7d-bb69e72d11df"
+        let cmd = "/Users/charlieseay/.local/bin/nlm notebook query \(projectsNotebookID) \"\(safeQuery)\""
+
+        logger.info("[MCPToolExecutor] Querying NotebookLM projects notebook: \(query)")
+        let result = await shell(cmd)
 
         if result.exitCode == 0 && !result.stdout.isEmpty {
-            return result.stdout.trimmingCharacters(in: .whitespacesAndNewlines)
+            let response = result.stdout.trimmingCharacters(in: .whitespacesAndNewlines)
+            logger.info("[MCPToolExecutor] NotebookLM response: \(response.prefix(200))")
+            return response
         }
 
-        // Fallback: vault search for same query
-        logger.warning("[MCPToolExecutor] NotebookLM CLI query failed, falling back to vault search")
+        // If NotebookLM CLI failed, fall back to vault search
+        logger.warning("[MCPToolExecutor] NotebookLM CLI query failed (exit=\(result.exitCode)), falling back to vault search")
+        logger.warning("[MCPToolExecutor] stderr: \(result.stderr.prefix(500))")
         return await executeVaultSearch(query: query)
     }
 
