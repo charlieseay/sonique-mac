@@ -8,25 +8,15 @@
 
 /* Begin PBXBuildFile section */
 		28376E07C49D672DD5B76F35 /* sonique-tts in Resources */ = {isa = PBXBuildFile; fileRef = B7BEAB172CDAEACF96F71ECB /* sonique-tts */; };
-		4B102F62A9EF98A44E5C888D /* InitializationScript.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2DB66C2D5C439B8291EE9E14 /* InitializationScript.swift */; };
-		7B5E48A3F8B4D03F45B17BE0 /* LLMProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4269F3E96A76428E89931AE7 /* LLMProvider.swift */; };
 		B30F7BD354DA140D7ECC9A9B /* ClaudeCodeBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3928D62756135B86A135BBBA /* ClaudeCodeBridge.swift */; };
-		B5BF8BDA203E4FFDB514C8B1 /* MemoryService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9B1B5C4D9C6124E4C5FAC81C /* MemoryService.swift */; };
-		B6F33F481D105B17994ED348 /* VoiceProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 494F35B4BE46B07DF2067516 /* VoiceProvider.swift */; };
 		BB000021000000000000021 /* SoniqueBarApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB000020000000000000020 /* SoniqueBarApp.swift */; };
-		C308D4E93103213839A27FFD /* LiveScreenCapture.swift in Sources */ = {isa = PBXBuildFile; fileRef = BA21E3093DCCF2B341C15CE1 /* LiveScreenCapture.swift */; };
 		FA925571F17B6BA9C9106F30 /* CommandServer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 51CF32BB11AD3B053074E4B1 /* CommandServer.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
-		2DB66C2D5C439B8291EE9E14 /* InitializationScript.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SoniqueBar/Services/InitializationScript.swift; sourceTree = "<group>"; };
 		3928D62756135B86A135BBBA /* ClaudeCodeBridge.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SoniqueBar/Services/ClaudeCodeBridge.swift; sourceTree = "<group>"; };
-		4269F3E96A76428E89931AE7 /* LLMProvider.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = LLMProvider.swift; path = SoniqueBar/Core/LLM/LLMProvider.swift; sourceTree = "<group>"; };
-		494F35B4BE46B07DF2067516 /* VoiceProvider.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = VoiceProvider.swift; path = SoniqueBar/Core/Voice/VoiceProvider.swift; sourceTree = "<group>"; };
 		51CF32BB11AD3B053074E4B1 /* CommandServer.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = CommandServer.swift; path = SoniqueBar/Services/CommandServer.swift; sourceTree = "<group>"; };
-		9B1B5C4D9C6124E4C5FAC81C /* MemoryService.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = MemoryService.swift; path = SoniqueBar/Services/MemoryService.swift; sourceTree = "<group>"; };
 		B7BEAB172CDAEACF96F71ECB /* sonique-tts */ = {isa = PBXFileReference; includeInIndex = 1; name = "sonique-tts"; path = "tts-engine/dist/sonique-tts"; sourceTree = "<group>"; };
-		BA21E3093DCCF2B341C15CE1 /* LiveScreenCapture.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = LiveScreenCapture.swift; path = SoniqueBar/Services/LiveScreenCapture.swift; sourceTree = "<group>"; };
 		BB000004000000000000004 /* SoniqueBar.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = SoniqueBar.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		BB000014000000000000014 /* SoniqueBar.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = SoniqueBar.entitlements; sourceTree = SOURCE_ROOT; };
 		BB000016000000000000016 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; name = Info.plist; path = SoniqueBar/Resources/Info.plist; sourceTree = SOURCE_ROOT; };
@@ -44,14 +34,6 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
-		80D05008DB8908C6DA27ADF8 /* Core */ = {
-			isa = PBXGroup;
-			children = (
-				D3575D01E5219C020BAA23BE /* Voice */,
-			);
-			name = Core;
-			sourceTree = "<group>";
-		};
 		BB000002000000000000002 = {
 			isa = PBXGroup;
 			children = (
@@ -76,7 +58,6 @@
 				BB000020000000000000020 /* SoniqueBarApp.swift */,
 				BB000011000000000000011 /* Services */,
 				BB000013000000000000013 /* Resources */,
-				80D05008DB8908C6DA27ADF8 /* Core */,
 			);
 			name = SoniqueBar;
 			sourceTree = "<group>";
@@ -84,11 +65,8 @@
 		BB000011000000000000011 /* Services */ = {
 			isa = PBXGroup;
 			children = (
-				2DB66C2D5C439B8291EE9E14 /* InitializationScript.swift */,
 				3928D62756135B86A135BBBA /* ClaudeCodeBridge.swift */,
 				51CF32BB11AD3B053074E4B1 /* CommandServer.swift */,
-				9B1B5C4D9C6124E4C5FAC81C /* MemoryService.swift */,
-				BA21E3093DCCF2B341C15CE1 /* LiveScreenCapture.swift */,
 			);
 			name = Services;
 			sourceTree = "<group>";
@@ -99,15 +77,6 @@
 				BB000016000000000000016 /* Info.plist */,
 			);
 			name = Resources;
-			sourceTree = "<group>";
-		};
-		D3575D01E5219C020BAA23BE /* Voice */ = {
-			isa = PBXGroup;
-			children = (
-				4269F3E96A76428E89931AE7 /* LLMProvider.swift */,
-				494F35B4BE46B07DF2067516 /* VoiceProvider.swift */,
-			);
-			name = Voice;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -197,12 +166,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				BB000021000000000000021 /* SoniqueBarApp.swift in Sources */,
-				B5BF8BDA203E4FFDB514C8B1 /* MemoryService.swift in Sources */,
-				C308D4E93103213839A27FFD /* LiveScreenCapture.swift in Sources */,
 				FA925571F17B6BA9C9106F30 /* CommandServer.swift in Sources */,
-				4B102F62A9EF98A44E5C888D /* InitializationScript.swift in Sources */,
-				7B5E48A3F8B4D03F45B17BE0 /* LLMProvider.swift in Sources */,
-				B6F33F481D105B17994ED348 /* VoiceProvider.swift in Sources */,
 				B30F7BD354DA140D7ECC9A9B /* ClaudeCodeBridge.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

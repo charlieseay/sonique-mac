@@ -1,1 +1,0 @@
-import Foundation; class ErrorHandler { static let maxRetries = 3 static func handle(error: Error, retryBlock: @escaping () -> Void, maxAttempts: Int = maxRetries) { print("Error Handled: \(error)") if maxAttempts > 0 { print("Retrying (Attempts Left: \(maxAttempts))") retryBlock() } else { print("Max Retries Exceeded. Error: \(error)") } } }
