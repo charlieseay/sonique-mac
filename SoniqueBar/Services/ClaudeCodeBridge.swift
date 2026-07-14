@@ -25,30 +25,6 @@ class ClaudeCodeBridge {
             // Fallback to simple response
             return "I heard you say: \(text)"
         }
-
-        /*
-        let persona = await SoniqueBrain.shared.loadPersonaContext()
-        let systemPrompt = persona.isEmpty ? text : "\(persona)\nUser request: \(text)"
-
-        let result = await executeProcess(
-            executable: "/opt/homebrew/bin/claude",
-            arguments: [
-                "--print",
-                "--permission-mode", "bypassPermissions",
-                "--model", "haiku",
-                systemPrompt
-            ],
-            timeout: 60.0
-        )
-
-        if result.exitCode == 0 {
-            logger.info("[ClaudeCodeBridge] Success")
-            return result.stdout
-        } else {
-            logger.error("[ClaudeCodeBridge] Failed: \(result.stderr.prefix(200))")
-            throw BridgeError.executionFailed(result.stderr)
-        }
-        */
     }
 
     enum BridgeError: Error {
