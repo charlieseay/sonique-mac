@@ -8,23 +8,24 @@ class ClaudeCodeBridge {
     func execute(text: String) async throws -> String {
         logger.info("[ClaudeCodeBridge] Executing: \(text.prefix(80))")
 
-        // TEMPORARY: Claude CLI hangs in daemon context (no TTY/auth)
-        // Return simple response to test TTS for now
-        let lowerText = text.lowercased()
+        // Use ask_claude subscription command (headless, works in daemon context)
+        let persona = "You are Quinn, a helpful voice assistant. Keep responses conversational and brief (1-2 sentences). No markdown formatting."
 
-        if lowerText.contains("name") {
-            return "I'm Quinn, your voice assistant."
-        } else if lowerText.contains("time") {
-            let formatter = DateFormatter()
-            formatter.timeStyle = .short
-            return "It's \(formatter.string(from: Date()))"
-        } else if lowerText.contains("afternoon") || lowerText.contains("morning") || lowerText.contains("hello") {
-            return "Hello! How can I help you?"
+        let result = await executeProcess(
+            executable: "/opt/homebrew/bin/ask_claude",
+            arguments: ["\(persona)\n\nUser: \(text)"],
+            timeout: 30.0
+        )
+
+        if result.exitCode == 0 && !result.stdout.isEmpty {
+            logger.info("[ClaudeCodeBridge] Success via ask_claude")
+            return result.stdout
         } else {
+            logger.error("[ClaudeCodeBridge] ask_claude failed: \(result.stderr.prefix(200))")
+            // Fallback to simple response
             return "I heard you say: \(text)"
         }
 
-        // TODO: Fix Claude CLI auth in daemon context OR use API directly
         /*
         let persona = await SoniqueBrain.shared.loadPersonaContext()
         let systemPrompt = persona.isEmpty ? text : "\(persona)\nUser request: \(text)"
