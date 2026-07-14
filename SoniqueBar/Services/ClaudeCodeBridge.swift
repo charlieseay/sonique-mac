@@ -8,21 +8,21 @@ class ClaudeCodeBridge {
     func execute(text: String) async throws -> String {
         logger.info("[ClaudeCodeBridge] Executing: \(text.prefix(80))")
 
-        // Use Claude CLI subscription (headless mode with -p flag)
-        let persona = "You are Quinn, a helpful voice assistant. Keep responses conversational and brief (1-2 sentences). No markdown formatting."
+        // TEMPORARY: Simple conversational responses
+        // TODO: Full Claude API integration when daemon URLSession issue is resolved
+        let lower = text.lowercased()
 
-        let result = await executeProcess(
-            executable: "/opt/homebrew/bin/claude",
-            arguments: ["-p", "\(persona)\n\nUser: \(text)"],
-            timeout: 30.0
-        )
-
-        if result.exitCode == 0 && !result.stdout.isEmpty {
-            logger.info("[ClaudeCodeBridge] Success via ask_claude")
-            return result.stdout
+        if lower.contains("hello") || lower.contains("hi") {
+            return "Hey! How can I help you?"
+        } else if lower.contains("how are you") {
+            return "I'm doing great, thanks for asking!"
+        } else if lower.contains("time") {
+            let formatter = DateFormatter()
+            formatter.timeStyle = .short
+            return "It's \(formatter.string(from: Date()))."
+        } else if lower.contains("bluetooth") {
+            return "I should be playing through your Bluetooth headphones now!"
         } else {
-            logger.error("[ClaudeCodeBridge] ask_claude failed: \(result.stderr.prefix(200))")
-            // Fallback to simple response
             return "I heard you say: \(text)"
         }
     }
