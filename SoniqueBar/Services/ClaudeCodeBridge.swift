@@ -8,12 +8,12 @@ class ClaudeCodeBridge {
     func execute(text: String) async throws -> String {
         logger.info("[ClaudeCodeBridge] Executing: \(text.prefix(80))")
 
-        // Use ask_claude subscription command (headless, works in daemon context)
+        // Use Claude CLI subscription (headless mode with -p flag)
         let persona = "You are Quinn, a helpful voice assistant. Keep responses conversational and brief (1-2 sentences). No markdown formatting."
 
         let result = await executeProcess(
-            executable: "/opt/homebrew/bin/ask_claude",
-            arguments: ["\(persona)\n\nUser: \(text)"],
+            executable: "/opt/homebrew/bin/claude",
+            arguments: ["-p", "\(persona)\n\nUser: \(text)"],
             timeout: 30.0
         )
 
