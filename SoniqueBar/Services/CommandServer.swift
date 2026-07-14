@@ -162,16 +162,16 @@ class CommandServer: ObservableObject {
                 let isLast = i == words.index(before: words.endIndex)
                 let piece = isLast ? word : word + " "
                 if !piece.trimmingCharacters(in: .whitespaces).isEmpty {
-                    sendNDJSONChunk("{\"chunk\":\(escapeJSON(piece)),\"is_final\":false}", to: connection)
+                    await sendNDJSONChunk("{\"chunk\":\(escapeJSON(piece)),\"is_final\":false}", to: connection)
                 }
             }
         } catch {
             logger.error("[CommandServer] Bridge error: \(error.localizedDescription)")
             let msg = "I encountered an error. Please try again."
-            sendNDJSONChunk("{\"chunk\":\(escapeJSON(msg)),\"is_final\":false}", to: connection)
+            await sendNDJSONChunk("{\"chunk\":\(escapeJSON(msg)),\"is_final\":false}", to: connection)
         }
 
-        sendNDJSONChunk("{\"done\":true}", to: connection)
+        await sendNDJSONChunk("{\"done\":true}", to: connection)
         // Send final chunk terminator (0\r\n\r\n)
         sendRaw("0\r\n\r\n", to: connection)
         connection.cancel()
@@ -224,12 +224,22 @@ class CommandServer: ObservableObject {
         return text
     }
 
-    private func sendNDJSONChunk(_ line: String, to connection: NWConnection) {
-        let data = (line + "\n").data(using: .utf8)!
+    nonisolated private func sendNDJSONChunk(_ line: String, to connection: NWConnection) async {
+        let dataLine = line + "\n"
+        let data = dataLine.data(using: .utf8)!
         // HTTP chunked encoding: size in hex + CRLF + data + CRLF
         let sizeHex = String(format: "%X", data.count)
-        let chunk = "\(sizeHex)\r\n\(line)\n\r\n"
-        connection.send(content: chunk.data(using: .utf8)!, completion: .contentProcessed { _ in })
+        let chunk = "\(sizeHex)\r\n\(dataLine)\r\n"
+
+        // Use async/await to wait for send completion
+        await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
+            connection.send(content: chunk.data(using: .utf8)!, completion: .contentProcessed { error in
+                if let error = error {
+                    print("[CommandServer] Chunk send error: \(error)")
+                }
+                continuation.resume()
+            })
+        }
     }
 
     private func sendRaw(_ string: String, to connection: NWConnection) {

@@ -8,7 +8,24 @@ class ClaudeCodeBridge {
     func execute(text: String) async throws -> String {
         logger.info("[ClaudeCodeBridge] Executing: \(text.prefix(80))")
 
-        // Load persona from SoniqueBrain (which can read/write shared persona)
+        // TEMPORARY: Claude CLI hangs in daemon context (no TTY/auth)
+        // Return simple response to test TTS for now
+        let lowerText = text.lowercased()
+
+        if lowerText.contains("name") {
+            return "I'm Quinn, your voice assistant."
+        } else if lowerText.contains("time") {
+            let formatter = DateFormatter()
+            formatter.timeStyle = .short
+            return "It's \(formatter.string(from: Date()))"
+        } else if lowerText.contains("afternoon") || lowerText.contains("morning") || lowerText.contains("hello") {
+            return "Hello! How can I help you?"
+        } else {
+            return "I heard you say: \(text)"
+        }
+
+        // TODO: Fix Claude CLI auth in daemon context OR use API directly
+        /*
         let persona = await SoniqueBrain.shared.loadPersonaContext()
         let systemPrompt = persona.isEmpty ? text : "\(persona)\nUser request: \(text)"
 
@@ -30,6 +47,7 @@ class ClaudeCodeBridge {
             logger.error("[ClaudeCodeBridge] Failed: \(result.stderr.prefix(200))")
             throw BridgeError.executionFailed(result.stderr)
         }
+        */
     }
 
     enum BridgeError: Error {
