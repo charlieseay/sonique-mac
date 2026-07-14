@@ -233,7 +233,7 @@ class CommandServer: ObservableObject {
 
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/usr/bin/say")
-        process.arguments = ["-o", tempFile, "--data-format=LEI16@24000", text]
+        process.arguments = ["-o", tempFile, text]
 
         do {
             try process.run()
