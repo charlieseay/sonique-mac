@@ -8,15 +8,19 @@ class ClaudeCodeBridge {
     func execute(text: String) async throws -> String {
         logger.info("[ClaudeCodeBridge] Executing: \(text.prefix(80))")
 
+        // Load persona from SoniqueBrain (which can read/write shared persona)
+        let persona = await SoniqueBrain.shared.loadPersonaContext()
+        let systemPrompt = persona.isEmpty ? text : "\(persona)\nUser request: \(text)"
+
         let result = await executeProcess(
             executable: "/opt/homebrew/bin/claude",
             arguments: [
                 "--print",
                 "--permission-mode", "bypassPermissions",
                 "--model", "haiku",
-                text
+                systemPrompt
             ],
-            timeout: 30.0
+            timeout: 60.0
         )
 
         if result.exitCode == 0 {
@@ -44,6 +48,7 @@ class ClaudeCodeBridge {
 
             var env = ProcessInfo.processInfo.environment
             env["PATH"] = "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin"
+            env["HOME"] = env["HOME"] ?? "/Users/charlieseay"
             process.environment = env
 
             let stdoutPipe = Pipe()

@@ -89,8 +89,7 @@ struct SoniqueBarApp: App {
     }
 
     private func openLogs() {
-        let logPath = NSHomeDirectory() + "/Library/Logs/SoniqueBar"
-        NSWorkspace.shared.selectFile(nil, inFileViewerRootedAtPath: logPath)
+        NSWorkspace.shared.selectFile("/tmp/soniquebar.log", inFileViewerRootedAtPath: "/tmp")
     }
 
     private func testConnection() {
@@ -103,17 +102,8 @@ struct SoniqueBarApp: App {
     }
 
     private func openSettings() {
-        let settingsWindow = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 800, height: 600),
-            styleMask: [.titled, .closable, .resizable],
-            backing: .buffered,
-            defer: false
-        )
-        settingsWindow.title = "Quinn Settings"
-        settingsWindow.contentView = NSHostingView(rootView: Text("Settings coming soon"))
-        settingsWindow.center()
-        settingsWindow.makeKeyAndOrderFront(nil)
-        NSApp.activate(ignoringOtherApps: true)
+        let configPath = NSHomeDirectory() + "/Library/Application Support/SoniqueBar/config.json"
+        NSWorkspace.shared.selectFile(configPath, inFileViewerRootedAtPath: "")
     }
 }
 

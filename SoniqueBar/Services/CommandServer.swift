@@ -111,8 +111,10 @@ class CommandServer: ObservableObject {
         // Route requests
         if path == "/health" {
             await handleHealth(connection)
-        } else if path == "/stream" && method == "POST" {
-            await handleStream(data, connection)
+        } else if path == "/command/stream" && method == "POST" {
+            await handleCommandStream(data, connection)
+        } else if path == "/command" && method == "POST" {
+            await handleCommand(data, connection)
         } else if path == "/config" {
             await handleConfig(connection)
         } else {
@@ -136,47 +138,62 @@ class CommandServer: ObservableObject {
         sendJSON(response, to: connection)
     }
     
-    private func handleStream(_ data: Data, _ connection: NWConnection) async {
-        // Extract JSON body
-        guard let body = extractBody(from: data),
-              let bodyData = body.data(using: .utf8),
-              let json = try? JSONDecoder().decode([String: String].self, from: bodyData),
-              let text = json["text"] else {
+    /// Streaming endpoint — emits NDJSON lines that iOS VoiceLoop consumes chunk-by-chunk.
+    /// Format: {"chunk":"word "} … {"done":true}
+    private func handleCommandStream(_ data: Data, _ connection: NWConnection) async {
+        guard let text = extractCommandText(from: data) else {
             sendResponse("HTTP/1.1 400 Bad Request\r\n\r\n{\"error\":\"Missing 'text' field\"}", to: connection)
             return
         }
-        
-        logger.info("[CommandServer] Voice command: \(text.prefix(80))")
-        
-        Task { @MainActor in
-            self.lastCommand = text
-            self.requestCount += 1
-        }
-        
-        // Route to Claude Code via bridge
+
+        logger.info("[CommandServer] Stream request: \(text.prefix(80))")
+        lastCommand = text
+        requestCount += 1
+
+        // Send chunked HTTP header — keep connection open for NDJSON lines.
+        let header = "HTTP/1.1 200 OK\r\nContent-Type: application/x-ndjson\r\nTransfer-Encoding: chunked\r\n\r\n"
+        sendRaw(header, to: connection)
+
         do {
             let response = try await claudeBridge.execute(text: text)
-            
-            let json = """
-            {
-                "text": \(escapeJSON(response)),
-                "status": "ok"
+            // Split response into word-sized chunks so iOS starts speaking immediately.
+            let words = response.components(separatedBy: " ")
+            for (i, word) in words.enumerated() {
+                let isLast = i == words.index(before: words.endIndex)
+                let piece = isLast ? word : word + " "
+                if !piece.trimmingCharacters(in: .whitespaces).isEmpty {
+                    sendNDJSONChunk("{\"chunk\":\(escapeJSON(piece)),\"is_final\":false}", to: connection)
+                }
             }
-            """
-            
-            sendJSON(json, to: connection)
-            
         } catch {
             logger.error("[CommandServer] Bridge error: \(error.localizedDescription)")
-            
-            let errorJSON = """
-            {
-                "text": "I encountered an error: \(escapeJSON(error.localizedDescription))",
-                "status": "error"
-            }
-            """
-            
-            sendJSON(errorJSON, to: connection)
+            let msg = "I encountered an error. Please try again."
+            sendNDJSONChunk("{\"chunk\":\(escapeJSON(msg)),\"is_final\":false}", to: connection)
+        }
+
+        sendNDJSONChunk("{\"done\":true}", to: connection)
+        // Send final chunk terminator (0\r\n\r\n)
+        sendRaw("0\r\n\r\n", to: connection)
+        connection.cancel()
+    }
+
+    /// Non-streaming fallback endpoint — returns single JSON response.
+    private func handleCommand(_ data: Data, _ connection: NWConnection) async {
+        guard let text = extractCommandText(from: data) else {
+            sendResponse("HTTP/1.1 400 Bad Request\r\n\r\n{\"error\":\"Missing 'text' field\"}", to: connection)
+            return
+        }
+
+        logger.info("[CommandServer] Command request: \(text.prefix(80))")
+        lastCommand = text
+        requestCount += 1
+
+        do {
+            let response = try await claudeBridge.execute(text: text)
+            sendJSON("{\"response\":\(escapeJSON(response)),\"status\":\"ok\"}", to: connection)
+        } catch {
+            logger.error("[CommandServer] Bridge error: \(error.localizedDescription)")
+            sendJSON("{\"response\":\"I encountered an error. Please try again.\",\"status\":\"error\"}", to: connection)
         }
     }
     
@@ -197,18 +214,26 @@ class CommandServer: ObservableObject {
     }
     
     // MARK: - Helpers
-    
-    private func extractBody(from data: Data) -> String? {
-        guard let requestString = String(data: data, encoding: .utf8) else {
-            return nil
-        }
-        
-        // Find empty line that separates headers from body
-        if let range = requestString.range(of: "\r\n\r\n") {
-            return String(requestString[range.upperBound...])
-        }
-        
-        return nil
+
+    private func extractCommandText(from data: Data) -> String? {
+        guard let requestString = String(data: data, encoding: .utf8),
+              let range = requestString.range(of: "\r\n\r\n"),
+              let bodyData = String(requestString[range.upperBound...]).data(using: .utf8),
+              let json = try? JSONSerialization.jsonObject(with: bodyData) as? [String: Any],
+              let text = json["text"] as? String else { return nil }
+        return text
+    }
+
+    private func sendNDJSONChunk(_ line: String, to connection: NWConnection) {
+        let data = (line + "\n").data(using: .utf8)!
+        // HTTP chunked encoding: size in hex + CRLF + data + CRLF
+        let sizeHex = String(format: "%X", data.count)
+        let chunk = "\(sizeHex)\r\n\(line)\n\r\n"
+        connection.send(content: chunk.data(using: .utf8)!, completion: .contentProcessed { _ in })
+    }
+
+    private func sendRaw(_ string: String, to connection: NWConnection) {
+        connection.send(content: string.data(using: .utf8)!, completion: .contentProcessed { _ in })
     }
     
     private func escapeJSON(_ string: String) -> String {

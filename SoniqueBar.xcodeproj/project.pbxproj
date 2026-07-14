@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		F385A0E3A79F49A0B6F62A18 /* SoniqueBrain.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5FD7FABF8FD144AC9208A689 /* SoniqueBrain.swift */; };
 		28376E07C49D672DD5B76F35 /* sonique-tts in Resources */ = {isa = PBXBuildFile; fileRef = B7BEAB172CDAEACF96F71ECB /* sonique-tts */; };
 		B30F7BD354DA140D7ECC9A9B /* ClaudeCodeBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3928D62756135B86A135BBBA /* ClaudeCodeBridge.swift */; };
 		BB000021000000000000021 /* SoniqueBarApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB000020000000000000020 /* SoniqueBarApp.swift */; };
@@ -14,6 +15,7 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		5FD7FABF8FD144AC9208A689 /* SoniqueBrain.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SoniqueBar/Services/SoniqueBrain.swift; sourceTree = "<group>"; };
 		3928D62756135B86A135BBBA /* ClaudeCodeBridge.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SoniqueBar/Services/ClaudeCodeBridge.swift; sourceTree = "<group>"; };
 		51CF32BB11AD3B053074E4B1 /* CommandServer.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = CommandServer.swift; path = SoniqueBar/Services/CommandServer.swift; sourceTree = "<group>"; };
 		B7BEAB172CDAEACF96F71ECB /* sonique-tts */ = {isa = PBXFileReference; includeInIndex = 1; name = "sonique-tts"; path = "tts-engine/dist/sonique-tts"; sourceTree = "<group>"; };
@@ -66,6 +68,7 @@
 			isa = PBXGroup;
 			children = (
 				3928D62756135B86A135BBBA /* ClaudeCodeBridge.swift */,
+				5FD7FABF8FD144AC9208A689 /* SoniqueBrain.swift */,
 				51CF32BB11AD3B053074E4B1 /* CommandServer.swift */,
 			);
 			name = Services;
@@ -168,6 +171,7 @@
 				BB000021000000000000021 /* SoniqueBarApp.swift in Sources */,
 				FA925571F17B6BA9C9106F30 /* CommandServer.swift in Sources */,
 				B30F7BD354DA140D7ECC9A9B /* ClaudeCodeBridge.swift in Sources */,
+				F385A0E3A79F49A0B6F62A18 /* SoniqueBrain.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
