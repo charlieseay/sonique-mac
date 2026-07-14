@@ -115,6 +115,8 @@ class CommandServer: ObservableObject {
             await handleCommandStream(data, connection)
         } else if path == "/command" && method == "POST" {
             await handleCommand(data, connection)
+        } else if path == "/synthesize" && method == "POST" {
+            await handleSynthesize(data, connection)
         } else if path == "/config" {
             await handleConfig(connection)
         } else {
@@ -200,7 +202,7 @@ class CommandServer: ObservableObject {
     private func handleConfig(_ connection: NWConnection) async {
         // Return ElevenLabs API key for iOS
         let apiKeyPath = "/Volumes/data/secrets/elevenlabs_api_key"
-        
+
         if let apiKey = try? String(contentsOfFile: apiKeyPath, encoding: .utf8).trimmingCharacters(in: .whitespacesAndNewlines) {
             let json = """
             {
@@ -212,7 +214,59 @@ class CommandServer: ObservableObject {
             sendResponse("HTTP/1.1 500 Internal Server Error\r\n\r\n{\"error\":\"API key not found\"}", to: connection)
         }
     }
-    
+
+    /// TTS synthesis endpoint - uses macOS 'say' command to generate audio
+    private func handleSynthesize(_ data: Data, _ connection: NWConnection) async {
+        guard let requestString = String(data: data, encoding: .utf8),
+              let range = requestString.range(of: "\r\n\r\n"),
+              let bodyData = String(requestString[range.upperBound...]).data(using: .utf8),
+              let json = try? JSONSerialization.jsonObject(with: bodyData) as? [String: Any],
+              let text = json["text"] as? String else {
+            sendResponse("HTTP/1.1 400 Bad Request\r\n\r\n{\"error\":\"Missing 'text' field\"}", to: connection)
+            return
+        }
+
+        logger.info("[CommandServer] TTS request: \(text.prefix(80))")
+
+        // Use macOS 'say' command to generate AIFF audio
+        let tempFile = "/tmp/sonique-tts-\(UUID().uuidString).aiff"
+
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/usr/bin/say")
+        process.arguments = ["-o", tempFile, "--data-format=LEI16@24000", text]
+
+        do {
+            try process.run()
+            process.waitUntilExit()
+
+            if process.terminationStatus == 0, let audioData = try? Data(contentsOf: URL(fileURLWithPath: tempFile)) {
+                // Send AIFF audio file
+                let response = """
+                HTTP/1.1 200 OK\r
+                Content-Type: audio/x-aiff\r
+                Content-Length: \(audioData.count)\r
+                \r
+
+                """
+
+                connection.send(content: response.data(using: .utf8)!, completion: .contentProcessed { _ in })
+                connection.send(content: audioData, completion: .contentProcessed { _ in
+                    connection.cancel()
+                })
+
+                // Cleanup temp file
+                try? FileManager.default.removeItem(atPath: tempFile)
+
+                logger.info("[CommandServer] TTS generated \(audioData.count) bytes")
+            } else {
+                sendResponse("HTTP/1.1 500 Internal Server Error\r\n\r\n{\"error\":\"TTS generation failed\"}", to: connection)
+            }
+        } catch {
+            logger.error("[CommandServer] TTS error: \(error.localizedDescription)")
+            sendResponse("HTTP/1.1 500 Internal Server Error\r\n\r\n{\"error\":\"TTS error\"}", to: connection)
+        }
+    }
+
     // MARK: - Helpers
 
     private func extractCommandText(from data: Data) -> String? {
