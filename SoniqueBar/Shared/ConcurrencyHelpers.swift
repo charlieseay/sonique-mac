@@ -9,7 +9,6 @@ public enum TimeoutError: Error, LocalizedError {
             // A more user-friendly mapping from function names to descriptions
             let friendlyLabel: String
             switch label {
-            // NativeIntents labels
             case "handle(_:deviceBattery:)": friendlyLabel = "a native command"
             case "currentTime()": friendlyLabel = "getting the current time"
             case "currentDate()": friendlyLabel = "getting the current date"
