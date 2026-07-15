@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 class HomeAssistantConnector(ConnectorBase):
     """Control Home Assistant devices via REST API"""
 
-    def __init__(self, base_url: str = "http://192.168.68.80:8123", token: Optional[str] = None):
+    def __init__(self, base_url: str = "http://192.168.68.85:8123", token: Optional[str] = None):
         super().__init__("home_assistant")
         self.base_url = base_url
         self.token = token or self._load_token()
