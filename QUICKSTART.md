@@ -30,9 +30,10 @@ Expected output: `All tests passed!`
 - "Stop [container-name]"
 - "What's the status of [container-name]?"
 
-### Notifications
-- "Post to #[channel]: [message]"
-- "Send a message to #[channel]: [message]"
+### Knowledge Base Queries
+- "Query team-kb: [question]"
+- "Query team-kb: What is helmsman architecture?"
+- "Query projects: What's the status of Bridge?"
 
 ### Device Control (if Home Assistant configured)
 - "Turn on the bedroom light"
@@ -108,17 +109,17 @@ ls ~/Library/Mobile\ Documents/iCloud~com~seayniclabs~sonique/Documents/SoniqueP
 - Quinn personality from iCloud
 - Helmsman task integration
 - Docker container management
-- Slack notifications
+- NotebookLM knowledge base queries
 - Model escalation (Haiku/Sonnet/Opus)
 - Error handling & fallback
 - Comprehensive logging
 
 ### ⏳ Coming Soon (Phase 2)
 - GitHub integration
-- NotebookLM queries
 - Multi-step task chaining
 - Calendar/reminders
 - Better pattern matching
+- Slack notifications (optional)
 
 ## Files
 
@@ -138,18 +139,23 @@ ls ~/Library/Mobile\ Documents/iCloud~com~seayniclabs~sonique/Documents/SoniqueP
 - `registry.py` - Connector manager
 - `helmsman.py` - Task queue
 - `docker.py` - Containers
-- `slack.py` - Notifications
-- `vault.py` - Knowledge base (needs MCP server)
+- `notebooklm.py` - Knowledge base queries
+- `vault.py` - Vault notes (needs MCP server)
 - `home_assistant.py` - Devices (needs HA running)
 
 ## Key Stats
 
 - **Connectors:** 5 fully working, 2 ready (with external services)
+  - ✅ Helmsman (task queue)
+  - ✅ Docker (containers)
+  - ✅ NotebookLM (knowledge base)
+  - ⏳ Vault (needs MCP server)
+  - ⏳ Home Assistant (needs HA running)
 - **Test coverage:** 10 automated tests, all passing
 - **Model escalation:** 3-tier (Haiku/Sonnet/Opus)
 - **Response time:** <10ms pattern matching, <3s typical response
 - **Security:** No hardcoded secrets, all in `/Volumes/data/secrets/`
-- **Documentation:** 3 guides + 8 connector files
+- **Documentation:** 4 guides + 7 connector files
 
 ## Support
 

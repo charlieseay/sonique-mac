@@ -8,7 +8,7 @@ from typing import Dict, Optional, Any
 from .base import ConnectorBase, ConnectorResult
 from .helmsman import HelmsmanConnector
 from .docker import DockerConnector
-from .slack import SlackConnector
+from .notebooklm import NotebookLMConnector
 from .vault import VaultConnector
 from .home_assistant import HomeAssistantConnector
 
@@ -26,7 +26,7 @@ class ConnectorRegistry:
         """Initialize all connectors"""
         self.connectors["helmsman"] = HelmsmanConnector()
         self.connectors["docker"] = DockerConnector()
-        self.connectors["slack"] = SlackConnector()
+        self.connectors["notebooklm"] = NotebookLMConnector()
         self.connectors["vault"] = VaultConnector()
         self.connectors["home_assistant"] = HomeAssistantConnector()
         logger.info(f"Initialized {len(self.connectors)} connectors")

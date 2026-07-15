@@ -158,23 +158,21 @@ def _try_connector_operation(text: str, registry: ConnectorRegistry) -> Optional
                 "status": "ok"
             }
 
-    # Slack operations
-    if "post" in lower and "#" in text:
-        # Extract channel and message
-        parts = text.split("#", 1)
+    # NotebookLM operations
+    if "query" in lower and ("notebook" in lower or "team-kb" in lower or "projects" in lower):
+        # Extract query
+        parts = text.split(":", 1)
         if len(parts) > 1:
-            channel_and_msg = parts[1]
-            ch_parts = channel_and_msg.split(":", 1)
-            if len(ch_parts) > 1:
-                channel = f"#{ch_parts[0].strip()}"
-                message = ch_parts[1].strip()
-                result = registry.execute("slack", "post_message", channel=channel, message=message, priority="high")
-                if result.success:
-                    return {
-                        "response": f"Posted to {channel}.",
-                        "connector": "slack",
-                        "status": "ok"
-                    }
+            query = parts[1].strip()
+            # Default to team-kb if not specified
+            result = registry.execute("notebooklm", "query_team_kb", query=query)
+            if result.success:
+                response = result.data.get("response", "No response")
+                return {
+                    "response": response[:500],  # Truncate to avoid very long responses
+                    "connector": "notebooklm",
+                    "status": "ok"
+                }
 
     # Home Assistant operations
     if ("turn" in lower and "on" in lower) or ("turn" in lower and "off" in lower):

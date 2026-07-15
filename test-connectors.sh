@@ -46,7 +46,7 @@ echo "1.2 Connector Health Status"
 HEALTH=$(curl -s "$BASE_URL/connectors/health")
 
 # Check individual connectors
-for CONNECTOR in helmsman docker slack; do
+for CONNECTOR in helmsman docker notebooklm; do
     if echo "$HEALTH" | grep -q "\"$CONNECTOR\""; then
         STATUS=$(echo "$HEALTH" | grep -A 2 "\"$CONNECTOR\"" | grep "success" | head -1)
         if echo "$STATUS" | grep -q "true"; then
@@ -102,18 +102,18 @@ else
 fi
 
 echo ""
-echo "========== PHASE 4: SLACK INTEGRATION =========="
+echo "========== PHASE 4: NOTEBOOKLM INTEGRATION =========="
 
-# Test 4.1: Post message
+# Test 4.1: Query team-kb
 echo ""
-echo "4.1 Post to Slack"
+echo "4.1 Query NotebookLM Team KB"
 RESPONSE=$(curl -s -X POST "$BASE_URL/respond" \
     -H "Content-Type: application/json" \
-    -d '{"text":"Post to #alerts: Quinn is online and ready"}')
-if echo "$RESPONSE" | grep -q "Posted\|alerts"; then
-    test_result 0 "Slack message posting works"
+    -d '{"text":"Query team-kb: What is helmsman?"}')
+if echo "$RESPONSE" | grep -q "helmsman\|response"; then
+    test_result 0 "NotebookLM team-kb query works"
 else
-    test_result 1 "Slack message posting failed"
+    test_result 1 "NotebookLM team-kb query failed"
 fi
 
 echo ""

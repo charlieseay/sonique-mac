@@ -8,7 +8,7 @@ Quinn Brain Service connects to all lab systems via a modular connector architec
 iOS/Mac (SoniqueBar) 
     → Quinn Brain Service (port 5912)
     → Connector Registry
-    → [Helmsman | Docker | Slack | Vault | Home Assistant]
+    → [Helmsman | Docker | NotebookLM | Vault | Home Assistant]
 ```
 
 ## Available Connectors
@@ -57,23 +57,28 @@ iOS/Mac (SoniqueBar)
 - Uses Docker CLI (`docker ps`, `docker restart`, etc.)
 - No API calls needed
 
-### 3. Slack Connector
-**Purpose:** Post messages to Slack  
+### 3. NotebookLM Connector
+**Purpose:** Query knowledge bases and documentation  
 **Status:** ✅ Working
 
 **Operations:**
-- `post_message` - Post a message to a Slack channel
+- `query_team_kb` - Query the team knowledge base
+- `query_projects` - Query the projects notebook
+- `query_notebook` - Query any notebook by ID or alias
 
 **Example commands:**
 ```
-"Post to #alerts: Testing Sonique"
-"Send a message to #general: Quinn is online"
+"Query team-kb: What is helmsman architecture?"
+"Query projects: What's the status of Bridge?"
+"Query team-kb: How does the task queue work?"
 ```
 
-**Implementation:** `connectors/slack.py`
-- Uses `slack-post-filtered` command
-- Respects priority levels (low/normal/high/question/error)
-- Low-priority messages are silent in Slack
+**Implementation:** `connectors/notebooklm.py`
+- Uses `nlm` CLI (NotebookLM)
+- Team KB alias: `team-kb` (ID: `d45f4666-0a50-4986-9f53-abe7d92107c1`)
+- Projects notebook: ID `201885bd-9c21-4d6d-ad7d-bb69e72d11df`
+- Returns cited answers with sources
+- Auth: Google One Premium (cseay3@gmail.com)
 
 ### 4. Vault Connector
 **Purpose:** Query Obsidian vault via MCP  
@@ -140,7 +145,7 @@ Run the connector test suite:
 bash test-connectors.sh
 ```
 
-Output: 10 tests across all 5 connectors
+Output: 10 tests across all 5 connectors (Helmsman, Docker, NotebookLM, Vault, Home Assistant)
 
 ### Manual Testing
 
