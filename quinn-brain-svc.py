@@ -18,6 +18,7 @@ from typing import Optional, Dict, Any
 sys.path.insert(0, str(Path(__file__).parent))
 
 from connectors.registry import ConnectorRegistry
+from async_handler import task_handler, is_long_running_operation, get_acknowledgment
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s [%(levelname)s] %(message)s')
 logger = logging.getLogger(__name__)
@@ -158,22 +159,26 @@ def _try_connector_operation(text: str, registry: ConnectorRegistry) -> Optional
                 "status": "ok"
             }
 
-    # NotebookLM operations
+    # NotebookLM operations (ASYNC - takes 30s+)
     if "query" in lower and ("notebook" in lower or "team-kb" in lower or "projects" in lower):
         # Extract query
         parts = text.split(":", 1)
         if len(parts) > 1:
             query = parts[1].strip()
-            # Default to team-kb if not specified
-            result = registry.execute("notebooklm", "query_team_kb", query=query)
-            if result.success:
-                response = result.data.get("response", "No response")
-                return {
-                    "response": response[:500],  # Truncate to avoid very long responses
-                    "connector": "notebooklm",
-                    "status": "ok"
-                }
 
+            # Run async - NotebookLM queries take 30s+
+            def _query_notebooklm():
+                result = registry.execute("notebooklm", "query_team_kb", query=query)
+                if result.success:
+                    return result.data.get("response", "No response")[:500]
+                else:
+                    return f"Knowledge base query failed: {result.error}"
+
+            return task_handler.create_task(
+                name="notebooklm_query",
+                work_func=_query_notebooklm,
+                acknowledgment=f"Let me check the knowledge base for '{query}'. This might take a minute."
+            )
     # Home Assistant operations
     if ("turn" in lower and "on" in lower) or ("turn" in lower and "off" in lower):
         if "light" in lower or "bedroom" in lower or "kitchen" in lower or "living" in lower:
@@ -321,6 +326,26 @@ class QuinnHandler(BaseHTTPRequestHandler):
             self.send_header("Content-Type", "application/json")
             self.end_headers()
             self.wfile.write(json.dumps(connectors).encode())
+        elif self.path == "/tasks/active":
+            active = task_handler.list_active()
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.end_headers()
+            self.wfile.write(json.dumps({"tasks": active}).encode())
+        elif self.path.startswith("/tasks/"):
+            # Get task status by ID
+            task_id = self.path.split("/")[-1]
+            task = task_handler.get_status(task_id)
+            if task:
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.end_headers()
+                self.wfile.write(json.dumps(task).encode())
+            else:
+                self.send_response(404)
+                self.send_header("Content-Type", "application/json")
+                self.end_headers()
+                self.wfile.write(json.dumps({"error": "Task not found"}).encode())
         else:
             self.send_response(404)
             self.end_headers()

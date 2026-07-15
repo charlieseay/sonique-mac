@@ -97,13 +97,13 @@ class NotebookLMConnector(ConnectorBase):
                     connector=self.name
                 )
 
-            # Call nlm CLI
+            # Call nlm CLI (60s timeout - NotebookLM is slow)
             cmd = ["nlm", "notebook", "query", notebook_target, query]
             result = subprocess.run(
                 cmd,
                 capture_output=True,
                 text=True,
-                timeout=30
+                timeout=60
             )
 
             if result.returncode == 0 and result.stdout:

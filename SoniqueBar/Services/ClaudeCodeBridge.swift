@@ -25,19 +25,82 @@ class ClaudeCodeBridge {
                 throw BridgeError.executionFailed("Service error")
             }
 
-            if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-               let responseText = json["response"] as? String,
-               let model = json["model"] as? String {
-                logger.info("[ClaudeCodeBridge] Success via \(model)")
-                return responseText
-            } else {
+            guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                  let responseText = json["response"] as? String else {
                 throw BridgeError.executionFailed("Failed to parse response")
             }
+
+            // Check if this is an async task
+            if let status = json["status"] as? String, status == "async",
+               let taskId = json["task_id"] as? String {
+                logger.info("[ClaudeCodeBridge] Async task started: \(taskId)")
+
+                // Return immediate acknowledgment
+                let ack = responseText
+
+                // Poll for completion in background
+                Task {
+                    await pollTaskCompletion(taskId: taskId)
+                }
+
+                return ack
+            }
+
+            // Sync response
+            if let model = json["model"] as? String {
+                logger.info("[ClaudeCodeBridge] Success via \(model)")
+            }
+            return responseText
+
         } catch {
             logger.error("[ClaudeCodeBridge] Quinn Brain Service failed: \(error.localizedDescription)")
             // Fallback to simple response
             return "I heard you say: \(text)"
         }
+    }
+
+    private func pollTaskCompletion(taskId: String) async {
+        logger.info("[ClaudeCodeBridge] Polling task \(taskId)...")
+
+        let maxAttempts = 30  // 30 attempts = 60s max (2s per attempt)
+        var attempt = 0
+
+        while attempt < maxAttempts {
+            attempt += 1
+
+            // Wait 2 seconds between polls
+            try? await Task.sleep(nanoseconds: 2_000_000_000)
+
+            guard let url = URL(string: "http://127.0.0.1:5912/tasks/\(taskId)") else { continue }
+
+            do {
+                let (data, _) = try await URLSession.shared.data(from: url)
+                guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                      let status = json["status"] as? String else {
+                    continue
+                }
+
+                if status == "completed" {
+                    if let result = json["result"] as? String {
+                        logger.info("[ClaudeCodeBridge] Task \(taskId) completed: \(result.prefix(50))")
+                        // TODO: Speak the result to user
+                        // For now, just log it - speaking requires TTS integration
+                    }
+                    return
+                } else if status == "failed" {
+                    if let error = json["error"] as? String {
+                        logger.error("[ClaudeCodeBridge] Task \(taskId) failed: \(error)")
+                    }
+                    return
+                }
+
+                // Still running, continue polling
+            } catch {
+                logger.error("[ClaudeCodeBridge] Failed to poll task \(taskId): \(error)")
+            }
+        }
+
+        logger.warning("[ClaudeCodeBridge] Task \(taskId) polling timed out after \(maxAttempts * 2)s")
     }
 
     enum BridgeError: Error {
