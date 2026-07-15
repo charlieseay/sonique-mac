@@ -8,21 +8,34 @@ class ClaudeCodeBridge {
     func execute(text: String) async throws -> String {
         logger.info("[ClaudeCodeBridge] Executing: \(text.prefix(80))")
 
-        // TEMPORARY: Simple conversational responses
-        // TODO: Full Claude API integration when daemon URLSession issue is resolved
-        let lower = text.lowercased()
+        // Call Quinn Brain Service (Python service with intelligent model routing)
+        let url = URL(string: "http://127.0.0.1:5912/respond")!
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.timeoutInterval = 30.0
 
-        if lower.contains("hello") || lower.contains("hi") {
-            return "Hey! How can I help you?"
-        } else if lower.contains("how are you") {
-            return "I'm doing great, thanks for asking!"
-        } else if lower.contains("time") {
-            let formatter = DateFormatter()
-            formatter.timeStyle = .short
-            return "It's \(formatter.string(from: Date()))."
-        } else if lower.contains("bluetooth") {
-            return "I should be playing through your Bluetooth headphones now!"
-        } else {
+        let payload = ["text": text]
+        request.httpBody = try? JSONSerialization.data(withJSONObject: payload)
+
+        do {
+            let (data, response) = try await URLSession.shared.data(for: request)
+            guard let http = response as? HTTPURLResponse, http.statusCode == 200 else {
+                logger.error("[ClaudeCodeBridge] Quinn Brain Service returned \((response as? HTTPURLResponse)?.statusCode ?? -1)")
+                throw BridgeError.executionFailed("Service error")
+            }
+
+            if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+               let responseText = json["response"] as? String,
+               let model = json["model"] as? String {
+                logger.info("[ClaudeCodeBridge] Success via \(model)")
+                return responseText
+            } else {
+                throw BridgeError.executionFailed("Failed to parse response")
+            }
+        } catch {
+            logger.error("[ClaudeCodeBridge] Quinn Brain Service failed: \(error.localizedDescription)")
+            // Fallback to simple response
             return "I heard you say: \(text)"
         }
     }
