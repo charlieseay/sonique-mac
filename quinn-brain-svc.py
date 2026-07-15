@@ -194,6 +194,43 @@ def _try_connector_operation(text: str, registry: ConnectorRegistry) -> Optional
                         "status": "ok"
                     }
 
+    # Vault operations
+    if "search vault" in lower or "vault search" in lower or "find in vault" in lower:
+        # Extract search query
+        parts = text.split(":", 1) if ":" in text else text.split("for", 1)
+        if len(parts) > 1:
+            query = parts[1].strip()
+            result = registry.execute("vault", "search", query=query)
+            if result.success:
+                data = result.data
+                matches = data.get("matches", [])
+                if matches:
+                    # Format first match
+                    first = matches[0]
+                    response = f"Found in {first['file']}: {first['snippet'][:100]}"
+                    return {
+                        "response": response,
+                        "connector": "vault",
+                        "status": "ok"
+                    }
+                else:
+                    return {
+                        "response": f"No vault notes found for '{query}'.",
+                        "connector": "vault",
+                        "status": "ok"
+                    }
+
+    if "list projects" in lower or "what projects" in lower:
+        result = registry.execute("vault", "list_project_notes")
+        if result.success:
+            projects = result.data.get("projects", [])
+            count = len(projects)
+            return {
+                "response": f"You have {count} active projects: {', '.join(projects[:5])}.",
+                "connector": "vault",
+                "status": "ok"
+            }
+
     # No connector matched
     return None
 
