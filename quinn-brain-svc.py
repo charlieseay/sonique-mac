@@ -24,17 +24,8 @@ def select_model(text: str) -> str:
     """Select the right model based on query complexity"""
     lower = text.lower()
 
-    # Opus for complex reasoning, coding, analysis
-    if any(word in lower for word in ["explain", "analyze", "debug", "code"]) or \
-       ("why" in lower and len(text) > 30):
-        return "claude-opus-4-20250514"
-
-    # Sonnet for medium complexity - creative writing, detailed questions
-    if any(word in lower for word in ["write", "create", "compare", "difference"]) or \
-       ("how" in lower and len(text) > 20):
-        return "claude-sonnet-4-20250514"
-
-    # Haiku for everything else - quick answers, simple questions, casual chat
+    # For now, use Haiku for everything (fast, conversational)
+    # TODO: Add Sonnet/Opus escalation when model IDs confirmed
     return "claude-haiku-4-5-20251001"
 
 def get_response(text: str) -> dict:
