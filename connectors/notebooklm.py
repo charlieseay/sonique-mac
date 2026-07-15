@@ -97,13 +97,13 @@ class NotebookLMConnector(ConnectorBase):
                     connector=self.name
                 )
 
-            # Call nlm CLI (60s timeout - NotebookLM is slow)
+            # Call nlm CLI (90s timeout - NotebookLM can take 80-85s)
             cmd = ["nlm", "notebook", "query", notebook_target, query]
             result = subprocess.run(
                 cmd,
                 capture_output=True,
                 text=True,
-                timeout=60
+                timeout=90
             )
 
             if result.returncode == 0 and result.stdout:
@@ -128,7 +128,7 @@ class NotebookLMConnector(ConnectorBase):
         except subprocess.TimeoutExpired:
             return ConnectorResult(
                 success=False,
-                error="NotebookLM query timed out (>30s)",
+                error="NotebookLM query timed out (>90s)",
                 connector=self.name
             )
         except Exception as e:
