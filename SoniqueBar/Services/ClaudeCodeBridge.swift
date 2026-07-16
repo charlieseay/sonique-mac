@@ -8,54 +8,41 @@ class ClaudeCodeBridge {
     func execute(text: String) async throws -> String {
         logger.info("[ClaudeCodeBridge] Executing: \(text.prefix(80))")
 
-        // Call Quinn Brain Service (Python service with intelligent model routing)
-        let url = URL(string: "http://127.0.0.1:5912/respond")!
-        var request = URLRequest(url: url)
-        request.httpMethod = "POST"
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.timeoutInterval = 30.0
+        // Use Bedrock (reliable programmatic access)
+        let personality = """
+        You are Quinn, a helpful voice assistant. Keep responses natural, brief (1-2 sentences max),
+        and conversational. No markdown formatting. Respond as if speaking out loud.
+        """
 
-        let payload = ["text": text]
-        request.httpBody = try? JSONSerialization.data(withJSONObject: payload)
+        let prompt = "\(personality)\n\nUser: \(text)"
 
-        do {
-            let (data, response) = try await URLSession.shared.data(for: request)
-            guard let http = response as? HTTPURLResponse, http.statusCode == 200 else {
-                logger.error("[ClaudeCodeBridge] Quinn Brain Service returned \((response as? HTTPURLResponse)?.statusCode ?? -1)")
-                throw BridgeError.executionFailed("Service error")
+        let result = await executeProcess(
+            executable: "/Users/charlieseay/.local/bin/ask_claude_bedrock",
+            arguments: [prompt],
+            timeout: 15.0
+        )
+
+        if result.exitCode == 0 && !result.stdout.isEmpty {
+            var response = result.stdout
+
+            // Strip JSON header block that Bedrock script outputs
+            // Format: {\n    "contentType": "application/json"\n}\nActual response
+            if let closeBrace = response.range(of: "}\n") {
+                response = String(response[closeBrace.upperBound...])
             }
 
-            guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-                  let responseText = json["response"] as? String else {
-                throw BridgeError.executionFailed("Failed to parse response")
+            response = response.trimmingCharacters(in: .whitespacesAndNewlines)
+
+            if response.isEmpty {
+                logger.error("[ClaudeCodeBridge] Empty response after cleanup")
+                throw BridgeError.executionFailed("Empty response")
             }
 
-            // Check if this is an async task
-            if let status = json["status"] as? String, status == "async",
-               let taskId = json["task_id"] as? String {
-                logger.info("[ClaudeCodeBridge] Async task started: \(taskId)")
-
-                // Return immediate acknowledgment
-                let ack = responseText
-
-                // Poll for completion in background
-                Task {
-                    await pollTaskCompletion(taskId: taskId)
-                }
-
-                return ack
-            }
-
-            // Sync response
-            if let model = json["model"] as? String {
-                logger.info("[ClaudeCodeBridge] Success via \(model)")
-            }
-            return responseText
-
-        } catch {
-            logger.error("[ClaudeCodeBridge] Quinn Brain Service failed: \(error.localizedDescription)")
-            // Fallback to simple response
-            return "I heard you say: \(text)"
+            logger.info("[ClaudeCodeBridge] Success via Bedrock: \(response.prefix(50))")
+            return response
+        } else {
+            logger.error("[ClaudeCodeBridge] Bedrock failed: \(result.stderr)")
+            throw BridgeError.executionFailed("Assistant unavailable")
         }
     }
 
