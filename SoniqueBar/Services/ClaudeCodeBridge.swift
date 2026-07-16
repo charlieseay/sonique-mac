@@ -13,32 +13,26 @@ class ClaudeCodeBridge {
 
         let prompt = "\(personality)\n\nUser: \(text)"
 
+        // Phase 6A: Route through Claude CLI for MCP tool access
+        // This gives immediate access to Expo MCP, ASC MCP, and other configured MCP servers
         let result = await executeProcess(
-            executable: "/Users/charlieseay/.local/bin/ask_claude_bedrock",
-            arguments: [prompt],
-            timeout: 15.0
+            executable: "/opt/homebrew/bin/claude",
+            arguments: ["-p", prompt],  // -p = headless prompt mode
+            timeout: 30.0  // Increased timeout for MCP tool calls
         )
 
         if result.exitCode == 0 && !result.stdout.isEmpty {
-            var response = result.stdout
-
-            // Strip JSON header block that Bedrock script outputs
-            // Format: {\n    "contentType": "application/json"\n}\nActual response
-            if let closeBrace = response.range(of: "}\n") {
-                response = String(response[closeBrace.upperBound...])
-            }
-
-            response = response.trimmingCharacters(in: .whitespacesAndNewlines)
+            let response = result.stdout.trimmingCharacters(in: .whitespacesAndNewlines)
 
             if response.isEmpty {
-                logger.error("[ClaudeCodeBridge] Empty response after cleanup")
+                logger.error("[ClaudeCodeBridge] Empty response from Claude CLI")
                 throw BridgeError.executionFailed("Empty response")
             }
 
-            logger.info("[ClaudeCodeBridge] Success via Bedrock: \(response.prefix(50))")
+            logger.info("[ClaudeCodeBridge] Success via Claude CLI (MCP-enabled): \(response.prefix(50))")
             return response
         } else {
-            logger.error("[ClaudeCodeBridge] Bedrock failed: \(result.stderr)")
+            logger.error("[ClaudeCodeBridge] Claude CLI failed: \(result.stderr)")
             throw BridgeError.executionFailed("Assistant unavailable")
         }
     }
