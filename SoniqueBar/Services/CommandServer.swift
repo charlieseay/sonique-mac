@@ -20,17 +20,24 @@ class CommandServer: ObservableObject {
     private let authToken: String
 
     private init() {
+        NSLog("[CommandServer] init() starting")
+
         // Load auth token from secrets
         let tokenPath = "/Volumes/data/secrets/sonique_auth_token"
         if let token = try? String(contentsOfFile: tokenPath, encoding: .utf8).trimmingCharacters(in: .whitespacesAndNewlines), !token.isEmpty {
             self.authToken = token
+            NSLog("[CommandServer] Loaded existing auth token")
         } else {
             // Generate and save a new token if none exists
             let newToken = UUID().uuidString
             try? newToken.write(toFile: tokenPath, atomically: true, encoding: .utf8)
             self.authToken = newToken
+            NSLog("[CommandServer] Generated new auth token")
         }
+
+        NSLog("[CommandServer] Calling setupListener()")
         setupListener()
+        NSLog("[CommandServer] init() complete")
     }
     
     deinit {
@@ -40,35 +47,51 @@ class CommandServer: ObservableObject {
     // MARK: - Server Setup
     
     private func setupListener() {
+        logger.info("[CommandServer] setupListener() called")
+
         do {
+            logger.info("[CommandServer] Creating NWListener on port \(self.port.rawValue)")
             listener = try NWListener(using: .tcp, on: port)
-            
+
+            logger.info("[CommandServer] Listener created, setting handlers")
+
             listener?.newConnectionHandler = { [weak self] connection in
+                self?.logger.info("[CommandServer] New connection received")
                 self?.handleConnection(connection)
             }
-            
+
             listener?.stateUpdateHandler = { [weak self] state in
                 Task { @MainActor in
                     switch state {
                     case .ready:
                         self?.isRunning = true
-                        self?.logger.info("[CommandServer] Started on port \(self?.port.rawValue ?? 0)")
+                        self?.logger.info("[CommandServer] ✓ Listener READY on port \(self?.port.rawValue ?? 0)")
+                        NSLog("[CommandServer] ✓ Listener READY and bound to port \(self?.port.rawValue ?? 0)")
                     case .failed(let error):
-                        self?.logger.error("[CommandServer] Failed: \(error.localizedDescription)")
+                        self?.logger.error("[CommandServer] ❌ Listener FAILED: \(error.localizedDescription)")
+                        NSLog("[CommandServer] ❌ Listener FAILED: \(error.localizedDescription)")
                         self?.isRunning = false
                     case .cancelled:
                         self?.isRunning = false
-                        self?.logger.info("[CommandServer] Stopped")
-                    default:
-                        break
+                        self?.logger.info("[CommandServer] Listener cancelled")
+                    case .waiting(let error):
+                        self?.logger.warning("[CommandServer] Listener waiting: \(error.localizedDescription)")
+                        NSLog("[CommandServer] ⚠️ Listener WAITING: \(error.localizedDescription)")
+                    case .setup:
+                        self?.logger.info("[CommandServer] Listener in setup state")
+                    @unknown default:
+                        self?.logger.warning("[CommandServer] Listener unknown state")
                     }
                 }
             }
-            
+
+            logger.info("[CommandServer] Starting listener on main queue")
             listener?.start(queue: .main)
-            
+            logger.info("[CommandServer] Listener.start() called")
+
         } catch {
-            logger.error("[CommandServer] Failed to create listener: \(error.localizedDescription)")
+            logger.error("[CommandServer] ❌ Failed to create listener: \(error.localizedDescription)")
+            NSLog("[CommandServer] ❌ Failed to create listener: \(error.localizedDescription)")
         }
     }
     
