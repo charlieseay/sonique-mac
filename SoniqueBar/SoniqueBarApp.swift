@@ -117,6 +117,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         NSApp.setActivationPolicy(.accessory)
         NSLog("[SoniqueBar] CommandServer running on port 8890")
+
+        // Wake-up initialization: load personality so Sonique knows who she is
+        Task { @MainActor in
+            let personality = SoniqueBrain.shared.loadPersonaContext()
+            if !personality.isEmpty {
+                NSLog("[SoniqueBar] ✓ Wake-up complete: loaded identity, rules, capabilities from iCloud")
+            } else {
+                NSLog("[SoniqueBar] ⚠️ Wake-up incomplete: personality not found (check iCloud sync)")
+            }
+        }
     }
 
     func applicationWillTerminate(_ notification: Notification) {
