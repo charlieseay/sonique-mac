@@ -119,7 +119,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         NSLog("[SoniqueBar] CommandServer running on port 8890")
 
         // Wake-up initialization: load personality so Sonique knows who she is
+        // Delay slightly to let iCloud container resolve
         Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 500_000_000) // 0.5 seconds
             let personality = SoniqueBrain.shared.loadPersonaContext()
             if !personality.isEmpty {
                 NSLog("[SoniqueBar] ✓ Wake-up complete: loaded identity, rules, capabilities from iCloud")
