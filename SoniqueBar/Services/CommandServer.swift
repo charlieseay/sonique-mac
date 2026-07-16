@@ -253,9 +253,8 @@ class CommandServer: ObservableObject {
     }
     
 
-    /// TTS synthesis endpoint - uses macOS 'say' command to generate audio
+    /// TTS synthesis endpoint - Phase 6D: ElevenLabs or fallback to macOS 'say'
     private func handleSynthesize(_ data: Data, _ connection: NWConnection) async {
-        // Fix JSON duplication: use extractCommandText helper
         guard let text = extractCommandText(from: data) else {
             sendResponse("HTTP/1.1 400 Bad Request\r\n\r\n{\"error\":\"Missing 'text' field\"}", to: connection)
             return
@@ -263,10 +262,29 @@ class CommandServer: ObservableObject {
 
         logger.info("[CommandServer] TTS request: \(text.prefix(80))")
 
-        // Use macOS 'say' command to generate AIFF audio
+        // Phase 6D: Try ElevenLabs first, fallback to macOS say
+        if let audioData = try? await synthesizeWithElevenLabs(text: text) {
+            let response = """
+            HTTP/1.1 200 OK\r
+            Content-Type: audio/mpeg\r
+            Content-Length: \(audioData.count)\r
+            \r
+
+            """
+
+            connection.send(content: response.data(using: .utf8)!, completion: .contentProcessed { _ in })
+            connection.send(content: audioData, completion: .contentProcessed { _ in
+                connection.cancel()
+            })
+
+            logger.info("[CommandServer] ElevenLabs TTS generated \(audioData.count) bytes")
+            return
+        }
+
+        // Fallback to macOS 'say' command
+        logger.info("[CommandServer] Falling back to macOS say")
         let tempFile = "/tmp/sonique-tts-\(UUID().uuidString).aiff"
 
-        // Fix temp file leak: always clean up with defer
         defer {
             try? FileManager.default.removeItem(atPath: tempFile)
         }
@@ -280,7 +298,6 @@ class CommandServer: ObservableObject {
             process.waitUntilExit()
 
             if process.terminationStatus == 0, let audioData = try? Data(contentsOf: URL(fileURLWithPath: tempFile)) {
-                // Send AIFF audio file
                 let response = """
                 HTTP/1.1 200 OK\r
                 Content-Type: audio/x-aiff\r
@@ -294,7 +311,7 @@ class CommandServer: ObservableObject {
                     connection.cancel()
                 })
 
-                logger.info("[CommandServer] TTS generated \(audioData.count) bytes")
+                logger.info("[CommandServer] macOS TTS generated \(audioData.count) bytes")
             } else {
                 sendResponse("HTTP/1.1 500 Internal Server Error\r\n\r\n{\"error\":\"TTS generation failed\"}", to: connection)
             }
@@ -302,6 +319,44 @@ class CommandServer: ObservableObject {
             logger.error("[CommandServer] TTS error: \(error.localizedDescription)")
             sendResponse("HTTP/1.1 500 Internal Server Error\r\n\r\n{\"error\":\"TTS error\"}", to: connection)
         }
+    }
+
+    // MARK: - Phase 6D: ElevenLabs TTS
+
+    private func synthesizeWithElevenLabs(text: String) async throws -> Data {
+        // Load API key from secrets
+        let keyPath = "/Volumes/data/secrets/elevenlabs_api_key"
+        guard let apiKey = try? String(contentsOfFile: keyPath, encoding: .utf8).trimmingCharacters(in: .whitespacesAndNewlines), !apiKey.isEmpty else {
+            throw NSError(domain: "ElevenLabs", code: 1, userInfo: [NSLocalizedDescriptionKey: "API key not found"])
+        }
+
+        // Rachel voice ID (default)
+        let voiceId = "21m00Tcm4TlvDq8ikWAM"
+
+        let url = URL(string: "https://api.elevenlabs.io/v1/text-to-speech/\(voiceId)")!
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue(apiKey, forHTTPHeaderField: "xi-api-key")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+
+        let body: [String: Any] = [
+            "text": text,
+            "model_id": "eleven_monolingual_v1",
+            "voice_settings": [
+                "stability": 0.5,
+                "similarity_boost": 0.75
+            ]
+        ]
+
+        request.httpBody = try JSONSerialization.data(withJSONObject: body)
+
+        let (data, response) = try await URLSession.shared.data(for: request)
+
+        guard let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 else {
+            throw NSError(domain: "ElevenLabs", code: 2, userInfo: [NSLocalizedDescriptionKey: "Request failed"])
+        }
+
+        return data
     }
 
     // MARK: - Helpers

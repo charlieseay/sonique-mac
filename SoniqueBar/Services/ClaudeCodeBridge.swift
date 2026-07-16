@@ -5,13 +5,33 @@ import os.log
 class ClaudeCodeBridge {
     private let logger = Logger(subsystem: "com.seayniclabs.soniquebar", category: "ClaudeCodeBridge")
 
+    // Phase 6B: Simple in-memory conversation history (last 5 exchanges)
+    private var conversationHistory: [(role: String, content: String)] = []
+    private let maxHistoryCount = 10  // 5 exchanges = 10 messages
+
     func execute(text: String) async throws -> String {
         logger.info("[ClaudeCodeBridge] Executing: \(text.prefix(80))")
+
+        // Phase 6B: Add user message to history
+        conversationHistory.append((role: "user", content: text))
+        if conversationHistory.count > maxHistoryCount {
+            conversationHistory.removeFirst()
+        }
 
         // Load personality from SoniqueBrain (iCloud-synced)
         let personality = await SoniqueBrain.shared.loadPersonaContext()
 
-        let prompt = "\(personality)\n\nUser: \(text)"
+        // Phase 6B: Build conversation context
+        var historyContext = ""
+        if conversationHistory.count > 1 {  // More than just current message
+            historyContext = "\n\n## Recent Conversation:\n"
+            for (role, content) in conversationHistory.dropLast() {  // Exclude current message
+                let speaker = role == "user" ? "User" : "Assistant"
+                historyContext += "\(speaker): \(content)\n"
+            }
+        }
+
+        let prompt = "\(personality)\(historyContext)\n\nUser: \(text)"
 
         // Phase 6A: Route through Claude CLI for MCP tool access
         // This gives immediate access to Expo MCP, ASC MCP, and other configured MCP servers
@@ -29,7 +49,45 @@ class ClaudeCodeBridge {
                 throw BridgeError.executionFailed("Empty response")
             }
 
-            logger.info("[ClaudeCodeBridge] Success via Claude CLI (MCP-enabled): \(response.prefix(50))")
+            // Phase 6C: Check if web search fallback needed
+            if Self.needsWebSearch(response) {
+                logger.info("[ClaudeCodeBridge] Response indicates need for web search, attempting fallback...")
+
+                do {
+                    let searchResults = try await Self.performWebSearch(query: text)
+                    let searchPrompt = "\(personality)\n\nUser asked: \(text)\n\nWeb search results:\n\(searchResults)\n\nBased on these search results, please answer the user's question."
+
+                    let searchResult = await executeProcess(
+                        executable: "/opt/homebrew/bin/claude",
+                        arguments: ["-p", searchPrompt],
+                        timeout: 30.0
+                    )
+
+                    if searchResult.exitCode == 0 && !searchResult.stdout.isEmpty {
+                        let searchResponse = searchResult.stdout.trimmingCharacters(in: .whitespacesAndNewlines)
+
+                        // Phase 6B: Add web-enhanced response to history
+                        conversationHistory.append((role: "assistant", content: searchResponse))
+                        if conversationHistory.count > maxHistoryCount {
+                            conversationHistory.removeFirst()
+                        }
+
+                        logger.info("[ClaudeCodeBridge] Web search fallback successful")
+                        return searchResponse
+                    }
+                } catch {
+                    logger.warning("[ClaudeCodeBridge] Web search fallback failed: \(error.localizedDescription)")
+                    // Fall through to return original response
+                }
+            }
+
+            // Phase 6B: Add assistant response to history
+            conversationHistory.append((role: "assistant", content: response))
+            if conversationHistory.count > maxHistoryCount {
+                conversationHistory.removeFirst()
+            }
+
+            logger.info("[ClaudeCodeBridge] Success via Claude CLI (MCP-enabled + history): \(response.prefix(50))")
             return response
         } else {
             logger.error("[ClaudeCodeBridge] Claude CLI failed: \(result.stderr)")
@@ -108,5 +166,72 @@ class ClaudeCodeBridge {
                 }
             }
         }
+    }
+
+    // MARK: - Phase 6C: Web Search Helpers
+
+    private static func needsWebSearch(_ response: String) -> Bool {
+        let patterns = [
+            "I don't have current information",
+            "My knowledge cutoff",
+            "I cannot access real-time",
+            "As of my last update",
+            "I don't have access to current"
+        ]
+
+        let lowercased = response.lowercased()
+        return patterns.contains { lowercased.contains($0.lowercased()) }
+    }
+
+    private static func performWebSearch(query: String) async throws -> String {
+        // DuckDuckGo Instant Answer API
+        guard var components = URLComponents(string: "https://api.duckduckgo.com/") else {
+            throw BridgeError.executionFailed("Invalid search URL")
+        }
+
+        components.queryItems = [
+            URLQueryItem(name: "q", value: query),
+            URLQueryItem(name: "format", value: "json"),
+            URLQueryItem(name: "no_html", value: "1"),
+            URLQueryItem(name: "skip_disambig", value: "1")
+        ]
+
+        guard let url = components.url else {
+            throw BridgeError.executionFailed("Invalid search URL")
+        }
+
+        let (data, response) = try await URLSession.shared.data(from: url)
+
+        guard let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 else {
+            throw BridgeError.executionFailed("Search request failed")
+        }
+
+        guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+            throw BridgeError.executionFailed("Invalid search response")
+        }
+
+        var results: [String] = []
+
+        if let abstract = json["Abstract"] as? String, !abstract.isEmpty {
+            results.append("Summary: \(abstract)")
+        }
+
+        if let abstractURL = json["AbstractURL"] as? String, !abstractURL.isEmpty {
+            results.append("Source: \(abstractURL)")
+        }
+
+        if let relatedTopics = json["RelatedTopics"] as? [[String: Any]] {
+            for (index, topic) in relatedTopics.prefix(3).enumerated() {
+                if let text = topic["Text"] as? String, !text.isEmpty {
+                    results.append("Related (\(index + 1)): \(text)")
+                }
+            }
+        }
+
+        if results.isEmpty {
+            throw BridgeError.executionFailed("No search results found")
+        }
+
+        return results.joined(separator: "\n\n")
     }
 }
