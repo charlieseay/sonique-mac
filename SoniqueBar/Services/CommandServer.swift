@@ -232,11 +232,8 @@ class CommandServer: ObservableObject {
 
     /// TTS synthesis endpoint - uses macOS 'say' command to generate audio
     private func handleSynthesize(_ data: Data, _ connection: NWConnection) async {
-        guard let requestString = String(data: data, encoding: .utf8),
-              let range = requestString.range(of: "\r\n\r\n"),
-              let bodyData = String(requestString[range.upperBound...]).data(using: .utf8),
-              let json = try? JSONSerialization.jsonObject(with: bodyData) as? [String: Any],
-              let text = json["text"] as? String else {
+        // Fix JSON duplication: use extractCommandText helper
+        guard let text = extractCommandText(from: data) else {
             sendResponse("HTTP/1.1 400 Bad Request\r\n\r\n{\"error\":\"Missing 'text' field\"}", to: connection)
             return
         }
