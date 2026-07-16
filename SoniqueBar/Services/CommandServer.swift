@@ -7,17 +7,18 @@ import os.log
 @MainActor
 class CommandServer: ObservableObject {
     static let shared = CommandServer()
-    
+
     private let logger = Logger(subsystem: "com.seayniclabs.soniquebar", category: "CommandServer")
-    
+
     @Published var isRunning = false
     @Published var lastCommand: String = ""
     @Published var requestCount: Int = 0
-    
+
     private var listener: NWListener?
     private let port: NWEndpoint.Port = 8890
     private let claudeBridge = ClaudeCodeBridge()
     private let authToken: String
+    private var bonjourService: NetService?
 
     private init() {
         NSLog("[CommandServer] init() starting")
@@ -42,6 +43,7 @@ class CommandServer: ObservableObject {
     
     deinit {
         listener?.cancel()
+        bonjourService?.stop()
     }
     
     // MARK: - Server Setup
@@ -67,13 +69,17 @@ class CommandServer: ObservableObject {
                         self?.isRunning = true
                         self?.logger.info("[CommandServer] ✓ Listener READY on port \(self?.port.rawValue ?? 0)")
                         NSLog("[CommandServer] ✓ Listener READY and bound to port \(self?.port.rawValue ?? 0)")
+                        // Start Bonjour advertising once listener is ready
+                        self?.startBonjourAdvertising()
                     case .failed(let error):
                         self?.logger.error("[CommandServer] ❌ Listener FAILED: \(error.localizedDescription)")
                         NSLog("[CommandServer] ❌ Listener FAILED: \(error.localizedDescription)")
                         self?.isRunning = false
+                        self?.bonjourService?.stop()
                     case .cancelled:
                         self?.isRunning = false
                         self?.logger.info("[CommandServer] Listener cancelled")
+                        self?.bonjourService?.stop()
                     case .waiting(let error):
                         self?.logger.warning("[CommandServer] Listener waiting: \(error.localizedDescription)")
                         NSLog("[CommandServer] ⚠️ Listener WAITING: \(error.localizedDescription)")
@@ -417,12 +423,26 @@ class CommandServer: ObservableObject {
     
     private func sendResponse(_ response: String, to connection: NWConnection) {
         let data = response.data(using: .utf8)!
-        
+
         connection.send(content: data, completion: .contentProcessed { error in
             if let error = error {
                 print("[CommandServer] Send error: \(error)")
             }
             connection.cancel()
         })
+    }
+
+    // MARK: - Bonjour Advertising
+
+    private func startBonjourAdvertising() {
+        // Stop existing service if any
+        bonjourService?.stop()
+
+        // Create and publish Bonjour service
+        bonjourService = NetService(domain: "local.", type: "_sonique._tcp.", name: "SoniqueBar", port: Int32(self.port.rawValue))
+        bonjourService?.publish()
+
+        logger.info("[CommandServer] ✓ Bonjour advertising started: _sonique._tcp.local on port \(self.port.rawValue)")
+        NSLog("[CommandServer] ✓ Bonjour advertising: _sonique._tcp.local on port \(self.port.rawValue)")
     }
 }
