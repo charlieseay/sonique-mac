@@ -8,11 +8,8 @@ class ClaudeCodeBridge {
     func execute(text: String) async throws -> String {
         logger.info("[ClaudeCodeBridge] Executing: \(text.prefix(80))")
 
-        // Use Bedrock (reliable programmatic access)
-        let personality = """
-        You are Quinn, a helpful voice assistant. Keep responses natural, brief (1-2 sentences max),
-        and conversational. No markdown formatting. Respond as if speaking out loud.
-        """
+        // Load personality from SoniqueBrain (iCloud-synced)
+        let personality = await SoniqueBrain.shared.loadPersonaContext()
 
         let prompt = "\(personality)\n\nUser: \(text)"
 
@@ -46,49 +43,6 @@ class ClaudeCodeBridge {
         }
     }
 
-    private func pollTaskCompletion(taskId: String) async {
-        logger.info("[ClaudeCodeBridge] Polling task \(taskId)...")
-
-        let maxAttempts = 30  // 30 attempts = 60s max (2s per attempt)
-        var attempt = 0
-
-        while attempt < maxAttempts {
-            attempt += 1
-
-            // Wait 2 seconds between polls
-            try? await Task.sleep(nanoseconds: 2_000_000_000)
-
-            guard let url = URL(string: "http://127.0.0.1:5912/tasks/\(taskId)") else { continue }
-
-            do {
-                let (data, _) = try await URLSession.shared.data(from: url)
-                guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-                      let status = json["status"] as? String else {
-                    continue
-                }
-
-                if status == "completed" {
-                    if let result = json["result"] as? String {
-                        logger.info("[ClaudeCodeBridge] Task \(taskId) completed: \(result.prefix(50))")
-                        // TODO: Speak the result to user
-                        // For now, just log it - speaking requires TTS integration
-                    }
-                    return
-                } else if status == "failed" {
-                    if let error = json["error"] as? String {
-                        logger.error("[ClaudeCodeBridge] Task \(taskId) failed: \(error)")
-                    }
-                    return
-                }
-
-                // Still running, continue polling
-            } catch {
-                logger.error("[ClaudeCodeBridge] Failed to poll task \(taskId): \(error)")
-            }
-        }
-
-        logger.warning("[ClaudeCodeBridge] Task \(taskId) polling timed out after \(maxAttempts * 2)s")
-    }
 
     enum BridgeError: Error {
         case executionFailed(String)

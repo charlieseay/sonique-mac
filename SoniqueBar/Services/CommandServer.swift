@@ -17,8 +17,19 @@ class CommandServer: ObservableObject {
     private var listener: NWListener?
     private let port: NWEndpoint.Port = 8890
     private let claudeBridge = ClaudeCodeBridge()
-    
+    private let authToken: String
+
     private init() {
+        // Load auth token from secrets
+        let tokenPath = "/Volumes/data/secrets/sonique_auth_token"
+        if let token = try? String(contentsOfFile: tokenPath, encoding: .utf8).trimmingCharacters(in: .whitespacesAndNewlines), !token.isEmpty {
+            self.authToken = token
+        } else {
+            // Generate and save a new token if none exists
+            let newToken = UUID().uuidString
+            try? newToken.write(toFile: tokenPath, atomically: true, encoding: .utf8)
+            self.authToken = newToken
+        }
         setupListener()
     }
     
@@ -65,19 +76,26 @@ class CommandServer: ObservableObject {
 
     nonisolated private func handleConnection(_ connection: NWConnection) {
         connection.start(queue: .main)
-        
+
         connection.receive(minimumIncompleteLength: 1, maximumLength: 65536) { [weak self] data, _, isComplete, error in
             guard let self = self else { return }
-            
+
+            // Fix connection leak: handle errors properly
+            if let error = error {
+                print("[CommandServer] Receive error: \(error.localizedDescription)")
+                connection.cancel()
+                return
+            }
+
             if let data = data, !data.isEmpty {
                 Task { @MainActor in
                     await self.processRequest(data, connection: connection)
                 }
             }
-            
+
             if isComplete {
                 connection.cancel()
-            } else if error == nil {
+            } else {
                 // Continue receiving
                 self.handleConnection(connection)
             }
@@ -89,26 +107,40 @@ class CommandServer: ObservableObject {
             sendResponse("HTTP/1.1 400 Bad Request\r\n\r\n", to: connection)
             return
         }
-        
+
         // Parse HTTP request
         let lines = requestString.components(separatedBy: "\r\n")
         guard let requestLine = lines.first else {
             sendResponse("HTTP/1.1 400 Bad Request\r\n\r\n", to: connection)
             return
         }
-        
+
         let parts = requestLine.components(separatedBy: " ")
         guard parts.count >= 2 else {
             sendResponse("HTTP/1.1 400 Bad Request\r\n\r\n", to: connection)
             return
         }
-        
+
         let method = parts[0]
         let path = parts[1]
-        
+
         logger.info("[CommandServer] \(method) \(path)")
-        
-        // Route requests
+
+        // Check bearer token for all non-health endpoints
+        if path != "/health" {
+            let authorized = lines.contains { line in
+                line.lowercased().hasPrefix("authorization: bearer ") &&
+                line.dropFirst("authorization: bearer ".count).trimmingCharacters(in: .whitespaces) == authToken
+            }
+
+            if !authorized {
+                logger.warning("[CommandServer] Unauthorized request to \(path)")
+                sendResponse("HTTP/1.1 401 Unauthorized\r\n\r\n{\"error\":\"Unauthorized\"}", to: connection)
+                return
+            }
+        }
+
+        // Route requests (removed /config endpoint - security fix)
         if path == "/health" {
             await handleHealth(connection)
         } else if path == "/command/stream" && method == "POST" {
@@ -117,8 +149,6 @@ class CommandServer: ObservableObject {
             await handleCommand(data, connection)
         } else if path == "/synthesize" && method == "POST" {
             await handleSynthesize(data, connection)
-        } else if path == "/config" {
-            await handleConfig(connection)
         } else {
             sendResponse("HTTP/1.1 404 Not Found\r\n\r\n{\"error\":\"Not found\"}", to: connection)
         }
@@ -199,21 +229,6 @@ class CommandServer: ObservableObject {
         }
     }
     
-    private func handleConfig(_ connection: NWConnection) async {
-        // Return ElevenLabs API key for iOS
-        let apiKeyPath = "/Volumes/data/secrets/elevenlabs_api_key"
-
-        if let apiKey = try? String(contentsOfFile: apiKeyPath, encoding: .utf8).trimmingCharacters(in: .whitespacesAndNewlines) {
-            let json = """
-            {
-                "elevenlabsAPIKey": "\(apiKey)"
-            }
-            """
-            sendJSON(json, to: connection)
-        } else {
-            sendResponse("HTTP/1.1 500 Internal Server Error\r\n\r\n{\"error\":\"API key not found\"}", to: connection)
-        }
-    }
 
     /// TTS synthesis endpoint - uses macOS 'say' command to generate audio
     private func handleSynthesize(_ data: Data, _ connection: NWConnection) async {
@@ -230,6 +245,11 @@ class CommandServer: ObservableObject {
 
         // Use macOS 'say' command to generate AIFF audio
         let tempFile = "/tmp/sonique-tts-\(UUID().uuidString).aiff"
+
+        // Fix temp file leak: always clean up with defer
+        defer {
+            try? FileManager.default.removeItem(atPath: tempFile)
+        }
 
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/usr/bin/say")
@@ -253,9 +273,6 @@ class CommandServer: ObservableObject {
                 connection.send(content: audioData, completion: .contentProcessed { _ in
                     connection.cancel()
                 })
-
-                // Cleanup temp file
-                try? FileManager.default.removeItem(atPath: tempFile)
 
                 logger.info("[CommandServer] TTS generated \(audioData.count) bytes")
             } else {
