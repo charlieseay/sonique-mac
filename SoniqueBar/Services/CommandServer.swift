@@ -296,7 +296,8 @@ class CommandServer: ObservableObject {
 
         logger.info("[CommandServer] TTS request: \(text.prefix(80))")
 
-        // Phase 6D: Try ElevenLabs first, fallback to macOS say
+        // Priority 1: Try ElevenLabs (proven working, high quality)
+        // TODO: Switch to Piper once arm64 binary is available
         if let audioData = try? await synthesizeWithElevenLabs(text: text) {
             let response = """
             HTTP/1.1 200 OK\r
@@ -315,7 +316,7 @@ class CommandServer: ObservableObject {
             return
         }
 
-        // Fallback to macOS 'say' command
+        // Priority 3: Fallback to macOS 'say' command
         logger.info("[CommandServer] Falling back to macOS say")
         let tempFile = "/tmp/sonique-tts-\(UUID().uuidString).aiff"
 
@@ -355,8 +356,60 @@ class CommandServer: ObservableObject {
         }
     }
 
-    // MARK: - Phase 6D: ElevenLabs TTS
+    // MARK: - TTS Providers
 
+    /// Piper TTS - local, free, high quality (primary)
+    private func synthesizeWithPiper(text: String) async throws -> Data {
+        let voice = "en_US-lessac-medium"  // High-quality female voice
+        let piperPath = "/Users/charlieseay/.local/bin/piper"
+        let modelPath = "/Users/charlieseay/.local/share/piper/voices/\(voice).onnx"
+        let outputFile = "/tmp/sonique-piper-\(UUID().uuidString).wav"
+
+        defer {
+            try? FileManager.default.removeItem(atPath: outputFile)
+        }
+
+        // Check if Piper is installed
+        guard FileManager.default.fileExists(atPath: piperPath) else {
+            throw NSError(domain: "Piper", code: 1, userInfo: [NSLocalizedDescriptionKey: "Piper not installed"])
+        }
+
+        // Check if voice model exists
+        guard FileManager.default.fileExists(atPath: modelPath) else {
+            throw NSError(domain: "Piper", code: 2, userInfo: [NSLocalizedDescriptionKey: "Voice model not found: \(voice)"])
+        }
+
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: piperPath)
+        process.arguments = [
+            "--model", modelPath,
+            "--output_file", outputFile
+        ]
+
+        // Pipe text to stdin
+        let pipe = Pipe()
+        process.standardInput = pipe
+        process.standardError = Pipe()  // Suppress stderr
+
+        try process.run()
+
+        // Write text to stdin
+        if let textData = text.data(using: .utf8) {
+            pipe.fileHandleForWriting.write(textData)
+        }
+        try pipe.fileHandleForWriting.close()
+
+        process.waitUntilExit()
+
+        guard process.terminationStatus == 0,
+              let audioData = try? Data(contentsOf: URL(fileURLWithPath: outputFile)) else {
+            throw NSError(domain: "Piper", code: 3, userInfo: [NSLocalizedDescriptionKey: "Piper synthesis failed"])
+        }
+
+        return audioData
+    }
+
+    /// ElevenLabs TTS - cloud, premium (optional)
     private func synthesizeWithElevenLabs(text: String) async throws -> Data {
         // Load API key from secrets
         let keyPath = "/Volumes/data/secrets/elevenlabs_api_key"
