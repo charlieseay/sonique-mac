@@ -316,8 +316,16 @@ class ModelRouter {
         try data.write(to: URL(fileURLWithPath: configPath))
     }
 
-    enum Complexity {
+    enum Complexity: CustomStringConvertible {
         case simple, medium, complex
+
+        var description: String {
+            switch self {
+            case .simple: return "simple"
+            case .medium: return "medium"
+            case .complex: return "complex"
+            }
+        }
     }
 
     enum RouterError: LocalizedError {

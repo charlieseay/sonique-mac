@@ -124,24 +124,38 @@ class ClaudeCodeBridge {
             process.standardOutput = stdoutPipe
             process.standardError = stderrPipe
 
+            // Use NSLock to synchronize access to shared state
+            let lock = NSLock()
             var stdoutData = Data()
             var stderrData = Data()
             var didComplete = false
 
             stdoutPipe.fileHandleForReading.readabilityHandler = { handle in
+                lock.lock()
+                defer { lock.unlock() }
                 stdoutData.append(handle.availableData)
             }
 
             stderrPipe.fileHandleForReading.readabilityHandler = { handle in
+                lock.lock()
+                defer { lock.unlock() }
                 stderrData.append(handle.availableData)
             }
 
             process.terminationHandler = { process in
-                guard !didComplete else { return }
+                lock.lock()
+                guard !didComplete else {
+                    lock.unlock()
+                    return
+                }
                 didComplete = true
+                // Copy data inside lock to avoid data races
+                let stdoutCopy = stdoutData
+                let stderrCopy = stderrData
+                lock.unlock()
 
-                let stdout = String(data: stdoutData, encoding: .utf8) ?? ""
-                let stderr = String(data: stderrData, encoding: .utf8) ?? ""
+                let stdout = String(data: stdoutCopy, encoding: .utf8) ?? ""
+                let stderr = String(data: stderrCopy, encoding: .utf8) ?? ""
 
                 continuation.resume(returning: (
                     stdout.trimmingCharacters(in: .whitespacesAndNewlines),
@@ -157,16 +171,24 @@ class ClaudeCodeBridge {
                     try? await Task.sleep(nanoseconds: UInt64(timeout * 1_000_000_000))
                     if process.isRunning {
                         process.terminate()
+                        lock.lock()
                         if !didComplete {
                             didComplete = true
+                            lock.unlock()
                             continuation.resume(returning: ("", "Process timed out", 124))
+                        } else {
+                            lock.unlock()
                         }
                     }
                 }
             } catch {
+                lock.lock()
                 if !didComplete {
                     didComplete = true
+                    lock.unlock()
                     continuation.resume(returning: ("", error.localizedDescription, -1))
+                } else {
+                    lock.unlock()
                 }
             }
         }
