@@ -305,7 +305,7 @@ class CommandServer: ObservableObject {
 
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/usr/bin/say")
-        process.arguments = ["-o", tempFile, text]
+        process.arguments = ["-v", "Samantha", "-o", tempFile, text]
 
         do {
             try process.run()
