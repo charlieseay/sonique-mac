@@ -151,6 +151,31 @@ final class SoniqueBrain {
         enforceQuota()
     }
 
+    // MARK: - Preferences (iCloud-backed shared config)
+
+    private var prefsURL: URL { sharedDir.appendingPathComponent("preferences.json") }
+
+    struct Preferences: Codable {
+        var authToken: String?  // Bearer token for CommandServer authentication
+    }
+
+    func loadPreferences() -> Preferences {
+        let text = readText(prefsURL)
+        guard !text.isEmpty,
+              let data = text.data(using: .utf8),
+              let prefs = try? JSONDecoder().decode(Preferences.self, from: data) else {
+            return Preferences()
+        }
+        return prefs
+    }
+
+    func savePreferences(_ prefs: Preferences) {
+        guard let data = try? JSONEncoder().encode(prefs),
+              let json = String(data: data, encoding: .utf8) else { return }
+
+        writeText(json, to: prefsURL)
+    }
+
     // MARK: - Quota Management
 
     private func enforceQuota() {

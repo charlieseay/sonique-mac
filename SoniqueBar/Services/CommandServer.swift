@@ -36,6 +36,14 @@ class CommandServer: ObservableObject {
             NSLog("[CommandServer] Generated new auth token")
         }
 
+        // Sync auth token to iCloud preferences so iOS can use it
+        Task { @MainActor in
+            var prefs = SoniqueBrain.shared.loadPreferences()
+            prefs.authToken = self.authToken
+            SoniqueBrain.shared.savePreferences(prefs)
+            NSLog("[CommandServer] Synced auth token to iCloud preferences")
+        }
+
         NSLog("[CommandServer] Calling setupListener()")
         setupListener()
         NSLog("[CommandServer] init() complete")
