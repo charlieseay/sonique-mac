@@ -49,14 +49,23 @@ class ModelRouter {
 
     // Complexity classification patterns
     private let complexPatterns = [
-        "why", "explain", "analyze", "summar", "write.*email", "write.*message",
-        "draft", "create.*document", "what.s the difference", "compare",
-        "advise", "should i", "what should", "how (do|can|would)", "tell me about"
+        // Deep reasoning / explanation
+        "why", "explain", "analyze", "summar", "tell me about", "what.s the difference",
+        // Content creation
+        "write.*email", "write.*message", "draft", "create.*document", "compose",
+        // Decision-making
+        "advise", "should i", "what should", "recommend",
+        // Research / comparison
+        "compare", "research", "find out about", "look up"
     ]
 
     private let mediumPatterns = [
-        "then", "after (that|you|it)", "before.*(you|it|that)",
-        "and also", "as well as", "if.*then", "all (the )?(lights|doors|cameras|devices)"
+        // Multi-step home automation (MCP → Home Assistant)
+        "all (the )?(lights|doors|cameras|devices)", "turn on.*and.*", "set.*then.*",
+        // Conditional logic
+        "if.*then", "when.*do", "after.*then", "before.*do",
+        // Multi-tool orchestration
+        "and also", "as well as", "plus", "then"
     ]
 
     private init() {
