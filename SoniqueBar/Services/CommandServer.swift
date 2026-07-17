@@ -163,8 +163,8 @@ class CommandServer: ObservableObject {
 
         logger.info("[CommandServer] \(method) \(path)")
 
-        // Check bearer token for all non-health endpoints
-        if path != "/health" {
+        // Check bearer token for all non-health, non-voices endpoints
+        if path != "/health" && path != "/voices" {
             let authorized = lines.contains { line in
                 line.lowercased().hasPrefix("authorization: bearer ") &&
                 line.dropFirst("authorization: bearer ".count).trimmingCharacters(in: .whitespaces) == authToken
@@ -180,6 +180,8 @@ class CommandServer: ObservableObject {
         // Route requests (removed /config endpoint - security fix)
         if path == "/health" {
             await handleHealth(connection)
+        } else if path == "/voices" {
+            await handleVoices(connection)
         } else if path == "/command/stream" && method == "POST" {
             await handleCommandStream(data, connection)
         } else if path == "/command" && method == "POST" {
@@ -203,7 +205,25 @@ class CommandServer: ObservableObject {
             "mode": "claude-code-bridge"
         }
         """
-        
+
+        sendJSON(response, to: connection)
+    }
+
+    /// Return list of available ElevenLabs voices
+    private func handleVoices(_ connection: NWConnection) async {
+        // Top 5 conversational ElevenLabs voices matching quality requirement
+        let response = """
+        {
+            "voices": [
+                {"id": "pNInz6obpgDQGcFmaJgB", "name": "Adam", "description": "Deep, confident male voice"},
+                {"id": "21m00Tcm4TlvDq8ikWAM", "name": "Rachel", "description": "Warm, clear female voice (default)"},
+                {"id": "AZnzlk1XvdvUeBnXmlld", "name": "Domi", "description": "Professional female voice"},
+                {"id": "EXAVITQu4vr4xnSDxMaL", "name": "Bella", "description": "Bright, engaging female voice"},
+                {"id": "ErXwobaYiN019PkySvjV", "name": "Antoni", "description": "Smooth, articulate male voice"}
+            ]
+        }
+        """
+
         sendJSON(response, to: connection)
     }
     
