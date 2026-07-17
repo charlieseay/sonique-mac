@@ -33,13 +33,15 @@ class ClaudeCodeBridge {
 
         let prompt = "\(personality)\(historyContext)\n\nUser: \(text)"
 
-        // Phase 6A: Route through Claude CLI for MCP tool access
-        // This gives immediate access to Expo MCP, ASC MCP, and other configured MCP servers
-        let result = await executeProcess(
-            executable: "/opt/homebrew/bin/claude",
-            arguments: ["-p", prompt],  // -p = headless prompt mode
-            timeout: 30.0  // Increased timeout for MCP tool calls
-        )
+        // Phase 7: Route through ModelRouter
+        let result: (stdout: String, stderr: String, exitCode: Int32)
+        do {
+            let response = try await ModelRouter.shared.route(prompt: prompt)
+            result = (stdout: response, stderr: "", exitCode: 0)
+        } catch {
+            logger.error("[ClaudeCodeBridge] ModelRouter failed: \(error.localizedDescription)")
+            result = (stdout: "", stderr: error.localizedDescription, exitCode: 1)
+        }
 
         if result.exitCode == 0 && !result.stdout.isEmpty {
             let response = result.stdout.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -57,11 +59,13 @@ class ClaudeCodeBridge {
                     let searchResults = try await Self.performWebSearch(query: text)
                     let searchPrompt = "\(personality)\n\nUser asked: \(text)\n\nWeb search results:\n\(searchResults)\n\nBased on these search results, please answer the user's question."
 
-                    let searchResult = await executeProcess(
-                        executable: "/opt/homebrew/bin/claude",
-                        arguments: ["-p", searchPrompt],
-                        timeout: 30.0
-                    )
+                    let searchResult: (stdout: String, stderr: String, exitCode: Int32)
+                    do {
+                        let searchResponse = try await ModelRouter.shared.route(prompt: searchPrompt)
+                        searchResult = (stdout: searchResponse, stderr: "", exitCode: 0)
+                    } catch {
+                        searchResult = (stdout: "", stderr: error.localizedDescription, exitCode: 1)
+                    }
 
                     if searchResult.exitCode == 0 && !searchResult.stdout.isEmpty {
                         let searchResponse = searchResult.stdout.trimmingCharacters(in: .whitespacesAndNewlines)
