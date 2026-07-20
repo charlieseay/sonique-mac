@@ -178,9 +178,11 @@ class CommandServer: ObservableObject {
             }
         }
 
-        // Route requests (removed /config endpoint - security fix)
+        // Route requests
         if path == "/health" {
             await handleHealth(connection)
+        } else if path == "/config" {
+            await handleConfig(connection)
         } else if path == "/voices" {
             await handleVoices(connection)
         } else if path == "/command/stream" && method == "POST" {
@@ -208,6 +210,23 @@ class CommandServer: ObservableObject {
         """
 
         sendJSON(response, to: connection)
+    }
+
+    /// Return ElevenLabs API key for iOS TTS
+    private func handleConfig(_ connection: NWConnection) async {
+        // Read API key from secrets
+        let keyPath = "/Volumes/data/secrets/elevenlabs_api_key"
+        if let apiKey = try? String(contentsOfFile: keyPath, encoding: .utf8).trimmingCharacters(in: .whitespacesAndNewlines), !apiKey.isEmpty {
+            let response = """
+            {
+                "elevenlabsAPIKey": "\(apiKey)"
+            }
+            """
+            sendJSON(response, to: connection)
+        } else {
+            logger.warning("[CommandServer] ElevenLabs API key not found at \(keyPath)")
+            sendResponse("HTTP/1.1 500 Internal Server Error\r\n\r\n{\"error\":\"API key not configured\"}", to: connection)
+        }
     }
 
     /// Return list of available ElevenLabs voices
@@ -320,49 +339,10 @@ class CommandServer: ObservableObject {
             return
         }
 
-        // Priority 2: Fallback to macOS 'say' (convert AIFF to PCM)
-        logger.info("[CommandServer] Falling back to macOS say")
-        let tempFile = "/tmp/sonique-tts-\(UUID().uuidString).aiff"
-
-        defer {
-            try? FileManager.default.removeItem(atPath: tempFile)
-        }
-
-        let process = Process()
-        process.executableURL = URL(fileURLWithPath: "/usr/bin/say")
-        process.arguments = ["-v", "Samantha", "-o", tempFile, text]
-
-        do {
-            try process.run()
-            process.waitUntilExit()
-
-            if process.terminationStatus == 0,
-               let aiffData = try? Data(contentsOf: URL(fileURLWithPath: tempFile)),
-               let pcmData = await convertAIFFToPCM(aiffData) {
-                let response = """
-                HTTP/1.1 200 OK\r
-                Content-Type: audio/pcm\r
-                Content-Length: \(pcmData.count)\r
-                X-Sample-Rate: 24000\r
-                X-Channels: 1\r
-                X-Bit-Depth: 16\r
-                \r
-
-                """
-
-                connection.send(content: response.data(using: .utf8)!, completion: .contentProcessed { _ in })
-                connection.send(content: pcmData, completion: .contentProcessed { _ in
-                    connection.cancel()
-                })
-
-                logger.info("[CommandServer] macOS TTS → PCM: \(pcmData.count) bytes @ 24kHz")
-            } else {
-                sendResponse("HTTP/1.1 500 Internal Server Error\r\n\r\n{\"error\":\"TTS generation failed\"}", to: connection)
-            }
-        } catch {
-            logger.error("[CommandServer] TTS error: \(error.localizedDescription)")
-            sendResponse("HTTP/1.1 500 Internal Server Error\r\n\r\n{\"error\":\"TTS error\"}", to: connection)
-        }
+        // No fallback - ElevenLabs is required for TTS
+        // TODO: Implement VoiceBox/Kokoro as primary TTS option
+        logger.error("[CommandServer] TTS failed - ElevenLabs unavailable and no fallback configured")
+        sendResponse("HTTP/1.1 500 Internal Server Error\r\n\r\n{\"error\":\"TTS unavailable - ElevenLabs API key not configured\"}", to: connection)
     }
 
     // MARK: - Audio Conversion Helpers
