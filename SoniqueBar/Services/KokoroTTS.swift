@@ -15,17 +15,17 @@ class KokoroTTS {
     private init() {
         logger.info("[KokoroTTS] Initializing...")
 
-        // Path to built KokoroCLI binary
+        // Path to xcodebuild KokoroCLI binary (required for Metal shaders)
         let homeDir = FileManager.default.homeDirectoryForCurrentUser.path
-        self.cliPath = "\(homeDir)/Projects/sonique-mac/Kokoro/.build/release/KokoroCLI"
+        self.cliPath = "\(homeDir)/Library/Developer/Xcode/DerivedData/Kokoro-bucjbiopclclewcdvhstvyngclfr/Build/Products/Release/KokoroCLI"
         self.weightsDir = "\(homeDir)/Projects/sonique-mac/Kokoro/MLX_GPU"
 
         // Verify CLI exists
         if FileManager.default.fileExists(atPath: cliPath) {
-            logger.info("[KokoroTTS] Found KokoroCLI at \(cliPath)")
+            logger.info("[KokoroTTS] ✓ Found KokoroCLI at \(cliPath)")
         } else {
-            logger.error("[KokoroTTS] KokoroCLI not found at \(cliPath)")
-            logger.error("[KokoroTTS] Build with: cd ~/Projects/sonique-mac/Kokoro && swift build -c release")
+            logger.error("[KokoroTTS] ❌ KokoroCLI not found at \(cliPath)")
+            logger.error("[KokoroTTS] Build with: cd ~/Projects/sonique-mac/Kokoro && xcodebuild -scheme KokoroCLI -destination 'platform=macOS' -configuration Release build")
         }
     }
 
