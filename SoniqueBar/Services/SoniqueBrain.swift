@@ -19,6 +19,11 @@ final class SoniqueBrain {
     private let containerID = "iCloud.com.seayniclabs.sonique"
     private var cachedBase: URL?
 
+    // Cache personality to avoid re-reading iCloud every request
+    private var cachedPersonality: String?
+    private var lastPersonalityLoad: Date?
+    private let personalityCacheDuration: TimeInterval = 30.0  // Refresh every 30 seconds
+
     private init() {
         ensureStructure()
         // Resolve the shared ubiquity container OFF the main thread
@@ -52,14 +57,23 @@ final class SoniqueBrain {
     // MARK: - Shared Persona (Read/Write)
 
     /// Full persona context: IDENTITY + RULES + assistant name + conversational guidelines
+    /// Cached for performance - refreshes every 30 seconds to pick up iCloud changes
     func loadPersonaContext() -> String {
+        // Check cache first
+        if let cached = cachedPersonality,
+           let lastLoad = lastPersonalityLoad,
+           Date().timeIntervalSince(lastLoad) < personalityCacheDuration {
+            return cached
+        }
+
+        // Cache miss or expired - reload from iCloud
         let identity = readText(sharedDir.appendingPathComponent("IDENTITY.md"))
         let rules = readText(sharedDir.appendingPathComponent("RULES.md"))
         let soul = readText(sharedDir.appendingPathComponent("SOUL.md"))
 
         var persona = ""
 
-        // Load assistant name
+        // Load assistant name from iCloud-synced JSON
         let assistantFile = sharedDir.appendingPathComponent("assistant.json")
         if let data = try? Data(contentsOf: assistantFile),
            let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
@@ -82,6 +96,10 @@ final class SoniqueBrain {
         - If asked for detail, THEN provide it - otherwise stay brief
 
         """
+
+        // Update cache
+        cachedPersonality = persona
+        lastPersonalityLoad = Date()
 
         return persona
     }
