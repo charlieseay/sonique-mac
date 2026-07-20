@@ -1,6 +1,7 @@
 import Foundation
 import Network
 import os.log
+import AVFoundation
 
 /// Minimal HTTP server that routes voice commands to Claude Code CLI
 /// Replaces 2,432 lines of pattern matching with simple bridge to Claude Code
@@ -287,7 +288,7 @@ class CommandServer: ObservableObject {
     }
     
 
-    /// TTS synthesis endpoint - Phase 6D: ElevenLabs or fallback to macOS 'say'
+    /// TTS synthesis endpoint - Returns PCM audio for iOS compatibility
     private func handleSynthesize(_ data: Data, _ connection: NWConnection) async {
         guard let text = extractCommandText(from: data) else {
             sendResponse("HTTP/1.1 400 Bad Request\r\n\r\n{\"error\":\"Missing 'text' field\"}", to: connection)
@@ -296,27 +297,30 @@ class CommandServer: ObservableObject {
 
         logger.info("[CommandServer] TTS request: \(text.prefix(80))")
 
-        // Priority 1: Try ElevenLabs (proven working, high quality)
-        // TODO: Switch to Piper once arm64 binary is available
-        if let audioData = try? await synthesizeWithElevenLabs(text: text) {
+        // Priority 1: Try ElevenLabs (convert MP3 to PCM for iOS)
+        if let mp3Data = try? await synthesizeWithElevenLabs(text: text),
+           let pcmData = await convertMP3ToPCM(mp3Data) {
             let response = """
             HTTP/1.1 200 OK\r
-            Content-Type: audio/mpeg\r
-            Content-Length: \(audioData.count)\r
+            Content-Type: audio/pcm\r
+            Content-Length: \(pcmData.count)\r
+            X-Sample-Rate: 24000\r
+            X-Channels: 1\r
+            X-Bit-Depth: 16\r
             \r
 
             """
 
             connection.send(content: response.data(using: .utf8)!, completion: .contentProcessed { _ in })
-            connection.send(content: audioData, completion: .contentProcessed { _ in
+            connection.send(content: pcmData, completion: .contentProcessed { _ in
                 connection.cancel()
             })
 
-            logger.info("[CommandServer] ElevenLabs TTS generated \(audioData.count) bytes")
+            logger.info("[CommandServer] ElevenLabs TTS → PCM: \(pcmData.count) bytes @ 24kHz")
             return
         }
 
-        // Priority 3: Fallback to macOS 'say' command
+        // Priority 2: Fallback to macOS 'say' (convert AIFF to PCM)
         logger.info("[CommandServer] Falling back to macOS say")
         let tempFile = "/tmp/sonique-tts-\(UUID().uuidString).aiff"
 
@@ -332,21 +336,26 @@ class CommandServer: ObservableObject {
             try process.run()
             process.waitUntilExit()
 
-            if process.terminationStatus == 0, let audioData = try? Data(contentsOf: URL(fileURLWithPath: tempFile)) {
+            if process.terminationStatus == 0,
+               let aiffData = try? Data(contentsOf: URL(fileURLWithPath: tempFile)),
+               let pcmData = await convertAIFFToPCM(aiffData) {
                 let response = """
                 HTTP/1.1 200 OK\r
-                Content-Type: audio/x-aiff\r
-                Content-Length: \(audioData.count)\r
+                Content-Type: audio/pcm\r
+                Content-Length: \(pcmData.count)\r
+                X-Sample-Rate: 24000\r
+                X-Channels: 1\r
+                X-Bit-Depth: 16\r
                 \r
 
                 """
 
                 connection.send(content: response.data(using: .utf8)!, completion: .contentProcessed { _ in })
-                connection.send(content: audioData, completion: .contentProcessed { _ in
+                connection.send(content: pcmData, completion: .contentProcessed { _ in
                     connection.cancel()
                 })
 
-                logger.info("[CommandServer] macOS TTS generated \(audioData.count) bytes")
+                logger.info("[CommandServer] macOS TTS → PCM: \(pcmData.count) bytes @ 24kHz")
             } else {
                 sendResponse("HTTP/1.1 500 Internal Server Error\r\n\r\n{\"error\":\"TTS generation failed\"}", to: connection)
             }
@@ -354,6 +363,119 @@ class CommandServer: ObservableObject {
             logger.error("[CommandServer] TTS error: \(error.localizedDescription)")
             sendResponse("HTTP/1.1 500 Internal Server Error\r\n\r\n{\"error\":\"TTS error\"}", to: connection)
         }
+    }
+
+    // MARK: - Audio Conversion Helpers
+
+    /// Convert MP3 to 24kHz mono 16-bit PCM
+    private func convertMP3ToPCM(_ mp3Data: Data) async -> Data? {
+        let tempMP3 = "/tmp/sonique-mp3-\(UUID().uuidString).mp3"
+        let tempPCM = "/tmp/sonique-pcm-\(UUID().uuidString).raw"
+
+        defer {
+            try? FileManager.default.removeItem(atPath: tempMP3)
+            try? FileManager.default.removeItem(atPath: tempPCM)
+        }
+
+        do {
+            // Write MP3 to temp file
+            try mp3Data.write(to: URL(fileURLWithPath: tempMP3))
+
+            // Use ffmpeg to convert (if available)
+            if FileManager.default.fileExists(atPath: "/opt/homebrew/bin/ffmpeg") {
+                let process = Process()
+                process.executableURL = URL(fileURLWithPath: "/opt/homebrew/bin/ffmpeg")
+                process.arguments = [
+                    "-i", tempMP3,
+                    "-f", "s16le",      // 16-bit PCM little-endian
+                    "-ar", "24000",     // 24kHz sample rate
+                    "-ac", "1",         // mono
+                    tempPCM
+                ]
+                process.standardOutput = nil
+                process.standardError = nil
+
+                try process.run()
+                process.waitUntilExit()
+
+                if process.terminationStatus == 0,
+                   let pcmData = try? Data(contentsOf: URL(fileURLWithPath: tempPCM)) {
+                    return pcmData
+                }
+            }
+
+            // Fallback: use AVFoundation
+            return try await convertAudioWithAVFoundation(mp3Data, targetRate: 24000)
+
+        } catch {
+            logger.error("[CommandServer] MP3→PCM conversion failed: \(error.localizedDescription)")
+            return nil
+        }
+    }
+
+    /// Convert AIFF to 24kHz mono 16-bit PCM
+    private func convertAIFFToPCM(_ aiffData: Data) async -> Data? {
+        return try? await convertAudioWithAVFoundation(aiffData, targetRate: 24000)
+    }
+
+    /// Generic audio conversion using AVFoundation
+    private func convertAudioWithAVFoundation(_ audioData: Data, targetRate: Double) async throws -> Data? {
+        let tempInput = "/tmp/sonique-input-\(UUID().uuidString).audio"
+        let tempOutput = "/tmp/sonique-output-\(UUID().uuidString).raw"
+
+        defer {
+            try? FileManager.default.removeItem(atPath: tempInput)
+            try? FileManager.default.removeItem(atPath: tempOutput)
+        }
+
+        try audioData.write(to: URL(fileURLWithPath: tempInput))
+
+        guard let audioFile = try? AVAudioFile(forReading: URL(fileURLWithPath: tempInput)),
+              let targetFormat = AVAudioFormat(
+                commonFormat: .pcmFormatInt16,
+                sampleRate: targetRate,
+                channels: 1,
+                interleaved: true
+              ) else {
+            return nil
+        }
+
+        let sourceFormat = audioFile.processingFormat
+        guard let converter = AVAudioConverter(from: sourceFormat, to: targetFormat) else {
+            return nil
+        }
+
+        let frameCapacity = AVAudioFrameCount(audioFile.length)
+        guard let sourceBuffer = AVAudioPCMBuffer(pcmFormat: sourceFormat, frameCapacity: frameCapacity) else {
+            return nil
+        }
+
+        try audioFile.read(into: sourceBuffer)
+        sourceBuffer.frameLength = frameCapacity
+
+        let ratio = targetFormat.sampleRate / sourceFormat.sampleRate
+        let targetFrameCount = AVAudioFrameCount(Double(sourceBuffer.frameLength) * ratio)
+
+        guard let targetBuffer = AVAudioPCMBuffer(pcmFormat: targetFormat, frameCapacity: targetFrameCount) else {
+            return nil
+        }
+
+        var error: NSError?
+        let status = converter.convert(to: targetBuffer, error: &error) { _, outStatus in
+            outStatus.pointee = .haveData
+            return sourceBuffer
+        }
+
+        guard status != .error, let int16Data = targetBuffer.int16ChannelData else {
+            return nil
+        }
+
+        targetBuffer.frameLength = targetFrameCount
+
+        // Extract Int16 PCM data
+        let int16Pointer = int16Data[0]
+        let dataSize = Int(targetFrameCount) * 2  // 2 bytes per sample
+        return Data(bytes: int16Pointer, count: dataSize)
     }
 
     // MARK: - TTS Providers

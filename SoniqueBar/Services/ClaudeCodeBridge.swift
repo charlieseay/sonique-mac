@@ -9,10 +9,10 @@ class ClaudeCodeBridge {
     private var conversationHistory: [(role: String, content: String)] = []
     private let maxHistoryCount = 10  // 5 exchanges = 10 messages
 
-    func execute(text: String) async throws -> String {
+    func execute(text: String, mcpToolsAvailable: Bool = true) async throws -> String {
         logger.info("[ClaudeCodeBridge] Executing: \(text.prefix(80))")
 
-        // Phase 6B: Add user message to history
+        // Add user message to history
         conversationHistory.append((role: "user", content: text))
         if conversationHistory.count > maxHistoryCount {
             conversationHistory.removeFirst()
@@ -21,7 +21,7 @@ class ClaudeCodeBridge {
         // Load personality from SoniqueBrain (iCloud-synced)
         let personality = await SoniqueBrain.shared.loadPersonaContext()
 
-        // Phase 6B: Build conversation context
+        // Build conversation context
         var historyContext = ""
         if conversationHistory.count > 1 {  // More than just current message
             historyContext = "\n\n## Recent Conversation:\n"
@@ -33,13 +33,19 @@ class ClaudeCodeBridge {
 
         let prompt = "\(personality)\(historyContext)\n\nUser: \(text)"
 
-        // Phase 7: Route through ModelRouter
+        // Route through EnhancedModelRouter with context
+        let context = QueryContext(
+            mcpToolsAvailable: mcpToolsAvailable,
+            conversationLength: conversationHistory.count
+        )
+
         let result: (stdout: String, stderr: String, exitCode: Int32)
         do {
-            let response = try await ModelRouter.shared.route(prompt: prompt)
-            result = (stdout: response, stderr: "", exitCode: 0)
+            let response = try await EnhancedModelRouter.shared.route(prompt: prompt, context: context)
+            logger.info("[ClaudeCodeBridge] Provider: \(response.provider), Tier: \(response.tier.rawValue), Latency: \(String(format: "%.2f", response.latency))s")
+            result = (stdout: response.text, stderr: "", exitCode: 0)
         } catch {
-            logger.error("[ClaudeCodeBridge] ModelRouter failed: \(error.localizedDescription)")
+            logger.error("[ClaudeCodeBridge] EnhancedModelRouter failed: \(error.localizedDescription)")
             result = (stdout: "", stderr: error.localizedDescription, exitCode: 1)
         }
 
