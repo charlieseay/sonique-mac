@@ -24,5 +24,7 @@
 	<string>SoniqueBar needs screen recording permission for live screen capture to answer "what's on my screen" questions.</string>
 	<key>NSSystemAdministrationUsageDescription</key>
 	<string>SoniqueBar needs system administration access to manage Docker containers and system services.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>SoniqueBar needs your location to provide local weather information when you ask "what's the weather?"</string>
 </dict>
 </plist>

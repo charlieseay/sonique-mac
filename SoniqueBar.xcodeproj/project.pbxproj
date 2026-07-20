@@ -11,6 +11,7 @@
 		32633465633763612D656461612D346232642D623835302D /* MemoryService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 66333330393036652D393163352D343738372D393137642D /* MemoryService.swift */; };
 		37A2809724D0E01E6D435077 /* KokoroTTS.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8DB6DE0152B072EB584CCEE0 /* KokoroTTS.swift */; };
 		83419D8281026DE611A5CEFE /* IntentRouter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A7A44954FBD946BB9D023EC /* IntentRouter.swift */; };
+		AA16F3F362742E8A477FC066 /* WeatherService.swift in Sources */ = {isa = PBXBuildFile; fileRef = F93FB11F98C153F00F26784A /* WeatherService.swift */; };
 		B30F7BD354DA140D7ECC9A9B /* ClaudeCodeBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3928D62756135B86A135BBBA /* ClaudeCodeBridge.swift */; };
 		B65B0A7D899CC16C20C53C48 /* ChatWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = BDC2DFD3531ED23758A43B42 /* ChatWindow.swift */; };
 		BB000021000000000000021 /* SoniqueBarApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB000020000000000000020 /* SoniqueBarApp.swift */; };
@@ -37,6 +38,7 @@
 		BB000020000000000000020 /* SoniqueBarApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = SoniqueBarApp.swift; path = SoniqueBar/SoniqueBarApp.swift; sourceTree = SOURCE_ROOT; };
 		BDC2DFD3531ED23758A43B42 /* ChatWindow.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ChatWindow.swift; path = SoniqueBar/Views/ChatWindow.swift; sourceTree = "<group>"; };
 		CAPIDX_FILE_REF_001 /* CapabilityIndex.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SoniqueBar/Services/CapabilityIndex.swift; sourceTree = "<group>"; };
+		F93FB11F98C153F00F26784A /* WeatherService.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SoniqueBar/Services/WeatherService.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -107,6 +109,7 @@
 				5FD7FABF8FD144AC9208A689 /* SoniqueBrain.swift */,
 				51CF32BB11AD3B053074E4B1 /* CommandServer.swift */,
 				8DB6DE0152B072EB584CCEE0 /* KokoroTTS.swift */,
+				F93FB11F98C153F00F26784A /* WeatherService.swift */,
 			);
 			name = Services;
 			sourceTree = "<group>";
@@ -224,6 +227,7 @@
 				F385A0E3A79F49A0B6F62A18 /* SoniqueBrain.swift in Sources */,
 				B65B0A7D899CC16C20C53C48 /* ChatWindow.swift in Sources */,
 				83419D8281026DE611A5CEFE /* IntentRouter.swift in Sources */,
+				AA16F3F362742E8A477FC066 /* WeatherService.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

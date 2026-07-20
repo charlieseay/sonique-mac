@@ -77,7 +77,7 @@ final class IntentRouter {
             return await handleCalendarQuery()
         }
 
-        // Weather (can be extended with native Weather framework on iOS 16+)
+        // Weather using device location
         if matchesPattern(lower, patterns: [
             "what's the weather",
             "weather forecast",
@@ -85,7 +85,7 @@ final class IntentRouter {
             "weather like",
             "what is the weather"
         ]) {
-            return "I don't have real-time weather access yet. You can check weather.com or ask me to look it up online if you'd like."
+            return await WeatherService.shared.getCurrentWeather()
         }
 
         // System info
