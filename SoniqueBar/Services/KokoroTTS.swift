@@ -1,8 +1,7 @@
 import Foundation
 import os.log
-import Kokoro
 
-/// Native Kokoro TTS service using kokoro-swift
+/// Native Kokoro TTS service using KokoroCLI subprocess
 /// Provides on-device TTS with Jessica voice (af_jessica)
 class KokoroTTS {
     private let logger = Logger(subsystem: "com.seayniclabs.soniquebar", category: "KokoroTTS")
@@ -10,69 +9,86 @@ class KokoroTTS {
     // Singleton
     static let shared = KokoroTTS()
 
-    private var pipeline: KPipeline?
-    private let weightsDir = FileManager.default.homeDirectoryForCurrentUser
-        .appendingPathComponent("Projects/sonique-mac/Kokoro/MLX_GPU")
+    private let cliPath: String
+    private let weightsDir: String
 
     private init() {
         logger.info("[KokoroTTS] Initializing...")
-        do {
-            let configURL = weightsDir.appendingPathComponent("config.json")
-            let weightsURL = weightsDir.appendingPathComponent("kokoro-v1_0.safetensors")
-            let voicesDir = weightsDir.appendingPathComponent("voices")
 
-            // Check if weights exist
-            guard FileManager.default.fileExists(atPath: configURL.path) else {
-                logger.error("[KokoroTTS] Config not found at \(configURL.path)")
-                logger.error("[KokoroTTS] Download weights from: https://huggingface.co/mweinbach/Kokoro-82M-Swift")
-                return
-            }
+        // Path to built KokoroCLI binary
+        let homeDir = FileManager.default.homeDirectoryForCurrentUser.path
+        self.cliPath = "\(homeDir)/Projects/sonique-mac/Kokoro/.build/release/KokoroCLI"
+        self.weightsDir = "\(homeDir)/Projects/sonique-mac/Kokoro/MLX_GPU"
 
-            let model = try KModel(configURL: configURL, weightsURL: weightsURL)
-            let voices = VoiceLoader(baseDirectory: voicesDir, enableDownload: true)
-            self.pipeline = KPipeline(model: model, voices: voices)
-
-            logger.info("[KokoroTTS] Initialized with MLX backend")
-        } catch {
-            logger.error("[KokoroTTS] Initialization failed: \(error.localizedDescription)")
+        // Verify CLI exists
+        if FileManager.default.fileExists(atPath: cliPath) {
+            logger.info("[KokoroTTS] Found KokoroCLI at \(cliPath)")
+        } else {
+            logger.error("[KokoroTTS] KokoroCLI not found at \(cliPath)")
+            logger.error("[KokoroTTS] Build with: cd ~/Projects/sonique-mac/Kokoro && swift build -c release")
         }
     }
 
-    /// Synthesize speech from text
+    /// Synthesize speech from text using KokoroCLI subprocess
     /// Returns PCM audio data (24kHz mono 16-bit)
     func synthesize(text: String, voice: String = "af_jessica") async throws -> Data {
         logger.info("[KokoroTTS] Synthesizing: \(text.prefix(50))")
 
-        guard let pipeline = pipeline else {
-            throw KokoroError.notInitialized
+        guard FileManager.default.fileExists(atPath: cliPath) else {
+            throw KokoroError.cliNotFound
         }
 
-        return try await Task {
-            // Run synthesis on background thread (KPipeline is synchronous)
-            let result = try pipeline.synthesize(text: text, voice: voice, speed: 1.0)
+        return try await withCheckedThrowingContinuation { continuation in
+            let tempOutput = "/tmp/kokoro-\(UUID().uuidString).wav"
 
-            // Convert Float32 samples to 16-bit PCM
-            let pcmData = self.floatToPCM16(samples: result.audio)
+            let process = Process()
+            process.executableURL = URL(fileURLWithPath: cliPath)
+            process.arguments = [
+                "--text", text,
+                "--voice", voice,
+                "--output", tempOutput,
+                "--weights-dir", weightsDir,
+                "--auto-download"
+            ]
 
-            logger.info("[KokoroTTS] Generated \(result.audio.count) samples (\(pcmData.count) bytes PCM)")
-            return pcmData
-        }.value
-    }
+            let pipe = Pipe()
+            process.standardError = pipe
 
-    /// Convert Float32 audio samples to 16-bit PCM Data
-    private func floatToPCM16(samples: [Float]) -> Data {
-        var pcmData = Data(capacity: samples.count * 2)
-        for sample in samples {
-            // Clamp to [-1.0, 1.0] and convert to Int16 range
-            let clamped = max(-1.0, min(1.0, sample))
-            let int16Value = Int16(clamped * Float(Int16.max))
-            withUnsafeBytes(of: int16Value.littleEndian) { pcmData.append(contentsOf: $0) }
+            do {
+                try process.run()
+                process.waitUntilExit()
+
+                if process.terminationStatus == 0 {
+                    // Read WAV file and extract PCM data
+                    let wavData = try Data(contentsOf: URL(fileURLWithPath: tempOutput))
+
+                    // WAV header is 44 bytes, PCM data follows
+                    guard wavData.count > 44 else {
+                        throw KokoroError.synthesisError("WAV file too small")
+                    }
+
+                    let pcmData = wavData.suffix(from: 44)
+                    logger.info("[KokoroTTS] Generated \(pcmData.count) bytes PCM")
+
+                    // Clean up temp file
+                    try? FileManager.default.removeItem(atPath: tempOutput)
+
+                    continuation.resume(returning: Data(pcmData))
+                } else {
+                    let errorData = pipe.fileHandleForReading.readDataToEndOfFile()
+                    let errorString = String(data: errorData, encoding: .utf8) ?? "Unknown error"
+                    logger.error("[KokoroTTS] CLI failed: \(errorString)")
+                    continuation.resume(throwing: KokoroError.synthesisError(errorString))
+                }
+            } catch {
+                logger.error("[KokoroTTS] Process error: \(error.localizedDescription)")
+                continuation.resume(throwing: error)
+            }
         }
-        return pcmData
     }
 
     enum KokoroError: Error {
-        case notInitialized
+        case cliNotFound
         case synthesisError(String)
     }
 }

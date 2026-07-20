@@ -618,26 +618,30 @@ class CommandServer: ObservableObject {
     }
 
     private func handleSynthesizeKokoro(_ data: Data, _ connection: NWConnection) async {
-        guard let requestBody = extractJSON(from: data) else {
+        // Extract JSON body
+        guard let requestString = String(data: data, encoding: .utf8),
+              let range = requestString.range(of: "\r\n\r\n"),
+              let bodyData = String(requestString[range.upperBound...]).data(using: .utf8),
+              let json = try? JSONSerialization.jsonObject(with: bodyData) as? [String: Any] else {
             logger.error("[handleSynthesizeKokoro] Failed to parse JSON")
             sendResponse("HTTP/1.1 400 Bad Request\r\n\r\n{\"error\":\"Invalid JSON\"}", to: connection)
             return
         }
 
-        guard let text = requestBody["text"] as? String else {
+        guard let text = json["text"] as? String else {
             logger.error("[handleSynthesizeKokoro] Missing text field")
             sendResponse("HTTP/1.1 400 Bad Request\r\n\r\n{\"error\":\"Missing text field\"}", to: connection)
             return
         }
 
-        let voice = (requestBody["voice"] as? String) ?? "af_jessica"
+        let voice = (json["voice"] as? String) ?? "af_jessica"
 
         logger.info("[handleSynthesizeKokoro] Synthesizing \(text.count) chars with voice \(voice)")
 
         do {
             let pcmData = try await KokoroTTS.shared.synthesize(text: text, voice: voice)
 
-            let headers = """
+            let response = """
             HTTP/1.1 200 OK\r
             Content-Type: audio/pcm\r
             X-Sample-Rate: 24000\r
@@ -645,11 +649,15 @@ class CommandServer: ObservableObject {
             X-Bit-Depth: 16\r
             Content-Length: \(pcmData.count)\r
             \r
+
             """
 
-            logger.info("[handleSynthesizeKokoro] Sending \(pcmData.count) bytes PCM")
+            connection.send(content: response.data(using: .utf8)!, completion: .contentProcessed { _ in })
+            connection.send(content: pcmData, completion: .contentProcessed { _ in
+                connection.cancel()
+            })
 
-            sendBinaryResponse(headers: headers, data: pcmData, to: connection)
+            logger.info("[handleSynthesizeKokoro] Kokoro TTS → PCM: \(pcmData.count) bytes @ 24kHz")
         } catch {
             logger.error("[handleSynthesizeKokoro] Synthesis failed: \(error.localizedDescription)")
             sendResponse("HTTP/1.1 500 Internal Server Error\r\n\r\n{\"error\":\"\(error.localizedDescription)\"}", to: connection)
