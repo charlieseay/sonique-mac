@@ -18,20 +18,24 @@ class ClaudeCodeBridge {
             conversationHistory.removeFirst()
         }
 
-        // Load personality from SoniqueBrain (iCloud-synced)
-        let personality = await SoniqueBrain.shared.loadPersonaContext()
+        // Load FULL memory context from Application Support (not just iCloud personality)
+        // This includes: Identity + Rules + Soul + Context (Charlie) + Recent Conversations
+        let fullMemory = await MemoryService.shared.loadFullContext()
+
+        // Also load name from iCloud (user-configurable)
+        let assistantName = await SoniqueBrain.shared.getAssistantName()
 
         // Build conversation context
         var historyContext = ""
         if conversationHistory.count > 1 {  // More than just current message
-            historyContext = "\n\n## Recent Conversation:\n"
+            historyContext = "\n\n## Current Session:\n"
             for (role, content) in conversationHistory.dropLast() {  // Exclude current message
-                let speaker = role == "user" ? "User" : "Assistant"
+                let speaker = role == "user" ? "User" : assistantName
                 historyContext += "\(speaker): \(content)\n"
             }
         }
 
-        let prompt = "\(personality)\(historyContext)\n\nUser: \(text)"
+        let prompt = "Your name is \(assistantName).\n\n\(fullMemory)\(historyContext)\n\nUser: \(text)"
 
         // Route through ModelRouter with context
         let context = QueryContext(
@@ -63,7 +67,7 @@ class ClaudeCodeBridge {
 
                 do {
                     let searchResults = try await Self.performWebSearch(query: text)
-                    let searchPrompt = "\(personality)\n\nUser asked: \(text)\n\nWeb search results:\n\(searchResults)\n\nBased on these search results, please answer the user's question."
+                    let searchPrompt = "Your name is \(assistantName).\n\n\(fullMemory)\n\nUser asked: \(text)\n\nWeb search results:\n\(searchResults)\n\nBased on these search results, please answer the user's question."
 
                     let searchResult: (stdout: String, stderr: String, exitCode: Int32)
                     do {
@@ -96,6 +100,9 @@ class ClaudeCodeBridge {
             if conversationHistory.count > maxHistoryCount {
                 conversationHistory.removeFirst()
             }
+
+            // Persist to conversations.jsonl for long-term memory
+            await MemoryService.shared.recordExchange(user: text, assistant: response)
 
             logger.info("[ClaudeCodeBridge] Success via Claude CLI (MCP-enabled + history): \(response.prefix(50))")
             return response

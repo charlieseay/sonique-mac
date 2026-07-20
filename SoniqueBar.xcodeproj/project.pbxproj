@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		32633465633763612D656461612D346232642D623835302D /* MemoryService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 66333330393036652D393163352D343738372D393137642D /* MemoryService.swift */; };
 		F385A0E3A79F49A0B6F62A18 /* SoniqueBrain.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5FD7FABF8FD144AC9208A689 /* SoniqueBrain.swift */; };
 		28376E07C49D672DD5B76F35 /* sonique-tts in Resources */ = {isa = PBXBuildFile; fileRef = B7BEAB172CDAEACF96F71ECB /* sonique-tts */; };
 		B30F7BD354DA140D7ECC9A9B /* ClaudeCodeBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3928D62756135B86A135BBBA /* ClaudeCodeBridge.swift */; };
@@ -16,6 +17,7 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		66333330393036652D393163352D343738372D393137642D /* MemoryService.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SoniqueBar/Services/MemoryService.swift; sourceTree = "<group>"; };
 		5FD7FABF8FD144AC9208A689 /* SoniqueBrain.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SoniqueBar/Services/SoniqueBrain.swift; sourceTree = "<group>"; };
 		3928D62756135B86A135BBBA /* ClaudeCodeBridge.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SoniqueBar/Services/ClaudeCodeBridge.swift; sourceTree = "<group>"; };
 		B0E513728E4141D8867D5539 /* ModelRouter.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SoniqueBar/Services/ModelRouter.swift; sourceTree = "<group>"; };
@@ -70,6 +72,7 @@
 			isa = PBXGroup;
 			children = (
 				3928D62756135B86A135BBBA /* ClaudeCodeBridge.swift */,
+				66333330393036652D393163352D343738372D393137642D /* MemoryService.swift */,
 				B0E513728E4141D8867D5539 /* ModelRouter.swift */,
 				5FD7FABF8FD144AC9208A689 /* SoniqueBrain.swift */,
 				51CF32BB11AD3B053074E4B1 /* CommandServer.swift */,
@@ -174,6 +177,7 @@
 				BB000021000000000000021 /* SoniqueBarApp.swift in Sources */,
 				FA925571F17B6BA9C9106F30 /* CommandServer.swift in Sources */,
 				B30F7BD354DA140D7ECC9A9B /* ClaudeCodeBridge.swift in Sources */,
+				32633465633763612D656461612D346232642D623835302D /* MemoryService.swift in Sources */,
 				cf9392e2970243668624ed99 /* ModelRouter.swift in Sources */,
 				F385A0E3A79F49A0B6F62A18 /* SoniqueBrain.swift in Sources */,
 			);
