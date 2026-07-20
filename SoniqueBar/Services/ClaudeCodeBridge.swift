@@ -12,6 +12,12 @@ class ClaudeCodeBridge {
     func execute(text: String, mcpToolsAvailable: Bool = true) async throws -> String {
         logger.info("[ClaudeCodeBridge] Executing: \(text.prefix(80))")
 
+        // Check if this is a capability query - respond directly from index
+        if CapabilityIndex.isCapabilityQuery(text) {
+            logger.info("[ClaudeCodeBridge] Capability query detected - using index")
+            return CapabilityIndex.generateCapabilitySummary()
+        }
+
         // Add user message to history
         conversationHistory.append((role: "user", content: text))
         if conversationHistory.count > maxHistoryCount {
@@ -25,6 +31,18 @@ class ClaudeCodeBridge {
         // Also load name from iCloud (user-configurable)
         let assistantName = await SoniqueBrain.shared.getAssistantName()
 
+        // Generate capability context
+        let capabilityContext = CapabilityIndex.generateCapabilitySummary()
+
+        // Detect project mentions and add vault path context
+        var projectContext = ""
+        if let project = CapabilityIndex.detectProject(in: text) {
+            if let vaultPath = CapabilityIndex.vaultPath(for: project) {
+                projectContext = "\n\n## Project Context:\nQuery mentions **\(project)** → vault path: `~/Library/Mobile Documents/iCloud~md~obsidian/Documents/SeaynicNet/\(vaultPath)`\n"
+                logger.info("[ClaudeCodeBridge] Project detected: \(project) → \(vaultPath)")
+            }
+        }
+
         // Build conversation context
         var historyContext = ""
         if conversationHistory.count > 1 {  // More than just current message
@@ -35,7 +53,7 @@ class ClaudeCodeBridge {
             }
         }
 
-        let prompt = "Your name is \(assistantName).\n\n\(fullMemory)\(historyContext)\n\nUser: \(text)"
+        let prompt = "Your name is \(assistantName).\n\n\(fullMemory)\n\n\(capabilityContext)\(projectContext)\(historyContext)\n\nUser: \(text)"
 
         // Route through ModelRouter with context
         let context = QueryContext(
