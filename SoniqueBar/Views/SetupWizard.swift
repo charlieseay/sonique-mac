@@ -255,13 +255,33 @@ final class SetupWizardViewModel: NSObject, ObservableObject, CLLocationManagerD
     }
 
     func requestAllPermissions() async {
-        await requestLocation()
-        await requestCalendar()
-        await requestReminders()
-        await requestContacts()
+        print("[SetupWizard] Requesting all permissions...")
+
+        // Request each permission that isn't already granted
+        if locationStatus == .notDetermined {
+            await requestLocation()
+            try? await Task.sleep(nanoseconds: 1_000_000_000) // Wait 1s between requests
+        }
+
+        if calendarStatus == .notDetermined {
+            await requestCalendar()
+            try? await Task.sleep(nanoseconds: 1_000_000_000)
+        }
+
+        if remindersStatus == .notDetermined {
+            await requestReminders()
+            try? await Task.sleep(nanoseconds: 1_000_000_000)
+        }
+
+        if contactsStatus == .notDetermined {
+            await requestContacts()
+        }
+
+        print("[SetupWizard] All permission requests completed")
     }
 
     func requestLocation() async {
+        print("[SetupWizard] Requesting location permission...")
         #if os(macOS)
         locationManager.requestAlwaysAuthorization()
         #else
@@ -271,6 +291,7 @@ final class SetupWizardViewModel: NSObject, ObservableObject, CLLocationManagerD
         // Wait a bit for the system dialog
         try? await Task.sleep(nanoseconds: 500_000_000)
         checkCurrentStatuses()
+        print("[SetupWizard] Location status: \(locationStatus)")
     }
 
     func requestCalendar() async {
