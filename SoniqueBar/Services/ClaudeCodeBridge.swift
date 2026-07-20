@@ -33,7 +33,7 @@ class ClaudeCodeBridge {
 
         let prompt = "\(personality)\(historyContext)\n\nUser: \(text)"
 
-        // Route through EnhancedModelRouter with context
+        // Route through ModelRouter with context
         let context = QueryContext(
             mcpToolsAvailable: mcpToolsAvailable,
             conversationLength: conversationHistory.count
@@ -41,11 +41,11 @@ class ClaudeCodeBridge {
 
         let result: (stdout: String, stderr: String, exitCode: Int32)
         do {
-            let response = try await EnhancedModelRouter.shared.route(prompt: prompt, context: context)
+            let response = try await ModelRouter.shared.route(prompt: prompt, context: context)
             logger.info("[ClaudeCodeBridge] Provider: \(response.provider), Tier: \(response.tier.rawValue), Latency: \(String(format: "%.2f", response.latency))s")
             result = (stdout: response.text, stderr: "", exitCode: 0)
         } catch {
-            logger.error("[ClaudeCodeBridge] EnhancedModelRouter failed: \(error.localizedDescription)")
+            logger.error("[ClaudeCodeBridge] ModelRouter failed: \(error.localizedDescription)")
             result = (stdout: "", stderr: error.localizedDescription, exitCode: 1)
         }
 
@@ -68,7 +68,7 @@ class ClaudeCodeBridge {
                     let searchResult: (stdout: String, stderr: String, exitCode: Int32)
                     do {
                         let searchResponse = try await ModelRouter.shared.route(prompt: searchPrompt)
-                        searchResult = (stdout: searchResponse, stderr: "", exitCode: 0)
+                        searchResult = (stdout: searchResponse.text, stderr: "", exitCode: 0)
                     } catch {
                         searchResult = (stdout: "", stderr: error.localizedDescription, exitCode: 1)
                     }

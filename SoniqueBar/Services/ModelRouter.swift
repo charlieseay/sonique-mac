@@ -1,365 +1,14 @@
 import Foundation
 import os.log
 
-/// Configurable model router for SoniqueBar
-/// Supports single or tiered routing with local/subscription models
-/// Configured via JSON file, no code changes required
-struct ModelRouterConfig: Codable {
-    var mode: RoutingMode
-    var defaultProvider: ProviderConfig
-    var tieredProviders: TieredProviders?
-
-    enum RoutingMode: String, Codable {
-        case single      // Use defaultProvider for all queries
-        case tiered      // Route by complexity (simple/medium/complex)
-    }
-
-    struct TieredProviders: Codable {
-        var simple: ProviderConfig
-        var medium: ProviderConfig
-        var complex: ProviderConfig
-    }
-}
-
-struct ProviderConfig: Codable {
-    var type: ProviderType
-    var endpoint: String?      // For API/Ollama
-    var model: String?          // Model name
-    var apiKey: String?         // For API providers
-    var cliCommand: String?     // For CLI providers
-    var timeout: Double?        // Request timeout
-
-    enum ProviderType: String, Codable {
-        case claudeAPI       // Anthropic API
-        case claudeCLI       // claude CLI (subscription)
-        case geminiAPI       // Google Gemini API
-        case geminiCLI       // gemini CLI (subscription)
-        case openaiAPI       // OpenAI API
-        case ollama          // Local Ollama
-        case bedrock         // AWS Bedrock
-    }
-}
-
-@MainActor
-class ModelRouter {
-    static let shared = ModelRouter()
-
-    private let logger = Logger(subsystem: "com.seayniclabs.soniquebar", category: "ModelRouter")
-    private var config: ModelRouterConfig
-
-    // Complexity classification patterns
-    private let complexPatterns = [
-        // Deep reasoning / explanation
-        "why", "explain", "analyze", "summar", "tell me about", "what.s the difference",
-        // Content creation
-        "write.*email", "write.*message", "draft", "create.*document", "compose",
-        // Decision-making
-        "advise", "should i", "what should", "recommend",
-        // Research / comparison
-        "compare", "research", "find out about", "look up"
-    ]
-
-    private let mediumPatterns = [
-        // Multi-step home automation (MCP → Home Assistant)
-        "all (the )?(lights|doors|cameras|devices)", "turn on.*and.*", "set.*then.*",
-        // Conditional logic
-        "if.*then", "when.*do", "after.*then", "before.*do",
-        // Multi-tool orchestration
-        "and also", "as well as", "plus", "then"
-    ]
-
-    private init() {
-        // Load config from file or use defaults
-        if let config = Self.loadConfig() {
-            self.config = config
-            logger.info("[ModelRouter] Loaded config: \(config.mode.rawValue) mode")
-        } else {
-            // Default: Claude CLI (current behavior)
-            self.config = ModelRouterConfig(
-                mode: .single,
-                defaultProvider: ProviderConfig(
-                    type: .claudeCLI,
-                    endpoint: nil,
-                    model: "sonnet",
-                    apiKey: nil,
-                    cliCommand: "/opt/homebrew/bin/claude",
-                    timeout: 30.0
-                ),
-                tieredProviders: nil
-            )
-            logger.info("[ModelRouter] Using default config (Claude CLI)")
-        }
-    }
-
-    /// Route a prompt to the appropriate provider
-    func route(prompt: String) async throws -> String {
-        let tier = classifyComplexity(prompt)
-        let provider: ProviderConfig
-
-        switch config.mode {
-        case .single:
-            provider = config.defaultProvider
-            logger.info("[ModelRouter] Single mode → \(provider.type.rawValue)")
-
-        case .tiered:
-            guard let tiered = config.tieredProviders else {
-                throw RouterError.invalidConfig("Tiered mode enabled but no tier config")
-            }
-
-            switch tier {
-            case .simple:
-                provider = tiered.simple
-            case .medium:
-                provider = tiered.medium
-            case .complex:
-                provider = tiered.complex
-            }
-
-            logger.info("[ModelRouter] Tiered mode → \(tier) → \(provider.type.rawValue)")
-        }
-
-        return try await callProvider(provider: provider, prompt: prompt)
-    }
-
-    /// Classify prompt complexity
-    private func classifyComplexity(_ prompt: String) -> Complexity {
-        let lower = prompt.lowercased()
-
-        // Check complex patterns
-        for pattern in complexPatterns {
-            if lower.range(of: pattern, options: .regularExpression) != nil {
-                return .complex
-            }
-        }
-
-        // Check medium patterns
-        for pattern in mediumPatterns {
-            if lower.range(of: pattern, options: .regularExpression) != nil {
-                return .medium
-            }
-        }
-
-        return .simple
-    }
-
-    /// Call the selected provider
-    private func callProvider(provider: ProviderConfig, prompt: String) async throws -> String {
-        let timeout = provider.timeout ?? 30.0
-
-        switch provider.type {
-        case .claudeCLI, .geminiCLI:
-            return try await callCLI(provider: provider, prompt: prompt, timeout: timeout)
-
-        case .ollama:
-            return try await callOllama(provider: provider, prompt: prompt, timeout: timeout)
-
-        case .claudeAPI, .geminiAPI, .openaiAPI:
-            return try await callAPI(provider: provider, prompt: prompt, timeout: timeout)
-
-        case .bedrock:
-            return try await callBedrock(provider: provider, prompt: prompt, timeout: timeout)
-        }
-    }
-
-    /// Call CLI-based provider (claude, gemini, etc.)
-    private func callCLI(provider: ProviderConfig, prompt: String, timeout: Double) async throws -> String {
-        guard let command = provider.cliCommand else {
-            throw RouterError.missingConfig("CLI command not specified")
-        }
-
-        let process = Process()
-        process.executableURL = URL(fileURLWithPath: command)
-        process.arguments = ["-p", prompt]
-
-        let outputPipe = Pipe()
-        let errorPipe = Pipe()
-        process.standardOutput = outputPipe
-        process.standardError = errorPipe
-
-        return try await withCheckedThrowingContinuation { continuation in
-            let timer = Timer.scheduledTimer(withTimeInterval: timeout, repeats: false) { _ in
-                process.terminate()
-                continuation.resume(throwing: RouterError.timeout("CLI call timed out"))
-            }
-
-            process.terminationHandler = { process in
-                timer.invalidate()
-
-                let output = String(data: outputPipe.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8) ?? ""
-                let error = String(data: errorPipe.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8) ?? ""
-
-                if process.terminationStatus == 0 {
-                    continuation.resume(returning: output.trimmingCharacters(in: .whitespacesAndNewlines))
-                } else {
-                    continuation.resume(throwing: RouterError.executionFailed("CLI failed: \(error)"))
-                }
-            }
-
-            do {
-                try process.run()
-            } catch {
-                timer.invalidate()
-                continuation.resume(throwing: error)
-            }
-        }
-    }
-
-    /// Call Ollama endpoint
-    private func callOllama(provider: ProviderConfig, prompt: String, timeout: Double) async throws -> String {
-        guard let endpoint = provider.endpoint else {
-            throw RouterError.missingConfig("Ollama endpoint not specified")
-        }
-        guard let model = provider.model else {
-            throw RouterError.missingConfig("Ollama model not specified")
-        }
-
-        let url = URL(string: "\(endpoint)/api/generate")!
-        var request = URLRequest(url: url, timeoutInterval: timeout)
-        request.httpMethod = "POST"
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-
-        let body: [String: Any] = [
-            "model": model,
-            "prompt": prompt,
-            "stream": false
-        ]
-        request.httpBody = try JSONSerialization.data(withJSONObject: body)
-
-        let (data, response) = try await URLSession.shared.data(for: request)
-
-        guard let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 else {
-            throw RouterError.executionFailed("Ollama request failed")
-        }
-
-        let json = try JSONSerialization.jsonObject(with: data) as? [String: Any]
-        guard let responseText = json?["response"] as? String else {
-            throw RouterError.executionFailed("Invalid Ollama response")
-        }
-
-        return responseText
-    }
-
-    /// Call API-based provider (OpenAI-compatible)
-    private func callAPI(provider: ProviderConfig, prompt: String, timeout: Double) async throws -> String {
-        guard let endpoint = provider.endpoint else {
-            throw RouterError.missingConfig("API endpoint not specified")
-        }
-        guard let apiKey = provider.apiKey else {
-            throw RouterError.missingConfig("API key not specified")
-        }
-        guard let model = provider.model else {
-            throw RouterError.missingConfig("Model not specified")
-        }
-
-        let url = URL(string: "\(endpoint)/v1/chat/completions")!
-        var request = URLRequest(url: url, timeoutInterval: timeout)
-        request.httpMethod = "POST"
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
-
-        let body: [String: Any] = [
-            "model": model,
-            "messages": [
-                ["role": "user", "content": prompt]
-            ]
-        ]
-        request.httpBody = try JSONSerialization.data(withJSONObject: body)
-
-        let (data, response) = try await URLSession.shared.data(for: request)
-
-        guard let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 else {
-            throw RouterError.executionFailed("API request failed")
-        }
-
-        let json = try JSONSerialization.jsonObject(with: data) as? [String: Any]
-        guard let choices = json?["choices"] as? [[String: Any]],
-              let message = choices.first?["message"] as? [String: Any],
-              let content = message["content"] as? String else {
-            throw RouterError.executionFailed("Invalid API response")
-        }
-
-        return content
-    }
-
-    /// Call AWS Bedrock
-    private func callBedrock(provider: ProviderConfig, prompt: String, timeout: Double) async throws -> String {
-        // Delegate to ask_claude_bedrock CLI
-        return try await callCLI(
-            provider: ProviderConfig(
-                type: .claudeCLI,
-                endpoint: nil,
-                model: nil,
-                apiKey: nil,
-                cliCommand: "/usr/local/bin/ask_claude_bedrock",
-                timeout: timeout
-            ),
-            prompt: prompt,
-            timeout: timeout
-        )
-    }
-
-    // MARK: - Config Management
-
-    private static func loadConfig() -> ModelRouterConfig? {
-        let configPath = "/Volumes/data/secrets/sonique_model_router.json"
-
-        guard let data = try? Data(contentsOf: URL(fileURLWithPath: configPath)) else {
-            return nil
-        }
-
-        return try? JSONDecoder().decode(ModelRouterConfig.self, from: data)
-    }
-
-    static func saveConfig(_ config: ModelRouterConfig) throws {
-        let configPath = "/Volumes/data/secrets/sonique_model_router.json"
-        let data = try JSONEncoder().encode(config)
-        try data.write(to: URL(fileURLWithPath: configPath))
-    }
-
-    enum Complexity: CustomStringConvertible {
-        case simple, medium, complex
-
-        var description: String {
-            switch self {
-            case .simple: return "simple"
-            case .medium: return "medium"
-            case .complex: return "complex"
-            }
-        }
-    }
-
-    enum RouterError: LocalizedError {
-        case invalidConfig(String)
-        case missingConfig(String)
-        case executionFailed(String)
-        case timeout(String)
-
-        var errorDescription: String? {
-            switch self {
-            case .invalidConfig(let msg), .missingConfig(let msg),
-                 .executionFailed(let msg), .timeout(let msg):
-                return msg
-            }
-        }
-    }
-}
-import Foundation
+// MARK: - Query Context and Tiers
 
 /// Context for LLM query routing and tier selection
 struct QueryContext {
-    /// Force a specific tier (overrides automatic detection)
     var forceTier: QueryTier?
-
-    /// Are MCP tools available for this query?
     var mcpToolsAvailable: Bool
-
-    /// Is this a retry after an unsatisfactory response?
     var isRetry: Bool
-
-    /// Previous tier used (for tracking escalations)
     var previousTier: QueryTier?
-
-    /// Session conversation length (affects context needs)
     var conversationLength: Int
 
     init(
@@ -379,9 +28,9 @@ struct QueryContext {
 
 /// Query complexity tiers for automatic escalation
 enum QueryTier: String, Codable, CaseIterable {
-    case conversational  // Fast, cheap models (Haiku, Ollama Qwen)
-    case thinking        // Medium reasoning (Sonnet, DeepSeek-R1)
-    case tools           // Complex with tool use (Opus, Claude with MCP)
+    case conversational
+    case thinking
+    case tools
 
     var displayName: String {
         switch self {
@@ -390,31 +39,18 @@ enum QueryTier: String, Codable, CaseIterable {
         case .tools: return "Tools & Complex"
         }
     }
-
-    /// Can escalate to this tier from current?
-    func canEscalateTo(_ target: QueryTier) -> Bool {
-        let order: [QueryTier] = [.conversational, .thinking, .tools]
-        guard let currentIndex = order.firstIndex(of: self),
-              let targetIndex = order.firstIndex(of: target) else {
-            return false
-        }
-        return targetIndex > currentIndex
-    }
 }
-import Foundation
-import os.log
 
-/// Enhanced model router with adaptive tier escalation and multi-provider support
-/// Replaces simple ModelRouter with intelligent routing based on query complexity
+// MARK: - Model Router
+
 @MainActor
-class EnhancedModelRouter {
-    static let shared = EnhancedModelRouter()
+class ModelRouter {
+    static let shared = ModelRouter()
 
-    private let logger = Logger(subsystem: "com.seayniclabs.soniquebar", category: "EnhancedModelRouter")
+    private let logger = Logger(subsystem: "com.seayniclabs.soniquebar", category: "ModelRouter")
     private var config: RouterConfig
     private var providerCache: [String: ProviderHealth] = [:]
 
-    // Pattern detection for tier classification
     private let thinkingKeywords = [
         "explain", "why", "analyze", "summar", "tell me about", "what.s the difference",
         "compare", "research", "describe", "how does", "what causes"
@@ -436,42 +72,38 @@ class EnhancedModelRouter {
     private init() {
         if let loaded = Self.loadConfig() {
             self.config = loaded
-            logger.info("[EnhancedModelRouter] Loaded config: \(loaded.mode.rawValue)")
+            logger.info("[ModelRouter] Loaded config: \(loaded.mode.rawValue)")
         } else {
-            // Default: system voice only (safest fallback)
+            // Default: Ollama local
             self.config = RouterConfig(
                 mode: .adaptive,
                 providers: [:],
                 escalation: EscalationConfig(),
                 tts: TTSConfig(primary: "system", fallbackChain: ["system"])
             )
-            logger.info("[EnhancedModelRouter] Using default config (system only)")
+            logger.info("[ModelRouter] Using default config")
         }
     }
 
     /// Main routing entry point with automatic tier escalation
     func route(prompt: String, context: QueryContext? = nil) async throws -> RouterResponse {
         let startTime = Date()
-
-        // 1. Determine tier
         let tier = determineTier(prompt: prompt, context: context)
         logger.info("[Router] Query tier: \(tier.rawValue)")
 
-        // 2. Get providers for tier
         let providers = getProvidersForTier(tier)
         guard !providers.isEmpty else {
             throw RouterError.noProvidersAvailable
         }
 
-        // 3. Try providers in priority order
         var lastError: Error?
         for provider in providers {
             do {
                 let response = try await callProvider(provider, prompt: prompt, tier: tier)
 
-                // 4. Check if escalation needed
+                // Check if escalation needed
                 if config.escalation.enabled,
-                   tier != .tools,  // Already at max
+                   tier != .tools,
                    shouldEscalate(response.text, currentTier: tier) {
                     logger.info("[Router] Escalating from \(tier.rawValue) to tools tier")
                     let escalatedContext = QueryContext(
@@ -484,7 +116,6 @@ class EnhancedModelRouter {
                     return try await route(prompt: prompt, context: escalatedContext)
                 }
 
-                // Success!
                 let elapsed = Date().timeIntervalSince(startTime)
                 logger.info("[Router] ✓ \(provider.name) responded in \(String(format: "%.2f", elapsed))s")
 
@@ -504,55 +135,42 @@ class EnhancedModelRouter {
             }
         }
 
-        // All providers failed
         throw lastError ?? RouterError.allProvidersFailed
     }
 
-    // MARK: - Tier Detection
-
     private func determineTier(prompt: String, context: QueryContext?) -> QueryTier {
-        // 1. Check for forced tier
         if let forced = context?.forceTier {
             return forced
         }
 
-        // 2. Check for tool keywords (highest priority)
         let lower = prompt.lowercased()
         if toolsKeywords.contains(where: { lower.contains($0) }) {
             return .tools
         }
 
-        // 3. Check for MCP tools context
         if context?.mcpToolsAvailable == true,
            (lower.contains("create") || lower.contains("send") || lower.contains("search")) {
             return .tools
         }
 
-        // 4. Check for thinking keywords
         if thinkingKeywords.contains(where: { lower.contains($0) }) {
             return .thinking
         }
 
-        // 5. Default to conversational
         return .conversational
     }
 
     private func shouldEscalate(_ response: String, currentTier: QueryTier) -> Bool {
         guard config.escalation.responseUnsatisfactory else { return false }
-
         return uncertaintyPhrases.contains(where: { response.contains($0) })
     }
-
-    // MARK: - Provider Selection
 
     private func getProvidersForTier(_ tier: QueryTier) -> [ProviderInfo] {
         var providers: [ProviderInfo] = []
 
-        // Filter enabled providers and match to tier
         for (name, providerConfig) in config.providers {
             guard providerConfig.enabled else { continue }
 
-            // Get model for this tier
             let model = providerConfig.models[tier] ?? providerConfig.models[.conversational]
             guard let model else { continue }
 
@@ -564,11 +182,8 @@ class EnhancedModelRouter {
             ))
         }
 
-        // Sort by priority (lower = higher priority)
         return providers.sorted { $0.config.priority < $1.config.priority }
     }
-
-    // MARK: - Provider Calling
 
     private func callProvider(_ provider: ProviderInfo, prompt: String, tier: QueryTier) async throws -> ProviderResult {
         let timeout = provider.config.timeout
@@ -576,26 +191,22 @@ class EnhancedModelRouter {
         switch provider.config.type {
         case .ollama:
             return try await callOllama(provider: provider, prompt: prompt, timeout: timeout)
-
         case .claudeCLI:
             return try await callClaudeCLI(provider: provider, prompt: prompt, timeout: timeout)
-
         case .geminiCLI:
             return try await callGeminiCLI(provider: provider, prompt: prompt, timeout: timeout)
-
         case .bedrock:
             return try await callBedrock(provider: provider, prompt: prompt, timeout: timeout)
-
         case .openaiAPI:
             return try await callOpenAI(provider: provider, prompt: prompt, timeout: timeout)
-
         case .nvidiaAPI:
             return try await callNVIDIA(provider: provider, prompt: prompt, timeout: timeout)
-
         case .custom:
             return try await callCustom(provider: provider, prompt: prompt, timeout: timeout)
         }
     }
+
+    // MARK: - Provider Implementations
 
     private func callOllama(provider: ProviderInfo, prompt: String, timeout: Double) async throws -> ProviderResult {
         guard let endpoint = provider.config.endpoint else {
@@ -656,7 +267,6 @@ class EnhancedModelRouter {
     }
 
     private func callBedrock(provider: ProviderInfo, prompt: String, timeout: Double) async throws -> ProviderResult {
-        // Use ask_claude_bedrock CLI
         return try await callCLI(
             command: "/usr/local/bin/ask_claude_bedrock",
             args: ["-p", prompt],
@@ -701,7 +311,6 @@ class EnhancedModelRouter {
     }
 
     private func callNVIDIA(provider: ProviderInfo, prompt: String, timeout: Double) async throws -> ProviderResult {
-        // Use ask_llm CLI with NVIDIA lane
         return try await callCLI(
             command: "/usr/local/bin/ask_llm",
             args: ["--lane", provider.model, "-p", prompt],
@@ -715,7 +324,6 @@ class EnhancedModelRouter {
             throw RouterError.missingConfig("Custom endpoint not specified")
         }
 
-        // Assume OpenAI-compatible API
         let url = URL(string: "\(endpoint)/v1/chat/completions")!
         var request = URLRequest(url: url, timeoutInterval: timeout)
         request.httpMethod = "POST"
@@ -748,8 +356,6 @@ class EnhancedModelRouter {
         return ProviderResult(text: content)
     }
 
-    // MARK: - Helper: CLI Execution
-
     private func callCLI(command: String, args: [String], timeout: Double, providerName: String) async throws -> ProviderResult {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: command)
@@ -766,37 +372,23 @@ class EnhancedModelRouter {
 
         return try await withCheckedThrowingContinuation { continuation in
             var didComplete = false
-            let lock = NSLock()
 
             let timer = Timer.scheduledTimer(withTimeInterval: timeout, repeats: false) { _ in
-                lock.lock()
-                guard !didComplete else {
-                    lock.unlock()
-                    return
-                }
+                guard !didComplete else { return }
                 didComplete = true
-                lock.unlock()
-
                 process.terminate()
                 continuation.resume(throwing: RouterError.timeout("CLI timed out after \(timeout)s"))
             }
 
             process.terminationHandler = { process in
-                lock.lock()
-                guard !didComplete else {
-                    lock.unlock()
-                    return
-                }
+                guard !didComplete else { return }
                 didComplete = true
-                lock.unlock()
-
                 timer.invalidate()
 
                 let output = String(data: outputPipe.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8) ?? ""
                 let error = String(data: errorPipe.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8) ?? ""
 
                 if process.terminationStatus == 0 {
-                    self.updateProviderHealth(providerName, healthy: true)
                     continuation.resume(returning: ProviderResult(text: output.trimmingCharacters(in: .whitespacesAndNewlines)))
                 } else {
                     continuation.resume(throwing: RouterError.executionFailed("CLI failed: \(error)"))
@@ -806,21 +398,13 @@ class EnhancedModelRouter {
             do {
                 try process.run()
             } catch {
-                lock.lock()
-                guard !didComplete else {
-                    lock.unlock()
-                    return
-                }
+                guard !didComplete else { return }
                 didComplete = true
-                lock.unlock()
-
                 timer.invalidate()
                 continuation.resume(throwing: error)
             }
         }
     }
-
-    // MARK: - Health Tracking
 
     private func updateProviderHealth(_ name: String, healthy: Bool) {
         let existing = providerCache[name] ?? ProviderHealth(name: name)
@@ -837,8 +421,6 @@ class EnhancedModelRouter {
         providerCache[name] = updated
     }
 
-    // MARK: - Config Loading
-
     private static func loadConfig() -> RouterConfig? {
         let path = "/Volumes/data/secrets/sonique_model_router.json"
         guard let data = try? Data(contentsOf: URL(fileURLWithPath: path)),
@@ -854,7 +436,6 @@ class EnhancedModelRouter {
         case missingConfig(String)
         case executionFailed(String)
         case timeout(String)
-        case invalidConfig(String)
     }
 }
 
@@ -895,9 +476,9 @@ struct RouterConfig: Codable {
     let tts: TTSConfig
 
     enum RoutingMode: String, Codable {
-        case single      // One provider for all
-        case tiered      // Simple/medium/complex static routing
-        case adaptive    // Dynamic tier escalation
+        case single
+        case tiered
+        case adaptive
     }
 }
 
@@ -935,7 +516,6 @@ struct ProviderConfiguration: Codable {
         timeout = try container.decode(Double.self, forKey: .timeout)
         priority = try container.decode(Int.self, forKey: .priority)
 
-        // Decode models dictionary
         let modelsDict = try container.decode([String: String].self, forKey: .models)
         var parsedModels: [QueryTier: String] = [:]
         for (key, value) in modelsDict {
@@ -956,7 +536,6 @@ struct ProviderConfiguration: Codable {
         try container.encode(timeout, forKey: .timeout)
         try container.encode(priority, forKey: .priority)
 
-        // Encode models dictionary
         var modelsDict: [String: String] = [:]
         for (tier, model) in models {
             modelsDict[tier.rawValue] = model
