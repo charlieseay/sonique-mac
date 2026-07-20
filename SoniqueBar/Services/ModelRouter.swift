@@ -213,14 +213,17 @@ class ModelRouter {
             throw RouterError.missingConfig("Ollama endpoint not specified")
         }
 
-        let url = URL(string: "\(endpoint)/api/generate")!
+        // Use OpenAI-compatible API for better compatibility
+        let url = URL(string: "\(endpoint)/v1/chat/completions")!
         var request = URLRequest(url: url, timeoutInterval: timeout)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
 
         let body: [String: Any] = [
             "model": provider.model,
-            "prompt": prompt,
+            "messages": [
+                ["role": "user", "content": prompt]
+            ],
             "stream": false
         ]
         request.httpBody = try JSONSerialization.data(withJSONObject: body)
@@ -232,12 +235,15 @@ class ModelRouter {
         }
 
         let json = try JSONSerialization.jsonObject(with: data) as? [String: Any]
-        guard let responseText = json?["response"] as? String else {
+        guard let choices = json?["choices"] as? [[String: Any]],
+              let firstChoice = choices.first,
+              let message = firstChoice["message"] as? [String: Any],
+              let content = message["content"] as? String else {
             throw RouterError.executionFailed("Invalid Ollama response format")
         }
 
         updateProviderHealth(provider.name, healthy: true)
-        return ProviderResult(text: responseText)
+        return ProviderResult(text: content)
     }
 
     private func callClaudeCLI(provider: ProviderInfo, prompt: String, timeout: Double) async throws -> ProviderResult {

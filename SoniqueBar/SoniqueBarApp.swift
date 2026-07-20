@@ -7,6 +7,7 @@ struct SoniqueBarApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
     @StateObject private var commandServer = CommandServer.shared
     @State private var settingsWindow: NSWindow?
+    @State private var chatWindow: NSWindow?
 
     init() {
         let logPath = "/tmp/soniquebar.log"
@@ -62,6 +63,11 @@ struct SoniqueBarApp: App {
 
                 Button(action: openSettings) {
                     Label("Settings", systemImage: "gearshape")
+                        .font(.caption)
+                }
+
+                Button(action: openChat) {
+                    Label("Chat with Quinn", systemImage: "message")
                         .font(.caption)
                 }
 
@@ -126,6 +132,36 @@ struct SoniqueBarApp: App {
         print("[SoniqueBar] Window shown, isVisible: \(window.isVisible)")
 
         settingsWindow = window
+    }
+
+    private func openChat() {
+        print("[SoniqueBar] openChat called")
+
+        // Bring existing chat window to front if open
+        if let existing = chatWindow, existing.isVisible {
+            existing.makeKeyAndOrderFront(nil)
+            NSApp.activate(ignoringOtherApps: true)
+            return
+        }
+
+        // Close previous chat window
+        chatWindow?.close()
+
+        // Create new chat window
+        let contentView = ChatWindow()
+        let hostingController = NSHostingController(rootView: contentView)
+
+        let window = NSWindow(contentViewController: hostingController)
+        window.title = "Chat with Quinn"
+        window.styleMask = [.titled, .closable, .resizable, .miniaturizable]
+        window.isReleasedWhenClosed = false
+        window.center()
+        window.setFrameAutosaveName("SoniqueBar Chat")
+
+        window.makeKeyAndOrderFront(nil)
+        NSApp.activate(ignoringOtherApps: true)
+
+        chatWindow = window
     }
 }
 
