@@ -6,6 +6,7 @@ import os.log
 struct SoniqueBarApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
     @StateObject private var commandServer = CommandServer.shared
+    @State private var settingsWindow: NSWindow?
 
     init() {
         let logPath = "/tmp/soniquebar.log"
@@ -102,8 +103,29 @@ struct SoniqueBarApp: App {
     }
 
     private func openSettings() {
-        let configPath = NSHomeDirectory() + "/Library/Application Support/SoniqueBar/config.json"
-        NSWorkspace.shared.selectFile(configPath, inFileViewerRootedAtPath: "")
+        print("[SoniqueBar] openSettings called")
+
+        // Close existing settings window if open
+        settingsWindow?.close()
+
+        // Create new settings window
+        let contentView = SettingsView()
+        let hostingController = NSHostingController(rootView: contentView)
+
+        let window = NSWindow(contentViewController: hostingController)
+        window.title = "SoniqueBar Settings"
+        window.styleMask = [.titled, .closable, NSWindow.StyleMask.miniaturizable]
+        window.isReleasedWhenClosed = false
+        window.center()
+        window.setFrameAutosaveName("SoniqueBar Settings")
+
+        print("[SoniqueBar] About to show settings window")
+        window.makeKeyAndOrderFront(nil)
+        NSApp.activate(ignoringOtherApps: true)
+
+        print("[SoniqueBar] Window shown, isVisible: \(window.isVisible)")
+
+        settingsWindow = window
     }
 }
 

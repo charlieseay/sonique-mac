@@ -70,6 +70,8 @@ final class SoniqueBrain {
         let identity = readText(sharedDir.appendingPathComponent("IDENTITY.md"))
         let rules = readText(sharedDir.appendingPathComponent("RULES.md"))
         let soul = readText(sharedDir.appendingPathComponent("SOUL.md"))
+        let capabilities = readText(sharedDir.appendingPathComponent("CAPABILITIES.md"))
+        let recentWork = readText(sharedDir.appendingPathComponent("RECENT_WORK.md"))
 
         var persona = ""
 
@@ -84,6 +86,8 @@ final class SoniqueBrain {
         if !identity.isEmpty { persona += identity + "\n\n" }
         if !rules.isEmpty { persona += rules + "\n\n" }
         if !soul.isEmpty { persona += "# Evolving Traits\n\(soul)\n\n" }
+        if !capabilities.isEmpty { persona += capabilities + "\n\n" }
+        if !recentWork.isEmpty { persona += recentWork + "\n\n" }
 
         // Add conversational tone constraints
         persona += """

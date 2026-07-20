@@ -16,7 +16,6 @@
 		BB000021000000000000021 /* SoniqueBarApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB000020000000000000020 /* SoniqueBarApp.swift */; };
 		FA925571F17B6BA9C9106F30 /* CommandServer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 51CF32BB11AD3B053074E4B1 /* CommandServer.swift */; };
 		37A2809724D0E01E6D435077 /* KokoroTTS.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8DB6DE0152B072EB584CCEE0 /* KokoroTTS.swift */; };
-		b790639f3b5044d2950dd59c /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7a1bf74f137b450aac8951536b22a0b4 /* SettingsView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -27,7 +26,6 @@
 		B0E513728E4141D8867D5539 /* ModelRouter.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SoniqueBar/Services/ModelRouter.swift; sourceTree = "<group>"; };
 		51CF32BB11AD3B053074E4B1 /* CommandServer.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = CommandServer.swift; path = SoniqueBar/Services/CommandServer.swift; sourceTree = "<group>"; };
 		8DB6DE0152B072EB584CCEE0 /* KokoroTTS.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = KokoroTTS.swift; path = SoniqueBar/Services/KokoroTTS.swift; sourceTree = "<group>"; };
-		7a1bf74f137b450aac8951536b22a0b4 /* SettingsView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = SettingsView.swift; path = SoniqueBar/Views/SettingsView.swift; sourceTree = "<group>"; };
 		B7BEAB172CDAEACF96F71ECB /* sonique-tts */ = {isa = PBXFileReference; includeInIndex = 1; name = "sonique-tts"; path = "tts-engine/dist/sonique-tts"; sourceTree = "<group>"; };
 		BB000004000000000000004 /* SoniqueBar.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = SoniqueBar.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		BB000014000000000000014 /* SoniqueBar.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = SoniqueBar.entitlements; sourceTree = SOURCE_ROOT; };
@@ -69,7 +67,6 @@
 			children = (
 				BB000020000000000000020 /* SoniqueBarApp.swift */,
 				BB000011000000000000011 /* Services */,
-				BB000012000000000000012 /* Views */,
 				BB000013000000000000013 /* Resources */,
 			);
 			name = SoniqueBar;
@@ -87,14 +84,6 @@
 				8DB6DE0152B072EB584CCEE0 /* KokoroTTS.swift */,
 			);
 			name = Services;
-			sourceTree = "<group>";
-		};
-		BB000012000000000000012 /* Views */ = {
-			isa = PBXGroup;
-			children = (
-				7a1bf74f137b450aac8951536b22a0b4 /* SettingsView.swift */,
-			);
-			name = Views;
 			sourceTree = "<group>";
 		};
 		BB000013000000000000013 /* Resources */ = {
@@ -195,7 +184,6 @@
 				BB000021000000000000021 /* SoniqueBarApp.swift in Sources */,
 				FA925571F17B6BA9C9106F30 /* CommandServer.swift in Sources */,
 				37A2809724D0E01E6D435077 /* KokoroTTS.swift in Sources */,
-				b790639f3b5044d2950dd59c /* SettingsView.swift in Sources */,
 				B30F7BD354DA140D7ECC9A9B /* ClaudeCodeBridge.swift in Sources */,
 				32633465633763612D656461612D346232642D623835302D /* MemoryService.swift in Sources */,
 				cf9392e2970243668624ed99 /* ModelRouter.swift in Sources */,

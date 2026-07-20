@@ -12,6 +12,15 @@ class KokoroTTS {
     private let cliPath: String
     private let weightsDir: String
 
+    // Configuration from UserDefaults (set via Settings UI)
+    private var speechSpeed: Float {
+        Float(UserDefaults.standard.double(forKey: "tts.kokoro.speed").isZero ? 1.02 : UserDefaults.standard.double(forKey: "tts.kokoro.speed"))
+    }
+
+    private var defaultVoice: String {
+        UserDefaults.standard.string(forKey: "tts.kokoro.voice") ?? "af_jessica"
+    }
+
     private init() {
         logger.info("[KokoroTTS] Initializing...")
 
@@ -31,8 +40,10 @@ class KokoroTTS {
 
     /// Synthesize speech from text using KokoroCLI subprocess
     /// Returns PCM audio data (24kHz mono 16-bit)
-    func synthesize(text: String, voice: String = "af_jessica") async throws -> Data {
-        logger.info("[KokoroTTS] Synthesizing: \(text.prefix(50))")
+    func synthesize(text: String, voice: String? = nil, speed: Float? = nil) async throws -> Data {
+        let voiceToUse = voice ?? defaultVoice
+        let speedToUse = speed ?? speechSpeed
+        logger.info("[KokoroTTS] Synthesizing: \(text.prefix(50)) [voice: \(voiceToUse), speed: \(speedToUse)]")
 
         guard FileManager.default.fileExists(atPath: cliPath) else {
             throw KokoroError.cliNotFound
@@ -45,9 +56,10 @@ class KokoroTTS {
             process.executableURL = URL(fileURLWithPath: cliPath)
             process.arguments = [
                 "--text", text,
-                "--voice", voice,
+                "--voice", voiceToUse,
                 "--output", tempOutput,
                 "--weights-dir", weightsDir,
+                "--speed", String(speedToUse),
                 "--auto-download"
             ]
 

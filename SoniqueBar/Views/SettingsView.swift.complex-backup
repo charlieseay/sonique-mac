@@ -1,0 +1,498 @@
+import SwiftUI
+
+/// SoniqueBar settings panel - configure assistant, voice, and intelligence
+struct SettingsView: View {
+    // Assistant
+    @AppStorage("assistant.name") private var assistantName: String = "Quinn"
+    @AppStorage("assistant.voiceActivation") private var voiceActivation: Bool = true
+
+    // Voice (TTS)
+    @AppStorage("tts.primary") private var ttsPrimary: String = "kokoro"
+    @AppStorage("tts.secondary") private var ttsSecondary: String = "none"
+    @AppStorage("tts.kokoro.speed") private var kokoroSpeed: Double = 1.02
+    @AppStorage("tts.kokoro.voice") private var kokoroVoice: String = "af_jessica"
+    @AppStorage("tts.elevenlabs.apiKey") private var elevenLabsKey: String = ""
+
+    // Intelligence (LLM)
+    @AppStorage("llm.primary") private var llmPrimary: String = "claude-cli"
+    @AppStorage("llm.secondary") private var llmSecondary: String = "none"
+    @AppStorage("llm.tertiary") private var llmTertiary: String = "none"
+
+    // Claude CLI models (when smart routing enabled)
+    @AppStorage("llm.claude.conversational") private var claudeConversational: String = "haiku"
+    @AppStorage("llm.claude.thinking") private var claudeThinking: String = "sonnet"
+    @AppStorage("llm.claude.tools") private var claudeTools: String = "opus"
+
+    // Ollama settings
+    @AppStorage("llm.ollama.endpoint") private var ollamaEndpoint: String = "http://localhost:11434"
+    @AppStorage("llm.ollama.model") private var ollamaModel: String = "qwen2.5:3b"
+
+    var hasSecondaryLLM: Bool {
+        llmSecondary != "none"
+    }
+
+    var hasSmartRouting: Bool {
+        llmTertiary != "none" || (llmPrimary != "none" && llmSecondary != "none")
+    }
+
+    var body: some View {
+        Form {
+            // Assistant
+            Section("Assistant") {
+                TextField("Name", text: $assistantName)
+
+                Toggle("Voice Activation (Wake Word)", isOn: $voiceActivation)
+
+                Text("Say '\(assistantName)' to activate")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
+
+            // Voice (TTS)
+            Section("Voice (Text-to-Speech)") {
+                VStack(alignment: .leading, spacing: 12) {
+                    HStack {
+                        Text("Primary")
+                            .frame(width: 80, alignment: .leading)
+
+                        Picker("", selection: $ttsPrimary) {
+                            Text("Kokoro (On-Device) ⭐️").tag("kokoro")
+                            Text("ElevenLabs (Cloud)").tag("elevenlabs")
+                        }
+                        .pickerStyle(.menu)
+                        .onChange(of: ttsPrimary) { newValue in
+                            updateTTSConfig()
+                        }
+                    }
+
+                    HStack {
+                        Text("Fallback")
+                            .frame(width: 80, alignment: .leading)
+
+                        Picker("", selection: $ttsSecondary) {
+                            Text("None").tag("none")
+                            Text("ElevenLabs").tag("elevenlabs")
+                            Text("Apple Voice").tag("system")
+                        }
+                        .pickerStyle(.menu)
+                        .onChange(of: ttsSecondary) { newValue in
+                            updateTTSConfig()
+                        }
+                    }
+
+                    if ttsSecondary != "none" {
+                        Text("✓ Fallback enabled: if \(ttsPrimary) fails, uses \(ttsSecondary)")
+                            .font(.caption)
+                            .foregroundColor(.green)
+                    }
+                }
+
+                // Kokoro settings
+                if ttsPrimary == "kokoro" || ttsSecondary == "kokoro" {
+                    Divider()
+
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("Kokoro Settings")
+                            .font(.subheadline)
+                            .fontWeight(.semibold)
+
+                        Picker("Voice", selection: $kokoroVoice) {
+                            Text("Jessica (Warm)").tag("af_jessica")
+                            Text("Bella (Soft)").tag("af_bella")
+                            Text("Sarah (Clear)").tag("af_sarah")
+                            Text("Nicole (British)").tag("af_nicole")
+                            Text("Sky (Bright)").tag("af_sky")
+                        }
+
+                        VStack(alignment: .leading, spacing: 4) {
+                            HStack {
+                                Text("Speech Rate")
+                                Spacer()
+                                Text("\(Int(kokoroSpeed * 100))%")
+                                    .foregroundColor(.secondary)
+                            }
+
+                            Slider(value: $kokoroSpeed, in: 0.5...2.0, step: 0.01)
+
+                            HStack {
+                                Button("Slower") { kokoroSpeed = max(0.5, kokoroSpeed - 0.05) }
+                                    .controlSize(.small)
+                                Button("Reset") { kokoroSpeed = 1.0 }
+                                    .controlSize(.small)
+                                Button("Faster") { kokoroSpeed = min(2.0, kokoroSpeed + 0.05) }
+                                    .controlSize(.small)
+                            }
+                            .buttonStyle(.bordered)
+                            .font(.caption)
+                        }
+                    }
+                }
+
+                // ElevenLabs settings
+                if ttsPrimary == "elevenlabs" || ttsSecondary == "elevenlabs" {
+                    Divider()
+
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("ElevenLabs Settings")
+                            .font(.subheadline)
+                            .fontWeight(.semibold)
+
+                        SecureField("API Key", text: $elevenLabsKey)
+
+                        Link("Get API Key →", destination: URL(string: "https://elevenlabs.io/app/settings/api-keys")!)
+                            .font(.caption)
+                    }
+                }
+            }
+
+            // Intelligence (LLM)
+            Section("Intelligence (Language Models)") {
+                VStack(alignment: .leading, spacing: 12) {
+                    HStack {
+                        Text("Primary")
+                            .frame(width: 80, alignment: .leading)
+
+                        Picker("", selection: $llmPrimary) {
+                            Text("Claude CLI ⭐️").tag("claude-cli")
+                            Text("Ollama (Local)").tag("ollama")
+                            Text("Gemini CLI").tag("gemini-cli")
+                        }
+                        .pickerStyle(.menu)
+                        .onChange(of: llmPrimary) { newValue in
+                            updateLLMConfig()
+                        }
+                    }
+
+                    HStack {
+                        Text("Secondary")
+                            .frame(width: 80, alignment: .leading)
+
+                        Picker("", selection: $llmSecondary) {
+                            Text("None").tag("none")
+                            Text("Claude CLI").tag("claude-cli")
+                            Text("Ollama").tag("ollama")
+                            Text("Gemini CLI").tag("gemini-cli")
+                        }
+                        .pickerStyle(.menu)
+                        .onChange(of: llmSecondary) { newValue in
+                            updateLLMConfig()
+                        }
+                    }
+
+                    if hasSecondaryLLM {
+                        HStack {
+                            Text("Tertiary")
+                                .frame(width: 80, alignment: .leading)
+
+                            Picker("", selection: $llmTertiary) {
+                                Text("None").tag("none")
+                                Text("Claude CLI").tag("claude-cli")
+                                Text("Ollama").tag("ollama")
+                            }
+                            .pickerStyle(.menu)
+                            .onChange(of: llmTertiary) { newValue in
+                                updateLLMConfig()
+                            }
+                        }
+                    }
+
+                    // Smart routing indicator
+                    if hasSmartRouting {
+                        Text("✓ Smart Routing enabled: Quinn will use the best model for each query")
+                            .font(.caption)
+                            .foregroundColor(.green)
+                    } else if hasSecondaryLLM {
+                        Text("✓ Fallback enabled: if primary fails, uses secondary")
+                            .font(.caption)
+                            .foregroundColor(.green)
+                    }
+                }
+
+                // Claude CLI tier settings (only show with smart routing)
+                if hasSmartRouting && (llmPrimary == "claude-cli" || llmSecondary == "claude-cli") {
+                    Divider()
+
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("Claude Tier Assignment")
+                            .font(.subheadline)
+                            .fontWeight(.semibold)
+
+                        HStack {
+                            Text("Conversational")
+                                .frame(width: 120, alignment: .leading)
+
+                            Picker("", selection: $claudeConversational) {
+                                Text("Haiku (Fast)").tag("haiku")
+                                Text("Sonnet (Balanced)").tag("sonnet")
+                            }
+                            .pickerStyle(.menu)
+
+                            Text("Greetings, simple queries")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+
+                        HStack {
+                            Text("Thinking")
+                                .frame(width: 120, alignment: .leading)
+
+                            Picker("", selection: $claudeThinking) {
+                                Text("Haiku (Fast)").tag("haiku")
+                                Text("Sonnet (Balanced)").tag("sonnet")
+                                Text("Opus (Powerful)").tag("opus")
+                            }
+                            .pickerStyle(.menu)
+
+                            Text("Analysis, explanations")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+
+                        HStack {
+                            Text("Tools")
+                                .frame(width: 120, alignment: .leading)
+
+                            Picker("", selection: $claudeTools) {
+                                Text("Sonnet (Balanced)").tag("sonnet")
+                                Text("Opus (Powerful)").tag("opus")
+                            }
+                            .pickerStyle(.menu)
+
+                            Text("MCP tools, complex tasks")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                    }
+                }
+
+                // Ollama settings
+                if llmPrimary == "ollama" || llmSecondary == "ollama" {
+                    Divider()
+
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Ollama Settings")
+                            .font(.subheadline)
+                            .fontWeight(.semibold)
+
+                        TextField("Endpoint", text: $ollamaEndpoint)
+
+                        TextField("Model", text: $ollamaModel)
+                            .help("Example: qwen2.5:3b, llama3:8b")
+                    }
+                }
+            }
+
+            // Recommendations
+            Section("Recommended Setup") {
+                VStack(alignment: .leading, spacing: 8) {
+                    Label("Current Configuration", systemImage: isOptimalSetup() ? "checkmark.circle.fill" : "info.circle")
+                        .font(.headline)
+                        .foregroundColor(isOptimalSetup() ? .green : .blue)
+
+                    Text("• Voice: Kokoro (on-device, fast, free)")
+                    Text("• LLM: Claude CLI (subscription, full MCP tools)")
+                    Text("• Smart routing: Auto-selects best model per query")
+
+                    if !isOptimalSetup() {
+                        Divider()
+
+                        Text("For best results:")
+                            .font(.subheadline)
+                            .fontWeight(.semibold)
+
+                        if ttsPrimary != "kokoro" {
+                            Text("• Switch Voice Primary to Kokoro")
+                        }
+
+                        if llmPrimary != "claude-cli" {
+                            Text("• Switch LLM Primary to Claude CLI")
+                        }
+                    }
+                }
+                .font(.caption)
+                .foregroundColor(.secondary)
+            }
+        }
+        .formStyle(.grouped)
+        .frame(width: 600, height: 700)
+        .onAppear {
+            // Ensure config is synced on load
+            updateTTSConfig()
+            updateLLMConfig()
+        }
+    }
+
+    // MARK: - Helper Methods
+
+    private func isOptimalSetup() -> Bool {
+        ttsPrimary == "kokoro" && llmPrimary == "claude-cli"
+    }
+
+    private func updateTTSConfig() {
+        // Write to model router config
+        guard var config = loadRouterConfig() else { return }
+
+        var fallbackChain: [String] = [ttsPrimary]
+        if ttsSecondary != "none" {
+            fallbackChain.append(ttsSecondary)
+        }
+
+        config.tts = TTSConfigFile(primary: ttsPrimary, fallbackChain: fallbackChain)
+        saveRouterConfig(config)
+    }
+
+    private func updateLLMConfig() {
+        guard var config = loadRouterConfig() else { return }
+
+        // Determine mode
+        if llmTertiary != "none" || (llmPrimary != "none" && llmSecondary != "none") {
+            config.mode = "adaptive"
+            config.escalation.enabled = true
+        } else {
+            config.mode = "single"
+            config.escalation.enabled = false
+        }
+
+        // Build providers list
+        var providers: [String: ProviderConfigFile] = [:]
+        var priority = 1
+
+        // Primary
+        if llmPrimary != "none" {
+            providers[llmPrimary] = buildProvider(llmPrimary, priority: priority)
+            priority += 1
+        }
+
+        // Secondary
+        if llmSecondary != "none" {
+            providers[llmSecondary] = buildProvider(llmSecondary, priority: priority)
+            priority += 1
+        }
+
+        // Tertiary
+        if llmTertiary != "none" {
+            providers[llmTertiary] = buildProvider(llmTertiary, priority: priority)
+        }
+
+        config.providers = providers
+        saveRouterConfig(config)
+    }
+
+    private func buildProvider(_ name: String, priority: Int) -> ProviderConfigFile {
+        switch name {
+        case "claude-cli":
+            return ProviderConfigFile(
+                type: "claudeCLI",
+                enabled: true,
+                priority: priority,
+                timeout: 30.0,
+                endpoint: nil,
+                apiKey: nil,
+                cliCommand: "/opt/homebrew/bin/claude",
+                models: [
+                    "conversational": claudeConversational,
+                    "thinking": claudeThinking,
+                    "tools": claudeTools
+                ]
+            )
+        case "ollama":
+            return ProviderConfigFile(
+                type: "ollama",
+                enabled: true,
+                priority: priority,
+                timeout: 10.0,
+                endpoint: ollamaEndpoint,
+                apiKey: nil,
+                cliCommand: nil,
+                models: [
+                    "conversational": ollamaModel,
+                    "thinking": ollamaModel,
+                    "tools": ollamaModel
+                ]
+            )
+        case "gemini-cli":
+            return ProviderConfigFile(
+                type: "geminiCLI",
+                enabled: true,
+                priority: priority,
+                timeout: 30.0,
+                endpoint: nil,
+                apiKey: nil,
+                cliCommand: "/opt/homebrew/bin/gemini",
+                models: [
+                    "conversational": "flash",
+                    "thinking": "pro",
+                    "tools": "pro"
+                ]
+            )
+        default:
+            return ProviderConfigFile(
+                type: "claudeCLI",
+                enabled: true,
+                priority: priority,
+                timeout: 30.0,
+                endpoint: nil,
+                apiKey: nil,
+                cliCommand: "/opt/homebrew/bin/claude",
+                models: [:]
+            )
+        }
+    }
+
+    private func loadRouterConfig() -> RouterConfigFile? {
+        let path = "/Volumes/data/secrets/sonique_model_router.json"
+        guard let data = try? Data(contentsOf: URL(fileURLWithPath: path)),
+              let config = try? JSONDecoder().decode(RouterConfigFile.self, from: data) else {
+            // Return default
+            return RouterConfigFile(
+                mode: "adaptive",
+                providers: [:],
+                escalation: EscalationConfigFile(enabled: true),
+                tts: TTSConfigFile(primary: "kokoro", fallbackChain: ["kokoro", "system"])
+            )
+        }
+        return config
+    }
+
+    private func saveRouterConfig(_ config: RouterConfigFile) {
+        let path = "/Volumes/data/secrets/sonique_model_router.json"
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+
+        guard let data = try? encoder.encode(config) else { return }
+        try? data.write(to: URL(fileURLWithPath: path))
+    }
+}
+
+// MARK: - Config Structures
+
+struct RouterConfigFile: Codable {
+    var mode: String
+    var providers: [String: ProviderConfigFile]
+    var escalation: EscalationConfigFile
+    var tts: TTSConfigFile
+}
+
+struct ProviderConfigFile: Codable {
+    let type: String
+    let enabled: Bool
+    let priority: Int
+    let timeout: Double
+    let endpoint: String?
+    let apiKey: String?
+    let cliCommand: String?
+    let models: [String: String]
+}
+
+struct EscalationConfigFile: Codable {
+    var enabled: Bool
+}
+
+struct TTSConfigFile: Codable {
+    let primary: String
+    let fallbackChain: [String]
+}
+
+#Preview {
+    SettingsView()
+}
