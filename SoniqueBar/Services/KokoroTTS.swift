@@ -21,10 +21,10 @@ class KokoroTTS {
         self.weightsDir = "\(homeDir)/Projects/sonique-mac/Kokoro/MLX_GPU"
 
         // Verify CLI exists
-        if FileManager.default.fileExists(atPath: cliPath) {
-            logger.info("[KokoroTTS] ✓ Found KokoroCLI at \(cliPath)")
+        if FileManager.default.fileExists(atPath: self.cliPath) {
+            logger.info("[KokoroTTS] ✓ Found KokoroCLI at \(self.cliPath)")
         } else {
-            logger.error("[KokoroTTS] ❌ KokoroCLI not found at \(cliPath)")
+            logger.error("[KokoroTTS] ❌ KokoroCLI not found at \(self.cliPath)")
             logger.error("[KokoroTTS] Build with: cd ~/Projects/sonique-mac/Kokoro && xcodebuild -scheme KokoroCLI -destination 'platform=macOS' -configuration Release build")
         }
     }
