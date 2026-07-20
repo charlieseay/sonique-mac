@@ -12,6 +12,20 @@ class ClaudeCodeBridge {
     func execute(text: String, mcpToolsAvailable: Bool = true) async throws -> String {
         logger.info("[ClaudeCodeBridge] Executing: \(text.prefix(80))")
 
+        // TIER 0: Native Intent Router (instant, no LLM)
+        if let nativeResponse = await IntentRouter.shared.route(text) {
+            logger.info("[ClaudeCodeBridge] ✓ Native intent handled: \(nativeResponse.prefix(50))")
+
+            // Add to conversation history
+            conversationHistory.append((role: "user", content: text))
+            conversationHistory.append((role: "assistant", content: nativeResponse))
+            if conversationHistory.count > maxHistoryCount {
+                conversationHistory.removeFirst(2)  // Remove oldest pair
+            }
+
+            return nativeResponse
+        }
+
         // Check if this is a capability query - respond directly from index
         if CapabilityIndex.isCapabilityQuery(text) {
             logger.info("[ClaudeCodeBridge] Capability query detected - using index")
