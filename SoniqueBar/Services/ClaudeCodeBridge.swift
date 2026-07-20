@@ -70,17 +70,22 @@ class ClaudeCodeBridge {
         let prompt = "Your name is \(assistantName).\n\n\(fullMemory)\n\n\(capabilityContext)\(projectContext)\(historyContext)\n\nUser: \(text)"
 
         // Route through ModelRouter with context
+        // IMPORTANT: Pass the ORIGINAL text for tier determination, not the full prompt
         let context = QueryContext(
             mcpToolsAvailable: mcpToolsAvailable,
-            conversationLength: conversationHistory.count
+            conversationLength: conversationHistory.count,
+            originalQuery: text  // ← Use raw query for tier classification
         )
 
         let result: (stdout: String, stderr: String, exitCode: Int32)
         do {
+            NSLog("[ClaudeCodeBridge] Calling ModelRouter.route() with prompt length: \(prompt.count)")
             let response = try await ModelRouter.shared.route(prompt: prompt, context: context)
+            NSLog("[ClaudeCodeBridge] ✓ ModelRouter success: Provider: \(response.provider), Tier: \(response.tier.rawValue), Latency: \(String(format: "%.2f", response.latency))s")
             logger.info("[ClaudeCodeBridge] Provider: \(response.provider), Tier: \(response.tier.rawValue), Latency: \(String(format: "%.2f", response.latency))s")
             result = (stdout: response.text, stderr: "", exitCode: 0)
         } catch {
+            NSLog("[ClaudeCodeBridge] ❌ ModelRouter failed: \(error)")
             logger.error("[ClaudeCodeBridge] ModelRouter failed: \(error.localizedDescription)")
             result = (stdout: "", stderr: error.localizedDescription, exitCode: 1)
         }

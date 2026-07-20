@@ -10,19 +10,22 @@ struct QueryContext {
     var isRetry: Bool
     var previousTier: QueryTier?
     var conversationLength: Int
+    var originalQuery: String?  // ← Raw user query for tier classification
 
     init(
         forceTier: QueryTier? = nil,
         mcpToolsAvailable: Bool = true,
         isRetry: Bool = false,
         previousTier: QueryTier? = nil,
-        conversationLength: Int = 0
+        conversationLength: Int = 0,
+        originalQuery: String? = nil
     ) {
         self.forceTier = forceTier
         self.mcpToolsAvailable = mcpToolsAvailable
         self.isRetry = isRetry
         self.previousTier = previousTier
         self.conversationLength = conversationLength
+        self.originalQuery = originalQuery
     }
 }
 
@@ -87,12 +90,16 @@ class ModelRouter {
 
     /// Main routing entry point with automatic tier escalation
     func route(prompt: String, context: QueryContext? = nil) async throws -> RouterResponse {
+        NSLog("[ModelRouter] route() called with prompt length: \(prompt.count)")
         let startTime = Date()
         let tier = determineTier(prompt: prompt, context: context)
+        NSLog("[ModelRouter] Determined tier: \(tier.rawValue)")
         logger.info("[Router] Query tier: \(tier.rawValue)")
 
         let providers = getProvidersForTier(tier)
+        NSLog("[ModelRouter] Got \(providers.count) providers for tier \(tier.rawValue)")
         guard !providers.isEmpty else {
+            NSLog("[ModelRouter] ❌ ERROR: noProvidersAvailable for tier \(tier.rawValue)")
             throw RouterError.noProvidersAvailable
         }
 
@@ -143,7 +150,10 @@ class ModelRouter {
             return forced
         }
 
-        let lower = prompt.lowercased()
+        // Use the original raw query for classification (not the full prompt with memory/context)
+        let textToClassify = context?.originalQuery ?? prompt
+        let lower = textToClassify.lowercased()
+
         if toolsKeywords.contains(where: { lower.contains($0) }) {
             return .tools
         }
@@ -161,7 +171,7 @@ class ModelRouter {
     }
 
     private func shouldEscalate(_ response: String, currentTier: QueryTier) -> Bool {
-        guard config.escalation.responseUnsatisfactory else { return false }
+        guard config.escalation.responseUnsatisfactory ?? true else { return false }
         return uncertaintyPhrases.contains(where: { response.contains($0) })
     }
 
@@ -169,11 +179,20 @@ class ModelRouter {
         var providers: [ProviderInfo] = []
 
         for (name, providerConfig) in config.providers {
-            guard providerConfig.enabled else { continue }
+            guard providerConfig.enabled else {
+                logger.info("[getProvidersForTier] Skipping disabled provider: \(name)")
+                continue
+            }
 
+            // Try to get model for tier
             let model = providerConfig.models[tier] ?? providerConfig.models[.conversational]
-            guard let model else { continue }
+            guard let model else {
+                logger.warning("[getProvidersForTier] No model found for \(name) at tier \(tier.rawValue)")
+                logger.warning("[getProvidersForTier] Available models for \(name): \(providerConfig.models)")
+                continue
+            }
 
+            logger.info("[getProvidersForTier] Adding provider \(name) with model \(model) for tier \(tier.rawValue)")
             providers.append(ProviderInfo(
                 name: name,
                 config: providerConfig,
@@ -182,7 +201,9 @@ class ModelRouter {
             ))
         }
 
-        return providers.sorted { $0.config.priority < $1.config.priority }
+        let sorted = providers.sorted { $0.config.priority < $1.config.priority }
+        logger.info("[getProvidersForTier] Returning \(sorted.count) providers for tier \(tier.rawValue)")
+        return sorted
     }
 
     private func callProvider(_ provider: ProviderInfo, prompt: String, tier: QueryTier) async throws -> ProviderResult {
@@ -429,11 +450,22 @@ class ModelRouter {
 
     private static func loadConfig() -> RouterConfig? {
         let path = "/Volumes/data/secrets/sonique_model_router.json"
-        guard let data = try? Data(contentsOf: URL(fileURLWithPath: path)),
-              let config = try? JSONDecoder().decode(RouterConfig.self, from: data) else {
+        guard let data = try? Data(contentsOf: URL(fileURLWithPath: path)) else {
+            NSLog("[ModelRouter] ❌ Failed to read config at \(path)")
             return nil
         }
-        return config
+
+        do {
+            let config = try JSONDecoder().decode(RouterConfig.self, from: data)
+            NSLog("[ModelRouter] ✓ Config loaded: \(config.providers.count) providers")
+            for (name, provider) in config.providers {
+                NSLog("[ModelRouter]   - \(name): enabled=\(provider.enabled), models=\(provider.models)")
+            }
+            return config
+        } catch {
+            NSLog("[ModelRouter] ❌ Failed to decode config: \(error)")
+            return nil
+        }
     }
 
     enum RouterError: Error {
@@ -552,17 +584,17 @@ struct ProviderConfiguration: Codable {
 
 struct EscalationConfig: Codable {
     let enabled: Bool
-    let thinkingKeywords: Bool
-    let toolUseDetected: Bool
-    let responseUnsatisfactory: Bool
-    let revertAfterResponse: Bool
+    let thinkingKeywords: Bool?
+    let toolUseDetected: Bool?
+    let responseUnsatisfactory: Bool?
+    let revertAfterResponse: Bool?
 
     init(
         enabled: Bool = true,
-        thinkingKeywords: Bool = true,
-        toolUseDetected: Bool = true,
-        responseUnsatisfactory: Bool = true,
-        revertAfterResponse: Bool = true
+        thinkingKeywords: Bool? = true,
+        toolUseDetected: Bool? = true,
+        responseUnsatisfactory: Bool? = true,
+        revertAfterResponse: Bool? = true
     ) {
         self.enabled = enabled
         self.thinkingKeywords = thinkingKeywords
