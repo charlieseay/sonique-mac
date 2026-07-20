@@ -191,6 +191,8 @@ class CommandServer: ObservableObject {
             await handleCommand(data, connection)
         } else if path == "/synthesize" && method == "POST" {
             await handleSynthesize(data, connection)
+        } else if path == "/synthesize/kokoro" && method == "POST" {
+            await handleSynthesizeKokoro(data, connection)
         } else {
             sendResponse("HTTP/1.1 404 Not Found\r\n\r\n{\"error\":\"Not found\"}", to: connection)
         }
@@ -613,6 +615,45 @@ class CommandServer: ObservableObject {
             }
             connection.cancel()
         })
+    }
+
+    private func handleSynthesizeKokoro(_ data: Data, _ connection: NWConnection) async {
+        guard let requestBody = extractJSON(from: data) else {
+            logger.error("[handleSynthesizeKokoro] Failed to parse JSON")
+            sendResponse("HTTP/1.1 400 Bad Request\r\n\r\n{\"error\":\"Invalid JSON\"}", to: connection)
+            return
+        }
+
+        guard let text = requestBody["text"] as? String else {
+            logger.error("[handleSynthesizeKokoro] Missing text field")
+            sendResponse("HTTP/1.1 400 Bad Request\r\n\r\n{\"error\":\"Missing text field\"}", to: connection)
+            return
+        }
+
+        let voice = (requestBody["voice"] as? String) ?? "af_jessica"
+
+        logger.info("[handleSynthesizeKokoro] Synthesizing \(text.count) chars with voice \(voice)")
+
+        do {
+            let pcmData = try await KokoroTTS.shared.synthesize(text: text, voice: voice)
+
+            let headers = """
+            HTTP/1.1 200 OK\r
+            Content-Type: audio/pcm\r
+            X-Sample-Rate: 24000\r
+            X-Channels: 1\r
+            X-Bit-Depth: 16\r
+            Content-Length: \(pcmData.count)\r
+            \r
+            """
+
+            logger.info("[handleSynthesizeKokoro] Sending \(pcmData.count) bytes PCM")
+
+            sendBinaryResponse(headers: headers, data: pcmData, to: connection)
+        } catch {
+            logger.error("[handleSynthesizeKokoro] Synthesis failed: \(error.localizedDescription)")
+            sendResponse("HTTP/1.1 500 Internal Server Error\r\n\r\n{\"error\":\"\(error.localizedDescription)\"}", to: connection)
+        }
     }
 
     // MARK: - Bonjour Advertising

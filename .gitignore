@@ -19,3 +19,6 @@ tts-engine/dist/
 tts-engine/build/
 tts-engine/venv/
 tts-engine/__pycache__/
+# Kokoro weights (too large for GitHub, download via script)
+Kokoro/MLX_GPU/
+Kokoro/CoreML_ANE/
