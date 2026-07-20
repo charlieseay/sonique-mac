@@ -186,7 +186,31 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             } else {
                 NSLog("[SoniqueBar] ⚠️ Wake-up incomplete: personality not found (check iCloud sync)")
             }
+
+            // Show setup wizard on first run
+            self.showSetupWizardIfNeeded()
         }
+    }
+
+    private func showSetupWizardIfNeeded() {
+        let setupComplete = UserDefaults.standard.bool(forKey: "SoniqueBar.SetupComplete")
+
+        guard !setupComplete else { return }
+
+        // Show setup wizard
+        let wizard = SetupWizard()
+        let hostingController = NSHostingController(rootView: wizard)
+
+        let window = NSWindow(contentViewController: hostingController)
+        window.title = "Welcome to SoniqueBar"
+        window.styleMask = [.titled, .closable]
+        window.isReleasedWhenClosed = false
+        window.center()
+
+        window.makeKeyAndOrderFront(nil)
+        NSApp.activate(ignoringOtherApps: true)
+
+        NSLog("[SoniqueBar] ✓ First run: showing setup wizard")
     }
 
     func applicationWillTerminate(_ notification: Notification) {

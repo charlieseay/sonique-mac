@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		2813D241FA9C40407D7FE59E /* SetupWizard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2D5A9661475D2ACDEC62AF3E /* SetupWizard.swift */; };
 		28376E07C49D672DD5B76F35 /* sonique-tts in Resources */ = {isa = PBXBuildFile; fileRef = B7BEAB172CDAEACF96F71ECB /* sonique-tts */; };
 		32633465633763612D656461612D346232642D623835302D /* MemoryService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 66333330393036652D393163352D343738372D393137642D /* MemoryService.swift */; };
 		37A2809724D0E01E6D435077 /* KokoroTTS.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8DB6DE0152B072EB584CCEE0 /* KokoroTTS.swift */; };
@@ -23,6 +24,7 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		2D5A9661475D2ACDEC62AF3E /* SetupWizard.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SoniqueBar/Views/SetupWizard.swift; sourceTree = "<group>"; };
 		3928D62756135B86A135BBBA /* ClaudeCodeBridge.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SoniqueBar/Services/ClaudeCodeBridge.swift; sourceTree = "<group>"; };
 		51CF32BB11AD3B053074E4B1 /* CommandServer.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = CommandServer.swift; path = SoniqueBar/Services/CommandServer.swift; sourceTree = "<group>"; };
 		5FD7FABF8FD144AC9208A689 /* SoniqueBrain.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SoniqueBar/Services/SoniqueBrain.swift; sourceTree = "<group>"; };
@@ -118,6 +120,7 @@
 			isa = PBXGroup;
 			children = (
 				7a1bf74f137b450aac8951536b22a0b4 /* SettingsView.swift */,
+				2D5A9661475D2ACDEC62AF3E /* SetupWizard.swift */,
 			);
 			name = Views;
 			sourceTree = "<group>";
@@ -228,6 +231,7 @@
 				B65B0A7D899CC16C20C53C48 /* ChatWindow.swift in Sources */,
 				83419D8281026DE611A5CEFE /* IntentRouter.swift in Sources */,
 				AA16F3F362742E8A477FC066 /* WeatherService.swift in Sources */,
+				2813D241FA9C40407D7FE59E /* SetupWizard.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
