@@ -41,14 +41,8 @@ struct ChatWindow: View {
                         }
 
                         if viewModel.isProcessing {
-                            HStack {
-                                ProgressView()
-                                    .scaleEffect(0.7)
-                                Text("Quinn is thinking...")
-                                    .font(.caption)
-                                    .foregroundColor(.secondary)
-                            }
-                            .padding(.leading)
+                            TypingIndicator()
+                                .padding(.leading)
                         }
                     }
                     .padding()
@@ -279,6 +273,50 @@ final class ChatViewModel: ObservableObject {
             print("[ChatWindow] Quota enforced: trimmed to \(keepCount) messages")
         } catch {
             print("[ChatWindow] Failed to enforce quota: \(error)")
+        }
+    }
+}
+
+/// Animated typing indicator (three bouncing dots)
+struct TypingIndicator: View {
+    @State private var animationOffset: [CGFloat] = [0, 0, 0]
+
+    private let timer = Timer.publish(every: 0.4, on: .main, in: .common).autoconnect()
+
+    var body: some View {
+        HStack(spacing: 12) {
+            HStack(spacing: 4) {
+                ForEach(0..<3, id: \.self) { index in
+                    Circle()
+                        .fill(Color.secondary)
+                        .frame(width: 8, height: 8)
+                        .offset(y: animationOffset[index])
+                }
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+            .background(Color(NSColor.controlBackgroundColor))
+            .cornerRadius(16)
+
+            Spacer()
+        }
+        .onReceive(timer) { _ in
+            withAnimation(.easeInOut(duration: 0.4)) {
+                // Animate dots in sequence
+                for i in 0..<3 {
+                    animationOffset[i] = animationOffset[i] == 0 ? -6 : 0
+                }
+            }
+        }
+        .onAppear {
+            // Start with staggered animation
+            for i in 0..<3 {
+                DispatchQueue.main.asyncAfter(deadline: .now() + Double(i) * 0.15) {
+                    withAnimation(.easeInOut(duration: 0.4).repeatForever(autoreverses: true)) {
+                        animationOffset[i] = -6
+                    }
+                }
+            }
         }
     }
 }

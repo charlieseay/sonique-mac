@@ -265,6 +265,23 @@ class CommandServer: ObservableObject {
         let header = "HTTP/1.1 200 OK\r\nContent-Type: application/x-ndjson\r\nTransfer-Encoding: chunked\r\n\r\n"
         sendRaw(header, to: connection)
 
+        // Check if this will be handled by native intent (instant response, no thinking ack needed)
+        let needsThinkingAck = await IntentRouter.shared.route(text) == nil
+
+        // Send immediate acknowledgment for LLM queries (avoid awkward silence)
+        if needsThinkingAck {
+            let thinkingAcks = [
+                "Let me think about that.",
+                "Give me a moment.",
+                "One second.",
+                "Let me check.",
+                "Thinking...",
+                "Just a sec."
+            ]
+            let ack = thinkingAcks.randomElement()!
+            await sendNDJSONChunk("{\"chunk\":\(escapeJSON(ack + " ")),\"is_final\":false}", to: connection)
+        }
+
         do {
             let response = try await claudeBridge.execute(text: text)
             // Split response into word-sized chunks so iOS starts speaking immediately.

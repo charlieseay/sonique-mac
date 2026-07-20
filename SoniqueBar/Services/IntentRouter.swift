@@ -24,6 +24,17 @@ final class IntentRouter {
     func route(_ query: String) async -> String? {
         let lower = query.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
 
+        // Combined day + date queries
+        if matchesPattern(lower, patterns: [
+            "day and date",
+            "the day and date"
+        ]) {
+            let formatter = DateFormatter()
+            formatter.dateFormat = "EEEE, MMMM d, yyyy"
+            let fullDate = formatter.string(from: Date())
+            return "Today is \(fullDate)."
+        }
+
         // Time queries
         if matchesPattern(lower, patterns: [
             "what time is it",
@@ -48,7 +59,8 @@ final class IntentRouter {
         if matchesPattern(lower, patterns: [
             "what day is it",
             "what's today",
-            "day of the week"
+            "day of the week",
+            "what day"
         ]) {
             return handleDayQuery()
         }
@@ -69,9 +81,11 @@ final class IntentRouter {
         if matchesPattern(lower, patterns: [
             "what's the weather",
             "weather forecast",
-            "how's the weather"
+            "how's the weather",
+            "weather like",
+            "what is the weather"
         ]) {
-            return "I'd need to connect to a weather service for that. Would you like me to check online?"
+            return "I don't have real-time weather access yet. You can check weather.com or ask me to look it up online if you'd like."
         }
 
         // System info
