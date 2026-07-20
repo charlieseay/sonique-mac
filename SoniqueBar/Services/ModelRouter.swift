@@ -247,7 +247,7 @@ class ModelRouter {
 
         return try await callCLI(
             command: command,
-            args: ["-m", provider.model, "-p", prompt],
+            args: ["--model", provider.model, "-p", prompt],
             timeout: timeout,
             providerName: provider.name
         )
@@ -260,7 +260,7 @@ class ModelRouter {
 
         return try await callCLI(
             command: command,
-            args: ["-m", provider.model, "-p", prompt],
+            args: ["--model", provider.model, "-p", prompt],
             timeout: timeout,
             providerName: provider.name
         )
