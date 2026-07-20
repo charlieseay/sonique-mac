@@ -217,7 +217,7 @@ class CommandServer: ObservableObject {
         {
             "voices": [
                 {"id": "pNInz6obpgDQGcFmaJgB", "name": "Adam", "description": "Deep, confident male voice"},
-                {"id": "21m00Tcm4TlvDq8ikWAM", "name": "Rachel", "description": "Warm, clear female voice (default)"},
+                {"id": "cgSgspJ2msm6clMCkdW9", "name": "Jessica", "description": "Playful, bright, warm female voice (default)"},
                 {"id": "AZnzlk1XvdvUeBnXmlld", "name": "Domi", "description": "Professional female voice"},
                 {"id": "EXAVITQu4vr4xnSDxMaL", "name": "Bella", "description": "Bright, engaging female voice"},
                 {"id": "ErXwobaYiN019PkySvjV", "name": "Antoni", "description": "Smooth, articulate male voice"}
@@ -539,8 +539,8 @@ class CommandServer: ObservableObject {
             throw NSError(domain: "ElevenLabs", code: 1, userInfo: [NSLocalizedDescriptionKey: "API key not found"])
         }
 
-        // Rachel voice ID (default)
-        let voiceId = "21m00Tcm4TlvDq8ikWAM"
+        // Jessica voice ID (Playful, Bright, Warm)
+        let voiceId = "cgSgspJ2msm6clMCkdW9"
 
         let url = URL(string: "https://api.elevenlabs.io/v1/text-to-speech/\(voiceId)")!
         var request = URLRequest(url: url)
