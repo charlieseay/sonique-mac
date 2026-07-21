@@ -49,7 +49,7 @@ enum AccessLevel: Int, Codable, CaseIterable, Identifiable {
 }
 
 /// Confirmation requirements for operations
-struct ConfirmationRules: Codable, Equatable {
+struct ConfirmationRules: Codable, Equatable, Hashable {
     var externalComms: Bool
     var spending: Bool
     var destructive: Bool
@@ -68,7 +68,7 @@ struct ConfirmationRules: Codable, Equatable {
 }
 
 /// User permission record
-struct UserPermission: Codable, Identifiable {
+struct UserPermission: Codable, Identifiable, Hashable {
     let id: UUID
     var name: String
     var bearerToken: String
@@ -106,7 +106,7 @@ struct UserPermission: Codable, Identifiable {
 
     /// Check if user can read a specific path
     func canRead(path: String) -> Bool {
-        guard canRead else { return false }
+        guard accessLevel.canRead else { return false }
 
         // Global read access
         if accessLevel.canReadGlobal { return true }
@@ -117,7 +117,7 @@ struct UserPermission: Codable, Identifiable {
 
     /// Check if user can write to a specific path
     func canWrite(path: String) -> Bool {
-        guard canWrite else { return false }
+        guard accessLevel.canWrite else { return false }
 
         // Global write access
         if accessLevel.canWriteGlobal { return true }

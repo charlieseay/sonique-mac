@@ -21,6 +21,8 @@
 		FA925571F17B6BA9C9106F30 /* CommandServer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 51CF32BB11AD3B053074E4B1 /* CommandServer.swift */; };
 		b790639f3b5044d2950dd59c /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7a1bf74f137b450aac8951536b22a0b4 /* SettingsView.swift */; };
 		cf9392e2970243668624ed99 /* ModelRouter.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0E513728E4141D8867D5539 /* ModelRouter.swift */; };
+		A0529A54BF06401FB61E5095 /* UserPermission.swift in Sources */ = {isa = PBXBuildFile; fileRef = 309C3E0E63A34475BC7F85BE /* UserPermission.swift */; };
+		E9164E1EF110424BA3A91B6D /* PermissionManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B0D3D10EFE34E72A0D47729 /* PermissionManager.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -41,6 +43,8 @@
 		BDC2DFD3531ED23758A43B42 /* ChatWindow.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ChatWindow.swift; path = SoniqueBar/Views/ChatWindow.swift; sourceTree = "<group>"; };
 		CAPIDX_FILE_REF_001 /* CapabilityIndex.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SoniqueBar/Services/CapabilityIndex.swift; sourceTree = "<group>"; };
 		F93FB11F98C153F00F26784A /* WeatherService.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SoniqueBar/Services/WeatherService.swift; sourceTree = "<group>"; };
+		309C3E0E63A34475BC7F85BE /* UserPermission.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SoniqueBar/Models/UserPermission.swift; sourceTree = "<group>"; };
+		1B0D3D10EFE34E72A0D47729 /* PermissionManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SoniqueBar/Services/PermissionManager.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -232,6 +236,8 @@
 				83419D8281026DE611A5CEFE /* IntentRouter.swift in Sources */,
 				AA16F3F362742E8A477FC066 /* WeatherService.swift in Sources */,
 				2813D241FA9C40407D7FE59E /* SetupWizard.swift in Sources */,
+				A0529A54BF06401FB61E5095 /* UserPermission.swift in Sources */,
+				E9164E1EF110424BA3A91B6D /* PermissionManager.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
