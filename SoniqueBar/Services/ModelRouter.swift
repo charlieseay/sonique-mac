@@ -275,9 +275,19 @@ class ModelRouter {
             throw RouterError.missingConfig("Claude CLI command not specified")
         }
 
+        // Parse command and args from cliCommand (e.g. "/path/to/claude -p")
+        let parts = command.split(separator: " ").map(String.init)
+        guard !parts.isEmpty else {
+            throw RouterError.missingConfig("Empty cliCommand for provider: \(provider.name)")
+        }
+
+        let executablePath = parts[0]
+        var args = Array(parts.dropFirst())
+        args.append(contentsOf: ["-p", prompt])
+
         return try await callCLI(
-            command: command,
-            args: ["--model", provider.model, "-p", prompt],
+            command: executablePath,
+            args: args,
             timeout: timeout,
             providerName: provider.name
         )
