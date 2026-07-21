@@ -1,6 +1,12 @@
 import Foundation
 import os.log
 
+/// Memory persistence mode
+enum MemoryMode {
+    case persistent      // Remember across sessions (7-day window)
+    case sessionOnly     // Only remember within current session
+}
+
 /// Routes voice commands directly to Claude Code CLI with full MCP tool access
 class ClaudeCodeBridge {
     private let logger = Logger(subsystem: "com.seayniclabs.soniquebar", category: "ClaudeCodeBridge")
@@ -10,6 +16,9 @@ class ClaudeCodeBridge {
     // Example: Friday noon → Monday morning should retain Friday's context
     private var conversationHistory: [(role: String, content: String, timestamp: Date)] = []
     private let maxHistoryDuration: TimeInterval = 7 * 24 * 60 * 60  // 7 days
+
+    // Memory mode control
+    private var memoryMode: MemoryMode = .persistent  // Default: remember across sessions
 
     func execute(text: String, mcpToolsAvailable: Bool = true) async throws -> String {
         logger.info("[ClaudeCodeBridge] Executing: \(text.prefix(80))")
@@ -317,5 +326,49 @@ class ClaudeCodeBridge {
         conversationHistory.removeAll { (_, _, timestamp) in
             now.timeIntervalSince(timestamp) > maxHistoryDuration
         }
+    }
+
+    // MARK: - Memory Control (Feature #2: Memory Boundaries UI)
+
+    /// Set memory persistence mode
+    func setMemoryMode(_ mode: MemoryMode) {
+        memoryMode = mode
+        logger.info("[ClaudeCodeBridge] Memory mode set to: \(mode == .persistent ? "persistent" : "sessionOnly")")
+    }
+
+    /// Get current memory mode
+    func getMemoryMode() -> MemoryMode {
+        return memoryMode
+    }
+
+    /// Get summary of what's currently in memory
+    func getMemorySummary() async -> String {
+        var summary = "**Memory Mode**: \(memoryMode == .persistent ? "Persistent (7-day window)" : "Session-only")\n\n"
+
+        if conversationHistory.isEmpty {
+            summary += "No conversation history yet."
+            return summary
+        }
+
+        summary += "**Conversation History**: \(conversationHistory.count) messages\n"
+        summary += "**Oldest message**: \(conversationHistory.first?.timestamp.formatted() ?? "unknown")\n"
+        summary += "**Most recent**: \(conversationHistory.last?.timestamp.formatted() ?? "unknown")\n\n"
+
+        // Show last 5 exchanges
+        let recentHistory = conversationHistory.suffix(10)  // Last 5 exchanges (10 messages)
+        summary += "**Recent conversation** (last 5 exchanges):\n"
+        for (role, content, timestamp) in recentHistory {
+            let speaker = role == "user" ? "You" : "Quinn"
+            let preview = content.prefix(60)
+            summary += "- [\(timestamp.formatted(date: .omitted, time: .shortened))] \(speaker): \(preview)...\n"
+        }
+
+        return summary
+    }
+
+    /// Clear conversation history
+    func clearMemory() async {
+        conversationHistory.removeAll()
+        logger.info("[ClaudeCodeBridge] Memory cleared")
     }
 }

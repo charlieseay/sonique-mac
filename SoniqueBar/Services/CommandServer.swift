@@ -462,6 +462,12 @@ class CommandServer: ObservableObject {
         lastCommand = text
         requestCount += 1
 
+        // Handle memory commands before routing to bridge
+        if let memoryResponse = await handleMemoryCommand(text) {
+            sendJSON("{\"response\":\(escapeJSON(memoryResponse)),\"status\":\"ok\"}", to: connection)
+            return
+        }
+
         do {
             let response = try await claudeBridge.execute(text: text)
             sendJSON("{\"response\":\(escapeJSON(response)),\"status\":\"ok\"}", to: connection)
@@ -470,7 +476,40 @@ class CommandServer: ObservableObject {
             sendJSON("{\"response\":\"Error: \(error.localizedDescription)\",\"status\":\"error\"}", to: connection)
         }
     }
-    
+
+    /// Handle memory control commands (/remember, /memory)
+    /// Returns response if command was handled, nil if not a memory command
+    private func handleMemoryCommand(_ text: String) async -> String? {
+        let lower = text.lowercased().trimmingCharacters(in: .whitespaces)
+
+        // /remember off - disable memory persistence
+        if lower == "/remember off" || lower.hasPrefix("/remember off ") {
+            claudeBridge.setMemoryMode(.sessionOnly)
+            return "Memory persistence disabled. I'll only remember things during this session, then forget everything when we end."
+        }
+
+        // /remember on - enable memory persistence
+        if lower == "/remember on" || lower.hasPrefix("/remember on ") {
+            claudeBridge.setMemoryMode(.persistent)
+            return "Memory persistence enabled. I'll remember our conversations across sessions."
+        }
+
+        // /memory show - display current memory
+        if lower == "/memory show" || lower.hasPrefix("/memory show ") {
+            let memory = await claudeBridge.getMemorySummary()
+            return "Here's what I remember:\n\n\(memory)"
+        }
+
+        // /memory clear - clear conversation history (requires confirmation)
+        if lower == "/memory clear" || lower.hasPrefix("/memory clear ") {
+            // For now, just clear - confirmation can be added later
+            await claudeBridge.clearMemory()
+            return "Memory cleared. I've forgotten our conversation history but kept your preferences."
+        }
+
+        // Not a memory command
+        return nil
+    }
 
     /// TTS synthesis endpoint - Returns PCM audio for iOS compatibility
     private func handleSynthesize(_ data: Data, _ connection: NWConnection) async {
