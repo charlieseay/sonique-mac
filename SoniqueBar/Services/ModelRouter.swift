@@ -29,6 +29,13 @@ struct QueryContext {
     }
 }
 
+/// Query complexity levels for routing optimization
+enum QueryComplexity {
+    case simple      // Factual, short answers - Ollama fast
+    case moderate    // Multi-part, reasoning - Ollama with longer timeout
+    case complex     // Meta-analysis, self-reflection - Claude CLI first
+}
+
 /// Query complexity tiers for automatic escalation
 enum QueryTier: String, Codable, CaseIterable {
     case conversational
@@ -97,7 +104,23 @@ class ModelRouter {
         NSLog("[ModelRouter] Determined tier: \(tier.rawValue)")
         logger.info("[Router] Query tier: \(tier.rawValue)")
 
-        let providers = getProvidersForTier(tier)
+        // Detect query complexity for routing optimization
+        let complexity = detectComplexity(context?.originalQuery ?? prompt)
+        NSLog("[ModelRouter] Query complexity: \(complexity)")
+
+        var providers = getProvidersForTier(tier)
+
+        // Reorder providers based on complexity
+        if complexity == .complex {
+            // Complex queries: put Claude CLI first, Ollama second
+            providers = providers.sorted(by: { p1, p2 in
+                if p1.name.contains("claude") { return true }
+                if p2.name.contains("claude") { return false }
+                return p1.config.priority < p2.config.priority
+            })
+            NSLog("[ModelRouter] Complex query detected - prioritizing Claude CLI")
+        }
+
         NSLog("[ModelRouter] Got \(providers.count) providers for tier \(tier.rawValue)")
         guard !providers.isEmpty else {
             NSLog("[ModelRouter] ❌ ERROR: noProvidersAvailable for tier \(tier.rawValue)")
@@ -169,6 +192,36 @@ class ModelRouter {
         }
 
         return .conversational
+    }
+
+    private func detectComplexity(_ query: String) -> QueryComplexity {
+        let lower = query.lowercased()
+
+        // Complex patterns - meta-reasoning, self-reflection, evaluation
+        let complexPatterns = [
+            "what could be", "what should be", "what aspects",
+            "how would you", "in your opinion", "what do you think",
+            "evaluate yourself", "self-reflect", "your functionality",
+            "what's missing", "what needs", "prioritize",
+            "assess", "critique", "meta-", "improve"
+        ]
+
+        if complexPatterns.contains(where: { lower.contains($0) }) {
+            return .complex
+        }
+
+        // Moderate patterns - reasoning, comparison, multi-part
+        let moderatePatterns = [
+            "explain", "compare", "analyze", "why",
+            "what's the difference", "how does", "walk me through",
+            "advantages", "disadvantages", "pros and cons"
+        ]
+
+        if moderatePatterns.contains(where: { lower.contains($0) }) {
+            return .moderate
+        }
+
+        return .simple
     }
 
     private func shouldEscalate(_ response: String, currentTier: QueryTier) -> Bool {
