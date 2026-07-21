@@ -422,12 +422,15 @@ class CommandServer: ObservableObject {
     /// Streaming endpoint — emits NDJSON lines that iOS VoiceLoop consumes chunk-by-chunk.
     /// Format: {"chunk":"word "} … {"done":true}
     private func handleCommandStream(_ data: Data, _ connection: NWConnection) async {
-        guard let text = extractCommandText(from: data) else {
+        guard let commandData = extractCommandData(from: data) else {
             sendResponse("HTTP/1.1 400 Bad Request\r\n\r\n{\"error\":\"Missing 'text' field\"}", to: connection)
             return
         }
 
-        logger.info("[CommandServer] Stream request: \(text.prefix(80))")
+        let text = commandData.text
+        let imageBase64 = commandData.imageBase64
+
+        logger.info("[CommandServer] Stream request: \(text.prefix(80))\(imageBase64 != nil ? " [with image]" : "")")
         lastCommand = text
         requestCount += 1
 
@@ -453,7 +456,7 @@ class CommandServer: ObservableObject {
         }
 
         do {
-            let response = try await claudeBridge.execute(text: text)
+            let response = try await claudeBridge.execute(text: text, imageBase64: imageBase64)
             // Split response into word-sized chunks so iOS starts speaking immediately.
             let words = response.components(separatedBy: " ")
             for (i, word) in words.enumerated() {
@@ -831,6 +834,16 @@ class CommandServer: ObservableObject {
               let json = try? JSONSerialization.jsonObject(with: bodyData) as? [String: Any],
               let text = json["text"] as? String else { return nil }
         return text
+    }
+
+    private func extractCommandData(from data: Data) -> (text: String, imageBase64: String?)? {
+        guard let requestString = String(data: data, encoding: .utf8),
+              let range = requestString.range(of: "\r\n\r\n"),
+              let bodyData = String(requestString[range.upperBound...]).data(using: .utf8),
+              let json = try? JSONSerialization.jsonObject(with: bodyData) as? [String: Any],
+              let text = json["text"] as? String else { return nil }
+        let image = json["image"] as? String
+        return (text, image)
     }
 
     nonisolated private func sendNDJSONChunk(_ line: String, to connection: NWConnection) async {

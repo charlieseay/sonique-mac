@@ -20,8 +20,14 @@ class ClaudeCodeBridge {
     // Memory mode control
     private var memoryMode: MemoryMode = .persistent  // Default: remember across sessions
 
-    func execute(text: String, mcpToolsAvailable: Bool = true) async throws -> String {
-        logger.info("[ClaudeCodeBridge] Executing: \(text.prefix(80))")
+    func execute(text: String, imageBase64: String? = nil, mcpToolsAvailable: Bool = true) async throws -> String {
+        logger.info("[ClaudeCodeBridge] Executing: \(text.prefix(80))\(imageBase64 != nil ? " [with image]" : "")")
+
+        // VISION: If image provided, route directly to Claude API (requires vision model)
+        if let imageData = imageBase64 {
+            logger.info("[ClaudeCodeBridge] Vision request - calling Claude API directly")
+            return try await handleVisionRequest(text: text, imageBase64: imageData)
+        }
 
         // TIER 0: Native Intent Router (instant, no LLM)
         if let nativeResponse = await IntentRouter.shared.route(text) {
@@ -370,5 +376,72 @@ class ClaudeCodeBridge {
     func clearMemory() async {
         conversationHistory.removeAll()
         logger.info("[ClaudeCodeBridge] Memory cleared")
+    }
+
+    // MARK: - Vision Support
+
+    private func handleVisionRequest(text: String, imageBase64: String) async throws -> String {
+        logger.info("[ClaudeCodeBridge] Processing vision request")
+
+        // Load API key
+        let keyPath = "/Volumes/data/secrets/anthropic_api_key"
+        guard let apiKey = try? String(contentsOfFile: keyPath, encoding: .utf8).trimmingCharacters(in: .whitespacesAndNewlines),
+              !apiKey.isEmpty else {
+            throw BridgeError.executionFailed("Anthropic API key not found")
+        }
+
+        // Construct Claude API request with vision
+        let url = URL(string: "https://api.anthropic.com/v1/messages")!
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue(apiKey, forHTTPHeaderField: "x-api-key")
+        request.setValue("2023-06-01", forHTTPHeaderField: "anthropic-version")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+
+        let payload: [String: Any] = [
+            "model": "claude-sonnet-4-20250514",
+            "max_tokens": 2048,
+            "messages": [
+                [
+                    "role": "user",
+                    "content": [
+                        [
+                            "type": "image",
+                            "source": [
+                                "type": "base64",
+                                "media_type": "image/jpeg",
+                                "data": imageBase64
+                            ]
+                        ],
+                        [
+                            "type": "text",
+                            "text": text
+                        ]
+                    ]
+                ]
+            ]
+        ]
+
+        request.httpBody = try JSONSerialization.data(withJSONObject: payload)
+        request.timeoutInterval = 60
+
+        let (data, response) = try await URLSession.shared.data(for: request)
+
+        guard let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 else {
+            let statusCode = (response as? HTTPURLResponse)?.statusCode ?? -1
+            logger.error("[ClaudeCodeBridge] Vision API error: \(statusCode)")
+            throw BridgeError.executionFailed("Vision API error: \(statusCode)")
+        }
+
+        guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let content = json["content"] as? [[String: Any]],
+              let firstBlock = content.first,
+              let responseText = firstBlock["text"] as? String else {
+            logger.error("[ClaudeCodeBridge] Failed to parse vision response")
+            throw BridgeError.executionFailed("Failed to parse vision response")
+        }
+
+        logger.info("[ClaudeCodeBridge] Vision response: \(responseText.prefix(50))")
+        return responseText
     }
 }

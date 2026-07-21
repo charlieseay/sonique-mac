@@ -99,7 +99,7 @@ class ModelRouter {
     }
 
     /// Main routing entry point with automatic tier escalation
-    func route(prompt: String, context: QueryContext? = nil) async throws -> RouterResponse {
+    func route(prompt: String, imageBase64: String? = nil, context: QueryContext? = nil) async throws -> RouterResponse {
         NSLog("[ModelRouter] route() called with prompt length: \(prompt.count)")
         let startTime = Date()
         let tier = determineTier(prompt: prompt, context: context)
