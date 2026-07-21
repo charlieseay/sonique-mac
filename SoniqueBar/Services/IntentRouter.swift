@@ -125,6 +125,31 @@ final class IntentRouter {
             return await handleVaultReadQuery("Projects/Sonique/HANDOFF.md")
         }
 
+        // NotebookLM vault queries - projects notebook
+        if matchesPattern(lower, patterns: [
+            "status of",
+            "what's happening with",
+            "progress on",
+            "recent work on",
+            "what projects",
+            "project activity",
+            "blockers on"
+        ]) {
+            return await handleNotebookQuery(query, notebook: "projects")
+        }
+
+        // NotebookLM vault queries - team knowledge base
+        if matchesPattern(lower, patterns: [
+            "how do i deploy",
+            "where is running",
+            "infrastructure",
+            "security checklist",
+            "api standard",
+            "vault schema"
+        ]) {
+            return await handleNotebookQuery(query, notebook: "team-kb")
+        }
+
         // No native intent matched - route to LLM
         return nil
     }
@@ -270,6 +295,78 @@ final class IntentRouter {
             return "Helmsman has \(taskCount) pending tasks:\n\(preview)" + (taskCount > 3 ? "\n... and \(taskCount - 3) more" : "")
         } catch {
             return "Failed to query Helmsman: \(error.localizedDescription)"
+        }
+    }
+
+    // MARK: - NotebookLM Vault Query Handler
+
+    private func handleNotebookQuery(_ query: String, notebook: String) async -> String {
+        let notebookId: String
+        switch notebook {
+        case "projects":
+            notebookId = "201885bd-9c21-4d6d-ad7d-bb69e72d11df"
+        case "team-kb":
+            notebookId = "d45f4666-0a50-4986-9f53-abe7d92107c1"
+        default:
+            return "Unknown notebook: \(notebook)"
+        }
+
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/Users/charlieseay/.local/bin/nlm")
+        process.arguments = ["notebook", "query", notebookId, query]
+
+        var env = ProcessInfo.processInfo.environment
+        env["HOME"] = env["HOME"] ?? "/Users/charlieseay"
+        process.environment = env
+
+        let pipe = Pipe()
+        process.standardOutput = pipe
+        process.standardError = pipe
+
+        do {
+            try process.run()
+
+            // Wait for process with timeout (NotebookLM can take 20-30s)
+            let maxWaitTime: TimeInterval = 45.0
+            let checkInterval: TimeInterval = 0.5
+            var elapsed: TimeInterval = 0
+
+            while process.isRunning && elapsed < maxWaitTime {
+                try await Task.sleep(nanoseconds: UInt64(checkInterval * 1_000_000_000))
+                elapsed += checkInterval
+            }
+
+            // If still running, terminate it
+            if process.isRunning {
+                process.terminate()
+                return "NotebookLM query timed out after \(Int(maxWaitTime))s. Try a more specific question."
+            }
+
+            let data = pipe.fileHandleForReading.readDataToEndOfFile()
+            guard let output = String(data: data, encoding: .utf8) else {
+                return "Failed to decode NotebookLM response."
+            }
+
+            if process.terminationStatus != 0 {
+                return "NotebookLM query failed: \(output)"
+            }
+
+            let trimmed = output.trimmingCharacters(in: .whitespacesAndNewlines)
+            if trimmed.isEmpty {
+                return "NotebookLM returned no results for this query."
+            }
+
+            // Parse JSON response to extract answer field
+            if let jsonData = trimmed.data(using: .utf8),
+               let json = try? JSONSerialization.jsonObject(with: jsonData) as? [String: Any],
+               let answer = json["answer"] as? String {
+                return "Based on the vault:\n\n\(answer)"
+            }
+
+            // Fallback to raw output if not JSON
+            return "Based on the vault:\n\n\(trimmed)"
+        } catch {
+            return "Failed to query NotebookLM: \(error.localizedDescription)"
         }
     }
 
