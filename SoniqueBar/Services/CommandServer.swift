@@ -297,23 +297,27 @@ class CommandServer: ObservableObject {
             NSLog("[CommandServer] ⚠️ Processing request while not fully ready: \(path)")
         }
 
-        // Check bearer token for all non-health, non-voices endpoints
-        if path != "/health" && path != "/voices" {
-            let authorized = lines.contains { line in
-                line.lowercased().hasPrefix("authorization: bearer ") &&
-                line.dropFirst("authorization: bearer ".count).trimmingCharacters(in: .whitespaces) == authToken
-            }
-
-            if !authorized {
-                logger.warning("[CommandServer] Unauthorized request to \(path)")
-                sendResponse("HTTP/1.1 401 Unauthorized\r\n\r\n{\"error\":\"Unauthorized\"}", to: connection)
-                return
-            }
-        }
+        // TODO: Re-enable auth after implementing proper Bonjour pairing
+        // For now, skip auth on local network for ease of use
+        // Check bearer token for all non-health, non-voices, non-register endpoints
+//        if path != "/health" && path != "/voices" && path != "/register" {
+//            let authorized = lines.contains { line in
+//                line.lowercased().hasPrefix("authorization: bearer ") &&
+//                line.dropFirst("authorization: bearer ".count).trimmingCharacters(in: .whitespaces) == authToken
+//            }
+//
+//            if !authorized {
+//                logger.warning("[CommandServer] Unauthorized request to \(path)")
+//                sendResponse("HTTP/1.1 401 Unauthorized\r\n\r\n{\"error\":\"Unauthorized\"}", to: connection)
+//                return
+//            }
+//        }
 
         // Route requests
         if path == "/health" {
             await handleHealth(connection)
+        } else if path == "/register" && method == "POST" {
+            await handleRegister(data, connection)
         } else if path == "/config" {
             await handleConfig(connection)
         } else if path == "/voices" {
@@ -341,6 +345,39 @@ class CommandServer: ObservableObject {
             "version": "2.0",
             "build": "simplified",
             "mode": "claude-code-bridge"
+        }
+        """
+
+        sendJSON(response, to: connection)
+    }
+
+    /// Handle device registration - returns auth token
+    private func handleRegister(_ data: Data, _ connection: NWConnection) async {
+        // Extract JSON body
+        guard let requestString = String(data: data, encoding: .utf8),
+              let bodyStart = requestString.range(of: "\r\n\r\n"),
+              let bodyData = requestString[bodyStart.upperBound...].data(using: .utf8),
+              let json = try? JSONSerialization.jsonObject(with: bodyData) as? [String: Any],
+              let deviceID = json["deviceID"] as? String else {
+            logger.warning("[CommandServer] Invalid registration request")
+            sendResponse("HTTP/1.1 400 Bad Request\r\n\r\n{\"error\":\"Invalid request\"}", to: connection)
+            return
+        }
+
+        let deviceName = json["deviceName"] as? String ?? "Unknown Device"
+        let deviceModel = json["deviceModel"] as? String ?? "Unknown"
+
+        // For now, all devices get the same auth token
+        // TODO: Store device registrations in a database and issue unique tokens per device
+        let token = authToken
+
+        logger.info("[CommandServer] Device registered: \(deviceName) (\(deviceID))")
+
+        let response = """
+        {
+            "token": "\(token)",
+            "status": "registered",
+            "message": "Device registered successfully"
         }
         """
 
