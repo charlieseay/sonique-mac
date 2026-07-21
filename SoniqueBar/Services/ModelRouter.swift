@@ -69,7 +69,9 @@ class ModelRouter {
     private let toolsKeywords = [
         "create task", "add reminder", "send message", "search vault", "docker",
         "helmsman", "slack", "github", "file search", "check helmsman",
-        "list files", "read file", "what files", "show me files"
+        "list files", "read file", "what files", "show me files",
+        "read the file", "open file", "load file", "access file", "get file",
+        "read from", "fetch file", "display file", "show file", "cat file"
     ]
 
     private let uncertaintyPhrases = [
@@ -174,6 +176,7 @@ class ModelRouter {
 
     private func determineTier(prompt: String, context: QueryContext?) -> QueryTier {
         if let forced = context?.forceTier {
+            NSLog("[ModelRouter] Tier forced: \(forced.rawValue)")
             return forced
         }
 
@@ -181,19 +184,26 @@ class ModelRouter {
         let textToClassify = context?.originalQuery ?? prompt
         let lower = textToClassify.lowercased()
 
-        if toolsKeywords.contains(where: { lower.contains($0) }) {
+        NSLog("[ModelRouter] Determining tier for: \(textToClassify.prefix(100))")
+
+        // Check tools keywords
+        if let matchedKeyword = toolsKeywords.first(where: { lower.contains($0) }) {
+            NSLog("[ModelRouter] ✓ Tools tier matched keyword: '\(matchedKeyword)'")
             return .tools
         }
 
         if context?.mcpToolsAvailable == true,
            (lower.contains("create") || lower.contains("send") || lower.contains("search")) {
+            NSLog("[ModelRouter] ✓ Tools tier matched generic action: create/send/search")
             return .tools
         }
 
-        if thinkingKeywords.contains(where: { lower.contains($0) }) {
+        if let matchedKeyword = thinkingKeywords.first(where: { lower.contains($0) }) {
+            NSLog("[ModelRouter] ✓ Thinking tier matched keyword: '\(matchedKeyword)'")
             return .thinking
         }
 
+        NSLog("[ModelRouter] → Conversational tier (no keyword matches)")
         return .conversational
     }
 
