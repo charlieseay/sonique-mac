@@ -321,7 +321,8 @@ class CommandServer: ObservableObject {
             sendJSON("{\"response\":\(escapeJSON(response)),\"status\":\"ok\"}", to: connection)
         } catch {
             logger.error("[CommandServer] Bridge error: \(error.localizedDescription)")
-            sendJSON("{\"response\":\"I encountered an error. Please try again.\",\"status\":\"error\"}", to: connection)
+            NSLog("[CommandServer] FULL ERROR: \(error)")
+            sendJSON("{\"response\":\"Error: \(error.localizedDescription)\",\"status\":\"error\"}", to: connection)
         }
     }
     

@@ -61,7 +61,8 @@ class ModelRouter {
 
     private let toolsKeywords = [
         "create task", "add reminder", "send message", "search vault", "docker",
-        "helmsman", "slack", "github", "file search"
+        "helmsman", "slack", "github", "file search", "check helmsman",
+        "list files", "read file", "what files", "show me files"
     ]
 
     private let uncertaintyPhrases = [
@@ -222,6 +223,8 @@ class ModelRouter {
             return try await callOpenAI(provider: provider, prompt: prompt, timeout: timeout)
         case .nvidiaAPI:
             return try await callNVIDIA(provider: provider, prompt: prompt, timeout: timeout)
+        case .bash:
+            return try await callBash(provider: provider, prompt: prompt, timeout: timeout)
         case .custom:
             return try await callCustom(provider: provider, prompt: prompt, timeout: timeout)
         }
@@ -240,11 +243,24 @@ class ModelRouter {
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
 
+        // Split prompt into system context and user query
+        var systemContent = ""
+        var userContent = prompt
+
+        if let userIndex = prompt.range(of: "\n\nUser: ", options: .backwards) {
+            systemContent = String(prompt[..<userIndex.lowerBound])
+            userContent = String(prompt[userIndex.upperBound...])
+        }
+
+        var messages: [[String: String]] = []
+        if !systemContent.isEmpty {
+            messages.append(["role": "system", "content": systemContent])
+        }
+        messages.append(["role": "user", "content": userContent])
+
         let body: [String: Any] = [
             "model": provider.model,
-            "messages": [
-                ["role": "user", "content": prompt]
-            ],
+            "messages": messages,
             "stream": false
         ]
         request.httpBody = try JSONSerialization.data(withJSONObject: body)
@@ -297,6 +313,21 @@ class ModelRouter {
         return try await callCLI(
             command: "/usr/local/bin/ask_claude_bedrock",
             args: ["-p", prompt],
+            timeout: timeout,
+            providerName: provider.name
+        )
+    }
+
+    private func callBash(provider: ProviderInfo, prompt: String, timeout: Double) async throws -> ProviderResult {
+        guard let command = provider.config.cliCommand else {
+            throw RouterError.missingConfig("Bash command not specified")
+        }
+
+        // Bash tools don't use the full prompt - they expect specific commands
+        // This is a simplified execution - the actual tool dispatch happens in IntentRouter
+        return try await callCLI(
+            command: command,
+            args: [prompt],
             timeout: timeout,
             providerName: provider.name
         )
@@ -537,6 +568,7 @@ struct ProviderConfiguration: Codable {
         case bedrock
         case openaiAPI
         case nvidiaAPI
+        case bash
         case custom
     }
 

@@ -86,8 +86,10 @@ class ClaudeCodeBridge {
             result = (stdout: response.text, stderr: "", exitCode: 0)
         } catch {
             NSLog("[ClaudeCodeBridge] ❌ ModelRouter failed: \(error)")
+            NSLog("[ClaudeCodeBridge] ❌ DETAILED ERROR: \(String(describing: error))")
             logger.error("[ClaudeCodeBridge] ModelRouter failed: \(error.localizedDescription)")
-            result = (stdout: "", stderr: error.localizedDescription, exitCode: 1)
+            // Propagate the actual error instead of wrapping it
+            throw BridgeError.executionFailed("ModelRouter error: \(error.localizedDescription)")
         }
 
         if result.exitCode == 0 && !result.stdout.isEmpty {

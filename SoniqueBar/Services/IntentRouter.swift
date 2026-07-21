@@ -97,6 +97,34 @@ final class IntentRouter {
             return handleBatteryQuery()
         }
 
+        // Lab infrastructure queries
+        if matchesPattern(lower, patterns: [
+            "check helmsman",
+            "helmsman tasks",
+            "helmsman queue",
+            "pending tasks",
+            "how many tasks"
+        ]) {
+            return await handleHelmsmanQuery()
+        }
+
+        if matchesPattern(lower, patterns: [
+            "list files in",
+            "what files are in",
+            "show files in",
+            "files in memory"
+        ]) {
+            return await handleListFilesQuery(query)
+        }
+
+        if matchesPattern(lower, patterns: [
+            "read handoff",
+            "sonique handoff",
+            "project status"
+        ]) {
+            return await handleVaultReadQuery("Projects/Sonique/HANDOFF.md")
+        }
+
         // No native intent matched - route to LLM
         return nil
     }
@@ -205,6 +233,95 @@ final class IntentRouter {
         }
         return "I couldn't read your battery status."
         #endif
+    }
+
+    // MARK: - Lab Infrastructure Handlers
+
+    private func handleHelmsmanQuery() async -> String {
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/usr/bin/curl")
+        process.arguments = ["-sf", "http://localhost:5682/tasks?status=pending"]
+
+        let pipe = Pipe()
+        process.standardOutput = pipe
+        process.standardError = pipe
+
+        do {
+            try process.run()
+            process.waitUntilExit()
+
+            let data = pipe.fileHandleForReading.readDataToEndOfFile()
+            guard let json = try? JSONSerialization.jsonObject(with: data) as? [[String: Any]] else {
+                return "Failed to parse Helmsman response."
+            }
+
+            if json.isEmpty {
+                return "Helmsman queue is empty - no pending tasks."
+            }
+
+            let taskCount = json.count
+            let preview = json.prefix(3).compactMap { task -> String? in
+                guard let num = task["num"] as? Int,
+                      let owner = task["owner"] as? String,
+                      let taskText = task["task"] as? String else { return nil }
+                return "#\(num) [\(owner)] \(taskText.prefix(50))"
+            }.joined(separator: "\n")
+
+            return "Helmsman has \(taskCount) pending tasks:\n\(preview)" + (taskCount > 3 ? "\n... and \(taskCount - 3) more" : "")
+        } catch {
+            return "Failed to query Helmsman: \(error.localizedDescription)"
+        }
+    }
+
+    private func handleListFilesQuery(_ query: String) async -> String {
+        // Extract path from query
+        var path = "~/Library/Application Support/SoniqueBar/memory/"
+
+        // Try to extract path from query
+        if let pathMatch = query.range(of: "in\\s+([~\\/.\\w\\s]+)", options: .regularExpression) {
+            path = String(query[pathMatch]).replacingOccurrences(of: "in ", with: "").trimmingCharacters(in: .whitespaces)
+        }
+
+        // Expand tilde
+        let expandedPath = NSString(string: path).expandingTildeInPath
+
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/bin/ls")
+        process.arguments = ["-lah", expandedPath]
+
+        let pipe = Pipe()
+        process.standardOutput = pipe
+        process.standardError = pipe
+
+        do {
+            try process.run()
+            process.waitUntilExit()
+
+            let data = pipe.fileHandleForReading.readDataToEndOfFile()
+            guard let output = String(data: data, encoding: .utf8) else {
+                return "Failed to list files."
+            }
+
+            return "Files in \(expandedPath):\n\(output)"
+        } catch {
+            return "Failed to list files: \(error.localizedDescription)"
+        }
+    }
+
+    private func handleVaultReadQuery(_ relativePath: String) async -> String {
+        let vaultRoot = NSString(string: "~/Library/Mobile Documents/iCloud~md~obsidian/Documents/SeaynicNet").expandingTildeInPath
+        let fullPath = "\(vaultRoot)/\(relativePath)"
+
+        do {
+            let content = try String(contentsOfFile: fullPath, encoding: .utf8)
+            // Return first 500 chars to avoid overwhelming TTS
+            if content.count > 500 {
+                return String(content.prefix(500)) + "...\n\n(truncated - full file is \(content.count) characters)"
+            }
+            return content
+        } catch {
+            return "Failed to read vault file: \(error.localizedDescription)"
+        }
     }
 
     // MARK: - Pattern Matching
