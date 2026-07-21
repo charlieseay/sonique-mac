@@ -348,7 +348,9 @@ final class IntentRouter {
             }
 
             if process.terminationStatus != 0 {
-                return "NotebookLM query failed: \(output)"
+                // Fallback to direct file access when NotebookLM fails
+                NSLog("[IntentRouter] NotebookLM failed, falling back to direct file access")
+                return await fallbackToDirectFileAccess(query: query, notebook: notebook)
             }
 
             let trimmed = output.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -366,8 +368,79 @@ final class IntentRouter {
             // Fallback to raw output if not JSON
             return "Based on the vault:\n\n\(trimmed)"
         } catch {
-            return "Failed to query NotebookLM: \(error.localizedDescription)"
+            // Fallback to direct file access when NotebookLM is unavailable
+            NSLog("[IntentRouter] NotebookLM unavailable, falling back to direct file access")
+            return await fallbackToDirectFileAccess(query: query, notebook: notebook)
         }
+    }
+
+    private func fallbackToDirectFileAccess(query: String, notebook: String) async -> String {
+        NSLog("[IntentRouter] Using direct file access fallback for: \(query)")
+
+        // Determine which vault area to search based on notebook
+        let vaultPath = "/Users/charlieseay/Library/Mobile Documents/iCloud~md~obsidian/Documents/SeaynicNet"
+        let searchPath: String
+
+        switch notebook {
+        case "projects":
+            searchPath = "\(vaultPath)/Projects"
+        case "team-kb":
+            searchPath = vaultPath  // Broader search for infrastructure
+        default:
+            return "NotebookLM unavailable and unknown fallback path for: \(notebook)"
+        }
+
+        // Use grep to search vault files
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/usr/bin/grep")
+
+        // Extract key terms from query for grep
+        let searchTerms = extractSearchTerms(from: query)
+        if searchTerms.isEmpty {
+            return "NotebookLM unavailable. Please try a more specific query or check NotebookLM status."
+        }
+
+        process.arguments = ["-r", "-i", "-l", searchTerms.joined(separator: "|"), searchPath]
+
+        let pipe = Pipe()
+        process.standardOutput = pipe
+        process.standardError = pipe
+
+        do {
+            try process.run()
+            process.waitUntilExit()
+
+            let data = pipe.fileHandleForReading.readDataToEndOfFile()
+            guard let output = String(data: data, encoding: .utf8) else {
+                return "NotebookLM unavailable and direct search failed."
+            }
+
+            let files = output.components(separatedBy: "\n").filter { !$0.isEmpty }
+            if files.isEmpty {
+                return "NotebookLM unavailable. No matching files found in vault for: \(query)"
+            }
+
+            return """
+            ⚠️ NotebookLM unavailable - using direct file search fallback
+
+            Found \(files.count) potentially relevant file(s):
+            \(files.prefix(5).joined(separator: "\n"))
+
+            For detailed answers, please check NotebookLM availability or specify which file to read.
+            """
+
+        } catch {
+            return "NotebookLM unavailable and direct file access failed: \(error.localizedDescription)"
+        }
+    }
+
+    private func extractSearchTerms(from query: String) -> [String] {
+        // Simple extraction: get meaningful words (>3 chars, not common words)
+        let commonWords = Set(["what", "when", "where", "which", "have", "does", "could", "would", "should", "about", "from", "with"])
+        let words = query.lowercased()
+            .components(separatedBy: CharacterSet.alphanumerics.inverted)
+            .filter { $0.count > 3 && !commonWords.contains($0) }
+        return Array(words.prefix(3))  // Top 3 terms for grep
     }
 
     private func handleListFilesQuery(_ query: String) async -> String {
