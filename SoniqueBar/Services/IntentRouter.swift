@@ -13,10 +13,15 @@ final class IntentRouter {
     private let eventStore = EKEventStore()
     private let calendar = Calendar.current
     private let dateFormatter = DateFormatter()
+    private let fallbackLogPath = "/Library/Logs/SoniqueBar/fallback.jsonl"
 
     private init() {
         dateFormatter.dateStyle = .medium
         dateFormatter.timeStyle = .short
+
+        // Ensure log directory exists (Quinn's observability architecture!)
+        let logDir = "/Library/Logs/SoniqueBar"
+        try? FileManager.default.createDirectory(atPath: logDir, withIntermediateDirectories: true)
     }
 
     /// Attempts to handle query with native intent.
@@ -339,7 +344,12 @@ final class IntentRouter {
             // If still running, terminate it
             if process.isRunning {
                 process.terminate()
-                return "NotebookLM query timed out after \(Int(maxWaitTime))s. Try a more specific question."
+                return await fallbackToDirectFileAccess(
+                    query: query,
+                    notebook: notebook,
+                    reason: "timeout",
+                    timeoutMs: Int(maxWaitTime * 1000)
+                )
             }
 
             let data = pipe.fileHandleForReading.readDataToEndOfFile()
@@ -350,7 +360,12 @@ final class IntentRouter {
             if process.terminationStatus != 0 {
                 // Fallback to direct file access when NotebookLM fails
                 NSLog("[IntentRouter] NotebookLM failed, falling back to direct file access")
-                return await fallbackToDirectFileAccess(query: query, notebook: notebook)
+                return await fallbackToDirectFileAccess(
+                    query: query,
+                    notebook: notebook,
+                    reason: "error",
+                    timeoutMs: Int(maxWaitTime * 1000)
+                )
             }
 
             let trimmed = output.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -370,12 +385,19 @@ final class IntentRouter {
         } catch {
             // Fallback to direct file access when NotebookLM is unavailable
             NSLog("[IntentRouter] NotebookLM unavailable, falling back to direct file access")
-            return await fallbackToDirectFileAccess(query: query, notebook: notebook)
+            return await fallbackToDirectFileAccess(
+                query: query,
+                notebook: notebook,
+                reason: "unreachable",
+                timeoutMs: 45000
+            )
         }
     }
 
-    private func fallbackToDirectFileAccess(query: String, notebook: String) async -> String {
+    private func fallbackToDirectFileAccess(query: String, notebook: String, reason: String, timeoutMs: Int) async -> String {
         NSLog("[IntentRouter] Using direct file access fallback for: \(query)")
+
+        let fallbackStart = Date()
 
         // Determine which vault area to search based on notebook
         let vaultPath = "/Users/charlieseay/Library/Mobile Documents/iCloud~md~obsidian/Documents/SeaynicNet"
@@ -387,6 +409,16 @@ final class IntentRouter {
         case "team-kb":
             searchPath = vaultPath  // Broader search for infrastructure
         default:
+            // Log failed fallback
+            logFallback(
+                reason: reason,
+                query: query,
+                timeoutMs: timeoutMs,
+                fallbackDurationMs: 0,
+                success: false,
+                resultsCount: 0,
+                searchTerms: []
+            )
             return "NotebookLM unavailable and unknown fallback path for: \(notebook)"
         }
 
@@ -397,6 +429,16 @@ final class IntentRouter {
         // Extract key terms from query for grep
         let searchTerms = extractSearchTerms(from: query)
         if searchTerms.isEmpty {
+            // Log failed fallback
+            logFallback(
+                reason: reason,
+                query: query,
+                timeoutMs: timeoutMs,
+                fallbackDurationMs: Int(Date().timeIntervalSince(fallbackStart) * 1000),
+                success: false,
+                resultsCount: 0,
+                searchTerms: []
+            )
             return "NotebookLM unavailable. Please try a more specific query or check NotebookLM status."
         }
 
@@ -413,16 +455,46 @@ final class IntentRouter {
 
             let data = pipe.fileHandleForReading.readDataToEndOfFile()
             guard let output = String(data: data, encoding: .utf8) else {
+                // Log failed fallback
+                logFallback(
+                    reason: reason,
+                    query: query,
+                    timeoutMs: timeoutMs,
+                    fallbackDurationMs: Int(Date().timeIntervalSince(fallbackStart) * 1000),
+                    success: false,
+                    resultsCount: 0,
+                    searchTerms: searchTerms
+                )
                 return "NotebookLM unavailable and direct search failed."
             }
 
             if output.isEmpty {
+                // Log failed fallback (no results)
+                logFallback(
+                    reason: reason,
+                    query: query,
+                    timeoutMs: timeoutMs,
+                    fallbackDurationMs: Int(Date().timeIntervalSince(fallbackStart) * 1000),
+                    success: false,
+                    resultsCount: 0,
+                    searchTerms: searchTerms
+                )
                 return "NotebookLM unavailable. No matching content found in vault for: \(query)"
             }
 
             // Parse grep output to extract file excerpts
             let excerpts = parseGrepOutput(output)
             if excerpts.isEmpty {
+                // Log failed fallback (parse failed)
+                logFallback(
+                    reason: reason,
+                    query: query,
+                    timeoutMs: timeoutMs,
+                    fallbackDurationMs: Int(Date().timeIntervalSince(fallbackStart) * 1000),
+                    success: false,
+                    resultsCount: 0,
+                    searchTerms: searchTerms
+                )
                 return "NotebookLM unavailable. No matching content found in vault for: \(query)"
             }
 
@@ -436,9 +508,30 @@ final class IntentRouter {
                 response += "... and \(excerpts.count - 3) more matches.\n"
             }
 
+            // Log successful fallback!
+            logFallback(
+                reason: reason,
+                query: query,
+                timeoutMs: timeoutMs,
+                fallbackDurationMs: Int(Date().timeIntervalSince(fallbackStart) * 1000),
+                success: true,
+                resultsCount: excerpts.count,
+                searchTerms: searchTerms
+            )
+
             return response
 
         } catch {
+            // Log failed fallback (exception)
+            logFallback(
+                reason: reason,
+                query: query,
+                timeoutMs: timeoutMs,
+                fallbackDurationMs: Int(Date().timeIntervalSince(fallbackStart) * 1000),
+                success: false,
+                resultsCount: 0,
+                searchTerms: searchTerms
+            )
             return "NotebookLM unavailable and direct file access failed: \(error.localizedDescription)"
         }
     }
@@ -573,5 +666,55 @@ final class IntentRouter {
             }
         }
         return false
+    }
+
+    // MARK: - Observability (Quinn's architecture!)
+
+    private func logFallback(
+        reason: String,
+        query: String,
+        timeoutMs: Int,
+        fallbackDurationMs: Int,
+        success: Bool,
+        resultsCount: Int,
+        searchTerms: [String]
+    ) {
+        let logEntry: [String: Any] = [
+            "timestamp": ISO8601DateFormatter().string(from: Date()),
+            "event": "notebooklm_fallback",
+            "reason": reason,
+            "query": query,
+            "timeout_ms": timeoutMs,
+            "fallback_duration_ms": fallbackDurationMs,
+            "fallback_success": success,
+            "results_returned": resultsCount,
+            "search_terms": searchTerms
+        ]
+
+        do {
+            let jsonData = try JSONSerialization.data(withJSONObject: logEntry)
+            if let jsonString = String(data: jsonData, encoding: .utf8) {
+                // Append to JSONL file
+                let logLine = jsonString + "\n"
+                if let logData = logLine.data(using: .utf8) {
+                    if FileManager.default.fileExists(atPath: fallbackLogPath) {
+                        if let fileHandle = try? FileHandle(forWritingTo: URL(fileURLWithPath: fallbackLogPath)) {
+                            fileHandle.seekToEndOfFile()
+                            fileHandle.write(logData)
+                            fileHandle.closeFile()
+                        }
+                    } else {
+                        try? logData.write(to: URL(fileURLWithPath: fallbackLogPath))
+                    }
+                }
+
+                // Also NSLog in debug builds
+                #if DEBUG
+                NSLog("[Fallback] \(reason): \(query) → \(resultsCount) results in \(fallbackDurationMs)ms")
+                #endif
+            }
+        } catch {
+            NSLog("[IntentRouter] Failed to log fallback: \(error)")
+        }
     }
 }
