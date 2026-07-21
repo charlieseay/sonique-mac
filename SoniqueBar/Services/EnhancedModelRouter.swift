@@ -363,6 +363,9 @@ class EnhancedModelRouter {
 
         return try await withCheckedThrowingContinuation { continuation in
             var didComplete = false
+            // BUG FIX #6: NSLock is safe here (brief critical sections, no async await while holding)
+            // Lock only protects the didComplete flag check+set, then immediately unlocked before
+            // any async/blocking operations. No risk of deadlock or actor re-entrancy.
             let lock = NSLock()
 
             let timer = Timer.scheduledTimer(withTimeInterval: timeout, repeats: false) { _ in

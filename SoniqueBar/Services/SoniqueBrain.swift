@@ -22,7 +22,13 @@ final class SoniqueBrain {
     // Cache personality to avoid re-reading iCloud every request
     private var cachedPersonality: String?
     private var lastPersonalityLoad: Date?
-    private let personalityCacheDuration: TimeInterval = 30.0  // Refresh every 30 seconds
+    // PERF OPT #2: File watcher for personality cache invalidation (replaces 30s timer)
+    // Monitor IDENTITY.md, RULES.md, SOUL.md, and assistant.json for changes
+    private var personlityFileWatcher: FileWatcher?
+
+    // BUG FIX #3: Lock for concurrent writes to conversations.jsonl
+    // NSFileCoordinator handles cross-device sync but NOT intra-process concurrency
+    private let jsonlWriteLock = NSLock()
 
     private init() {
         ensureStructure()
@@ -57,16 +63,37 @@ final class SoniqueBrain {
     // MARK: - Shared Persona (Read/Write)
 
     /// Full persona context: IDENTITY + RULES + assistant name + conversational guidelines
-    /// Cached for performance - refreshes every 30 seconds to pick up iCloud changes
+    /// PERF OPT #2: Cached with file watcher invalidation instead of time-based expiry
     func loadPersonaContext() -> String {
-        // Check cache first
+        // PERF OPT #2: Initialize file watcher on first load with watched files
+        if personlityFileWatcher == nil {
+            let watcher = FileWatcher()
+            let filesToWatch = [
+                sharedDir.appendingPathComponent("IDENTITY.md"),
+                sharedDir.appendingPathComponent("RULES.md"),
+                sharedDir.appendingPathComponent("SOUL.md"),
+                sharedDir.appendingPathComponent("assistant.json")
+            ]
+            watcher.startWatching(files: filesToWatch)
+            personlityFileWatcher = watcher
+        }
+
+        // Check cache first - only reload if watcher detected changes or on first load
         if let cached = cachedPersonality,
-           let lastLoad = lastPersonalityLoad,
-           Date().timeIntervalSince(lastLoad) < personalityCacheDuration {
+           personlityFileWatcher?.hasChanges == false {
             return cached
         }
 
-        // Cache miss or expired - reload from iCloud
+        // Update file watcher before loading new content
+        let filesToWatch = [
+            sharedDir.appendingPathComponent("IDENTITY.md"),
+            sharedDir.appendingPathComponent("RULES.md"),
+            sharedDir.appendingPathComponent("SOUL.md"),
+            sharedDir.appendingPathComponent("assistant.json")
+        ]
+        _ = personlityFileWatcher?.checkForChanges(files: filesToWatch)
+
+        // Cache miss or file changed - reload from iCloud
         let identity = readText(sharedDir.appendingPathComponent("IDENTITY.md"))
         let rules = readText(sharedDir.appendingPathComponent("RULES.md"))
         let soul = readText(sharedDir.appendingPathComponent("SOUL.md"))
@@ -244,10 +271,16 @@ final class SoniqueBrain {
     }
 
     /// Coordinated append — safe when both devices touch the same file
+    /// BUG FIX #3: Per-file NSLock guards sequential writes (NSFileCoordinator only handles cross-device sync)
     private func appendJSONL(_ obj: [String: Any], to url: URL) {
         guard let data = try? JSONSerialization.data(withJSONObject: obj),
               let line = String(data: data, encoding: .utf8) else { return }
         let entry = line + "\n"
+
+        // Lock to prevent concurrent appends from corrupting the JSONL file
+        jsonlWriteLock.lock()
+        defer { jsonlWriteLock.unlock() }
+
         var coordError: NSError?
         NSFileCoordinator().coordinate(writingItemAt: url, options: [], error: &coordError) { writeURL in
             if let handle = try? FileHandle(forWritingTo: writeURL) {
@@ -260,4 +293,37 @@ final class SoniqueBrain {
         }
     }
 }
+
+// PERF OPT #2: FileWatcher helper for personality cache invalidation
+// Monitors personality files for changes instead of using a 30s polling timer
+private class FileWatcher {
+    private var fileModificationDates: [String: Date] = [:]
+    var hasChanges = false
+
+    func startWatching(files: [URL]) {
+        for file in files {
+            if let attrs = try? FileManager.default.attributesOfItem(atPath: file.path),
+               let modDate = attrs[.modificationDate] as? Date {
+                fileModificationDates[file.path] = modDate
+            }
+        }
+    }
+
+    func checkForChanges(files: [URL]) -> Bool {
+        var changed = false
+        for file in files {
+            if let attrs = try? FileManager.default.attributesOfItem(atPath: file.path),
+               let modDate = attrs[.modificationDate] as? Date {
+                let lastKnown = fileModificationDates[file.path]
+                if lastKnown != modDate {
+                    changed = true
+                    fileModificationDates[file.path] = modDate
+                }
+            }
+        }
+        hasChanges = changed
+        return changed
+    }
+}
+
 // Updated Fri Jul 17 13:56:55 CDT 2026

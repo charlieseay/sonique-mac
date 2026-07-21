@@ -302,7 +302,10 @@ final class IntentRouter {
             try process.run()
             process.waitUntilExit()
 
+            // BUG FIX #9: Close pipe handle after reading to prevent file handle leak
             let data = pipe.fileHandleForReading.readDataToEndOfFile()
+            try? pipe.fileHandleForReading.close()
+
             guard let json = try? JSONSerialization.jsonObject(with: data) as? [[String: Any]] else {
                 return "Failed to parse Helmsman response."
             }
@@ -432,7 +435,10 @@ final class IntentRouter {
             try process.run()
             process.waitUntilExit()
 
+            // BUG FIX #12: Close pipe handle after reading to prevent file handle leak
             let data = pipe.fileHandleForReading.readDataToEndOfFile()
+            try? pipe.fileHandleForReading.close()
+
             guard let responseStr = String(data: data, encoding: .utf8) else {
                 return "Failed to decode response"
             }
@@ -602,8 +608,17 @@ final class IntentRouter {
             return "NotebookLM unavailable. Please try a more specific query or check NotebookLM status."
         }
 
-        // -C 2 = show 2 lines of context around matches (Quinn's improvement!)
-        process.arguments = ["-r", "-i", "-n", "-C", "2", searchTerms.joined(separator: "|"), searchPath]
+        // PERF OPT #5: Use -E for extended regex with anchored patterns to reduce matches
+        // Single simple term → -F (literal, fastest); multiple/complex → -E (with anchors)
+        if searchTerms.count == 1 && !searchTerms[0].contains("[^a-zA-Z0-9]") {
+            // Single simple term - use -F (fixed string) for maximum speed
+            process.arguments = ["-r", "-i", "-n", "-C", "2", "-F", searchTerms[0], searchPath]
+        } else {
+            // Multiple terms or special chars - use -E (extended regex) with word boundaries
+            let anchoredTerms = searchTerms.map { "\\<\($0)\\>" }
+            let pattern = anchoredTerms.joined(separator: "|")
+            process.arguments = ["-r", "-i", "-n", "-C", "2", "-E", pattern, searchPath]
+        }
 
         let pipe = Pipe()
         process.standardOutput = pipe
@@ -613,7 +628,10 @@ final class IntentRouter {
             try process.run()
             process.waitUntilExit()
 
+            // BUG FIX #11: Close pipe handle after reading to prevent file handle leak
             let data = pipe.fileHandleForReading.readDataToEndOfFile()
+            try? pipe.fileHandleForReading.close()
+
             guard let output = String(data: data, encoding: .utf8) else {
                 // Log failed fallback
                 logFallback(
@@ -790,7 +808,10 @@ final class IntentRouter {
             try process.run()
             process.waitUntilExit()
 
+            // BUG FIX #10: Close pipe handle after reading to prevent file handle leak
             let data = pipe.fileHandleForReading.readDataToEndOfFile()
+            try? pipe.fileHandleForReading.close()
+
             guard let output = String(data: data, encoding: .utf8) else {
                 return "Failed to list files."
             }

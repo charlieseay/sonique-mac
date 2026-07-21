@@ -107,15 +107,40 @@ final class MemoryService {
     private func loadRecentConversations(count: Int) -> String {
         let conversationsFile = memoryDir.appendingPathComponent("conversations.jsonl")
 
-        guard let data = try? Data(contentsOf: conversationsFile),
-              let content = String(data: data, encoding: .utf8) else {
+        // PERF OPT #3: Stream last N lines using tail-like approach instead of loading entire file
+        // This avoids memory spike for large conversation logs
+        guard let fileHandle = try? FileHandle(forReadingFrom: conversationsFile) else {
+            return ""
+        }
+
+        defer { try? fileHandle.close() }
+
+        // Seek to end and read backwards to get last N lines efficiently
+        let fileSizeRaw = fileHandle.seekToEndOfFile()
+        var tailBuffer = Data()
+        let bufferSize: Int = 8192  // 8KB chunks for efficient reading
+
+        // Read file backwards in chunks to extract last N lines
+        var offset: UInt64 = fileSizeRaw
+        while tailBuffer.count < 100_000 && offset > 0 {  // Max 100KB scan
+            let chunkSize = min(bufferSize, Int(offset))
+            offset -= UInt64(chunkSize)
+            fileHandle.seek(toFileOffset: offset)
+
+            let chunk = fileHandle.readData(ofLength: chunkSize)
+            if chunk.count > 0 {
+                tailBuffer.insert(contentsOf: chunk, at: 0)
+            }
+        }
+
+        guard let content = String(data: tailBuffer, encoding: .utf8) else {
             return ""
         }
 
         // Parse JSONL (one JSON object per line)
         // Security: Validate JSONL format and skip malformed entries
         let lines = content.components(separatedBy: .newlines).filter { !$0.isEmpty }
-        let recentLines = lines.suffix(count)
+        let recentLines = Array(lines.suffix(count))
 
         var conversationContext = "# Recent Conversations\n\n"
         var skippedCount = 0

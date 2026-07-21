@@ -5,9 +5,11 @@ import os.log
 class ClaudeCodeBridge {
     private let logger = Logger(subsystem: "com.seayniclabs.soniquebar", category: "ClaudeCodeBridge")
 
-    // Phase 6B: Simple in-memory conversation history (last 5 exchanges)
-    private var conversationHistory: [(role: String, content: String)] = []
-    private let maxHistoryCount = 10  // 5 exchanges = 10 messages
+    // PERF OPT #7: Time-based conversation history instead of fixed count
+    // Keep messages from last 30 minutes (sliding window) instead of last N messages
+    // More context-aware: old conversations from hours ago are dropped automatically
+    private var conversationHistory: [(role: String, content: String, timestamp: Date)] = []
+    private let maxHistoryDuration: TimeInterval = 30 * 60  // 30 minutes
 
     func execute(text: String, mcpToolsAvailable: Bool = true) async throws -> String {
         logger.info("[ClaudeCodeBridge] Executing: \(text.prefix(80))")
@@ -16,12 +18,13 @@ class ClaudeCodeBridge {
         if let nativeResponse = await IntentRouter.shared.route(text) {
             logger.info("[ClaudeCodeBridge] ✓ Native intent handled: \(nativeResponse.prefix(50))")
 
-            // Add to conversation history
-            conversationHistory.append((role: "user", content: text))
-            conversationHistory.append((role: "assistant", content: nativeResponse))
-            if conversationHistory.count > maxHistoryCount {
-                conversationHistory.removeFirst(2)  // Remove oldest pair
-            }
+            // PERF OPT #7: Add to conversation history with timestamp
+            let now = Date()
+            conversationHistory.append((role: "user", content: text, timestamp: now))
+            conversationHistory.append((role: "assistant", content: nativeResponse, timestamp: now))
+
+            // Trim history to maxHistoryDuration window
+            trimHistoryToTimeWindow()
 
             return nativeResponse
         }
@@ -32,11 +35,12 @@ class ClaudeCodeBridge {
             return CapabilityIndex.generateCapabilitySummary()
         }
 
-        // Add user message to history
-        conversationHistory.append((role: "user", content: text))
-        if conversationHistory.count > maxHistoryCount {
-            conversationHistory.removeFirst()
-        }
+        // Add user message to history with timestamp
+        let now = Date()
+        conversationHistory.append((role: "user", content: text, timestamp: now))
+
+        // PERF OPT #7: Trim history to time window instead of fixed count
+        trimHistoryToTimeWindow()
 
         // Load FULL memory context from Application Support (not just iCloud personality)
         // This includes: Identity + Rules + Soul + Context (Charlie) + Recent Conversations
@@ -63,7 +67,7 @@ class ClaudeCodeBridge {
         var historyContext = ""
         if conversationHistory.count > 1 {  // More than just current message
             historyContext = "\n\n## Current Session:\n"
-            for (role, content) in conversationHistory.dropLast() {  // Exclude current message
+            for (role, content, _) in conversationHistory.dropLast() {  // Exclude current message, ignore timestamp
                 let speaker = role == "user" ? "User" : assistantName
                 historyContext += "\(speaker): \(content)\n"
             }
@@ -117,11 +121,9 @@ class ClaudeCodeBridge {
                     if searchResult.exitCode == 0 && !searchResult.stdout.isEmpty {
                         let searchResponse = searchResult.stdout.trimmingCharacters(in: .whitespacesAndNewlines)
 
-                        // Phase 6B: Add web-enhanced response to history
-                        conversationHistory.append((role: "assistant", content: searchResponse))
-                        if conversationHistory.count > maxHistoryCount {
-                            conversationHistory.removeFirst()
-                        }
+                        // Add web-enhanced response to history with timestamp
+                        conversationHistory.append((role: "assistant", content: searchResponse, timestamp: Date()))
+                        trimHistoryToTimeWindow()  // PERF OPT #7: Use time window
 
                         logger.info("[ClaudeCodeBridge] Web search fallback successful")
                         return searchResponse
@@ -132,11 +134,9 @@ class ClaudeCodeBridge {
                 }
             }
 
-            // Phase 6B: Add assistant response to history
-            conversationHistory.append((role: "assistant", content: response))
-            if conversationHistory.count > maxHistoryCount {
-                conversationHistory.removeFirst()
-            }
+            // Add assistant response to history with timestamp
+            conversationHistory.append((role: "assistant", content: response, timestamp: Date()))
+            trimHistoryToTimeWindow()  // PERF OPT #7: Use time window
 
             // Persist to conversations.jsonl for long-term memory
             await MemoryService.shared.recordExchange(user: text, assistant: response)
@@ -309,5 +309,13 @@ class ClaudeCodeBridge {
         }
 
         return results.joined(separator: "\n\n")
+    }
+
+    // PERF OPT #7: Trim conversation history to time window
+    private func trimHistoryToTimeWindow() {
+        let now = Date()
+        conversationHistory.removeAll { (_, _, timestamp) in
+            now.timeIntervalSince(timestamp) > maxHistoryDuration
+        }
     }
 }

@@ -447,32 +447,27 @@ class ModelRouter {
         process.standardOutput = outputPipe
         process.standardError = errorPipe
 
+        // PERF OPT #4: Use Timer with proper resource cleanup (async-safe alternative)
+        // withCheckedThrowingContinuation ensures continuation safety
         return try await withCheckedThrowingContinuation { continuation in
             var didComplete = false
-            // BUG FIX #7: Use atomic flag + lock to prevent timer from firing twice
             let lock = NSLock()
 
             let timer = Timer.scheduledTimer(withTimeInterval: timeout, repeats: false) { _ in
                 lock.lock()
-                guard !didComplete else {
-                    lock.unlock()
-                    return
-                }
+                defer { lock.unlock() }
+                guard !didComplete else { return }
                 didComplete = true
-                lock.unlock()
 
                 process.terminate()
                 continuation.resume(throwing: RouterError.timeout("CLI timed out after \(timeout)s"))
             }
 
-            process.terminationHandler = { process in
+            process.terminationHandler = { _ in
                 lock.lock()
-                guard !didComplete else {
-                    lock.unlock()
-                    return
-                }
+                defer { lock.unlock() }
+                guard !didComplete else { return }
                 didComplete = true
-                lock.unlock()
 
                 timer.invalidate()
 
@@ -490,12 +485,9 @@ class ModelRouter {
                 try process.run()
             } catch {
                 lock.lock()
-                guard !didComplete else {
-                    lock.unlock()
-                    return
-                }
+                defer { lock.unlock() }
+                guard !didComplete else { return }
                 didComplete = true
-                lock.unlock()
 
                 timer.invalidate()
                 continuation.resume(throwing: error)

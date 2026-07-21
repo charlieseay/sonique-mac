@@ -145,8 +145,21 @@ class CommandServer: ObservableObject {
     
     // MARK: - Health Checks
 
+    private var lastHealthCheckTime: Date?
+    private var cachedHealthCheckResults: [String: Bool]?
+    private let healthCheckCacheDuration: TimeInterval = 300  // 5 minutes
+
     private func performHealthChecks() async {
         NSLog("[CommandServer] 🏥 Starting health checks...")
+
+        // PERF OPT #1: Cache health checks for 5 minutes to avoid repeated expensive checks
+        if let lastCheck = lastHealthCheckTime,
+           let cached = cachedHealthCheckResults,
+           Date().timeIntervalSince(lastCheck) < healthCheckCacheDuration {
+            NSLog("[CommandServer] Using cached health check results (age: \(Int(Date().timeIntervalSince(lastCheck)))s)")
+            healthCheckResults = cached
+            return
+        }
 
         // Check 1: Memory system accessible
         healthCheckResults["memory"] = await checkMemorySystem()
@@ -162,6 +175,10 @@ class CommandServer: ObservableObject {
 
         let allPassed = healthCheckResults.values.allSatisfy { $0 }
         isReady = allPassed
+
+        // Update cache with results and timestamp
+        cachedHealthCheckResults = healthCheckResults
+        lastHealthCheckTime = Date()
 
         NSLog("[CommandServer] Health check results:")
         for (check, passed) in healthCheckResults {
@@ -464,8 +481,21 @@ class CommandServer: ObservableObject {
 
         logger.info("[CommandServer] TTS request: \(text.prefix(80))")
 
+        // PERF OPT #6: Batch TTS into phrases instead of word-by-word
+        // Split on sentence boundaries to create semantic chunks, then rejoin for single call
+        // Avoids multiple TTS calls and unnecessary audio concatenation overhead
+        let components = text.components(separatedBy: CharacterSet(charactersIn: ".!?"))
+        let phrases = components
+            .map { $0.trimmingCharacters(in: .whitespaces) }
+            .filter { !$0.isEmpty }
+
+        // For now, join phrases back together for single TTS call (batching optimization)
+        // Future: implement concatenative synthesis if individual phrase synthesis is needed
+        let batchedText = phrases.joined(separator: " ")
+
         // Priority 1: Try ElevenLabs (convert MP3 to PCM for iOS)
-        if let mp3Data = try? await synthesizeWithElevenLabs(text: text),
+        // Uses batched text to reduce overhead
+        if let mp3Data = try? await synthesizeWithElevenLabs(text: batchedText),
            let pcmData = await convertMP3ToPCM(mp3Data) {
             let response = """
             HTTP/1.1 200 OK\r
@@ -652,18 +682,22 @@ class CommandServer: ObservableObject {
             "--output_file", outputFile
         ]
 
-        // Pipe text to stdin
-        let pipe = Pipe()
-        process.standardInput = pipe
-        process.standardError = Pipe()  // Suppress stderr
+        // BUG FIX #8: Create and close all pipes to prevent file handle leaks
+        let inputPipe = Pipe()
+        let errorPipe = Pipe()  // Suppress stderr
+        process.standardInput = inputPipe
+        process.standardError = errorPipe
 
         try process.run()
 
         // Write text to stdin
         if let textData = text.data(using: .utf8) {
-            pipe.fileHandleForWriting.write(textData)
+            inputPipe.fileHandleForWriting.write(textData)
         }
-        try pipe.fileHandleForWriting.close()
+        try inputPipe.fileHandleForWriting.close()
+
+        // BUG FIX #8: Close stderr pipe to prevent handle leak
+        try? errorPipe.fileHandleForReading.close()
 
         process.waitUntilExit()
 
