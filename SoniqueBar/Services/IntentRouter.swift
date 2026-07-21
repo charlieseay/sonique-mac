@@ -113,6 +113,12 @@ final class IntentRouter {
             return await handleHelmsmanQuery()
         }
 
+        // MVP Task Dispatch - special command format
+        // Format: "dispatch task: <description> to <owner> effort <S/M/L/XL>"
+        if lower.contains("dispatch task:") {
+            return await handleTaskDispatch(query)
+        }
+
         if matchesPattern(lower, patterns: [
             "list files in",
             "what files are in",
@@ -316,6 +322,125 @@ final class IntentRouter {
             return "Helmsman has \(taskCount) pending tasks:\n\(preview)" + (taskCount > 3 ? "\n... and \(taskCount - 3) more" : "")
         } catch {
             return "Failed to query Helmsman: \(error.localizedDescription)"
+        }
+    }
+
+    /// Parse and handle task dispatch command
+    /// Format: "dispatch task: <description> to <owner> effort <S/M/L/XL>"
+    private func handleTaskDispatch(_ query: String) async -> String {
+        // Parse from RIGHT to LEFT to handle "to" in task description
+        let lower = query.lowercased()
+
+        // Find "effort" first (rightmost)
+        guard let effortIndex = lower.range(of: " effort ")?.lowerBound else {
+            return "Missing ' effort '. Format: dispatch task: <desc> to <owner> effort <S/M/L/XL>"
+        }
+
+        let effortStart = query.index(after: query.index(effortIndex, offsetBy: 7))
+        let effortStr = String(query[effortStart...]).trimmingCharacters(in: .whitespaces).uppercased()
+
+        // Everything before "effort" - now find LAST "to" before effort
+        let beforeEffort = String(query[..<effortIndex])
+        let beforeEffortLower = beforeEffort.lowercased()
+
+        guard let lastToIndex = beforeEffortLower.range(of: " to ", options: .backwards)?.lowerBound else {
+            return "Missing ' to '. Format: dispatch task: <desc> to <owner> effort <S/M/L/XL>"
+        }
+
+        let toEnd = beforeEffort.index(after: beforeEffort.index(lastToIndex, offsetBy: 3))
+        let ownerStr = String(beforeEffort[toEnd...]).trimmingCharacters(in: .whitespaces).uppercased()
+
+        // Everything before the last "to" is the task (after "dispatch task:")
+        let beforeTo = String(beforeEffort[..<lastToIndex])
+        guard let taskStart = beforeTo.lowercased().range(of: "dispatch task:")?.upperBound else {
+            return "Missing 'dispatch task:'. Format: dispatch task: <desc> to <owner> effort <S/M/L/XL>"
+        }
+
+        let taskDesc = String(beforeTo[taskStart...]).trimmingCharacters(in: .whitespaces)
+
+        // Debug logging
+        NSLog("[TaskDispatch] Parsed - Task: '\(taskDesc)', Owner: '\(ownerStr)', Effort: '\(effortStr)'")
+
+        // Validate
+        guard !taskDesc.isEmpty else {
+            return "Task description cannot be empty"
+        }
+
+        guard ["CHARLIE", "AIDER-GEM", "NVIDIA-AGENT", "CURSOR", "CLAUDE"].contains(ownerStr) else {
+            return "Invalid owner '\(ownerStr)'. Must be one of: CHARLIE, AIDER-GEM, NVIDIA-AGENT, CURSOR, CLAUDE"
+        }
+
+        guard ["S", "M", "L", "XL"].contains(effortStr) else {
+            return "Invalid effort '\(effortStr)'. Must be one of: S, M, L, XL"
+        }
+
+        // Create the task
+        return await createHelmsmanTask(
+            task: taskDesc,
+            owner: ownerStr,
+            effort: effortStr,
+            summary: "MVP task dispatch from Quinn"
+        )
+    }
+
+    /// Create a task in helmsman.db (MVP task dispatch!)
+    private func createHelmsmanTask(task: String, owner: String, effort: String, summary: String) async -> String {
+        let taskData: [String: Any] = [
+            "task": task,
+            "owner": owner,
+            "effort": effort,
+            "summary": summary,
+            "status": "pending",
+            "lane": "default",
+            "skip_brief_requirement": 1  // MVP mode - no brief required
+        ]
+
+        guard let jsonData = try? JSONSerialization.data(withJSONObject: taskData),
+              let jsonString = String(data: jsonData, encoding: .utf8) else {
+            return "Failed to create task JSON"
+        }
+
+        NSLog("[TaskDispatch] Sending JSON: \(jsonString)")
+
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/usr/bin/curl")
+        process.arguments = [
+            "-s",  // Silent but don't fail on HTTP errors
+            "-X", "POST",
+            "-H", "Content-Type: application/json",
+            "-d", jsonString,
+            "http://localhost:5682/tasks"
+        ]
+
+        let pipe = Pipe()
+        process.standardOutput = pipe
+        process.standardError = pipe
+
+        do {
+            try process.run()
+            process.waitUntilExit()
+
+            let data = pipe.fileHandleForReading.readDataToEndOfFile()
+            guard let responseStr = String(data: data, encoding: .utf8) else {
+                return "Failed to decode response"
+            }
+
+            NSLog("[TaskDispatch] Response: \(responseStr)")
+
+            guard let response = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+                return "Task API response: \(responseStr)"
+            }
+
+            // Try both "num" and "task_num" fields
+            let taskNum = (response["task_num"] as? Int) ?? (response["num"] as? Int) ?? 0
+
+            if taskNum > 0 {
+                return "✓ Created task #\(taskNum) assigned to \(owner)"
+            } else {
+                return "Task created but couldn't get task number"
+            }
+        } catch {
+            return "Failed to create task: \(error.localizedDescription)"
         }
     }
 

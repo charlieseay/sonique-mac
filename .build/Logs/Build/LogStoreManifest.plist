@@ -6,7 +6,7 @@
 	<integer>12</integer>
 	<key>logs</key>
 	<dict>
-		<key>0D399C26-9873-493B-8295-6F0144CAA9D9</key>
+		<key>33F3621B-B92C-4308-B16B-A1085D297D1B</key>
 		<dict>
 			<key>className</key>
 			<string>IDECommandLineBuildLog</string>
@@ -15,7 +15,7 @@
 			<key>domainType</key>
 			<string>Xcode.IDEActivityLogDomainType.BuildLog</string>
 			<key>fileName</key>
-			<string>0D399C26-9873-493B-8295-6F0144CAA9D9.xcactivitylog</string>
+			<string>33F3621B-B92C-4308-B16B-A1085D297D1B.xcactivitylog</string>
 			<key>hasPrimaryLog</key>
 			<true/>
 			<key>primaryObservable</key>
@@ -40,15 +40,15 @@
 			<key>signature</key>
 			<string>Building project SoniqueBar with scheme SoniqueBar and configuration Debug</string>
 			<key>timeStartedRecording</key>
-			<real>806305841.93093705</real>
+			<real>806306543.82279396</real>
 			<key>timeStoppedRecording</key>
-			<real>806305846.42032397</real>
+			<real>806306547.45929396</real>
 			<key>title</key>
 			<string>Building project SoniqueBar with scheme SoniqueBar and configuration Debug</string>
 			<key>uniqueIdentifier</key>
-			<string>0D399C26-9873-493B-8295-6F0144CAA9D9</string>
+			<string>33F3621B-B92C-4308-B16B-A1085D297D1B</string>
 		</dict>
-		<key>8EC0186E-A4D8-4E5A-9D65-D795188EE1DF</key>
+		<key>40193BB9-C096-4151-82EB-671579DB3911</key>
 		<dict>
 			<key>className</key>
 			<string>IDECommandLineBuildLog</string>
@@ -57,7 +57,7 @@
 			<key>domainType</key>
 			<string>Xcode.IDEActivityLogDomainType.BuildLog</string>
 			<key>fileName</key>
-			<string>8EC0186E-A4D8-4E5A-9D65-D795188EE1DF.xcactivitylog</string>
+			<string>40193BB9-C096-4151-82EB-671579DB3911.xcactivitylog</string>
 			<key>hasPrimaryLog</key>
 			<true/>
 			<key>primaryObservable</key>
@@ -82,13 +82,139 @@
 			<key>signature</key>
 			<string>Building project SoniqueBar with scheme SoniqueBar and configuration Debug</string>
 			<key>timeStartedRecording</key>
-			<real>806304698.85755897</real>
+			<real>806306492.76903605</real>
 			<key>timeStoppedRecording</key>
-			<real>806304703.77538705</real>
+			<real>806306497.24100196</real>
 			<key>title</key>
 			<string>Building project SoniqueBar with scheme SoniqueBar and configuration Debug</string>
 			<key>uniqueIdentifier</key>
-			<string>8EC0186E-A4D8-4E5A-9D65-D795188EE1DF</string>
+			<string>40193BB9-C096-4151-82EB-671579DB3911</string>
+		</dict>
+		<key>A150915C-AA07-46FE-B1C1-F7388A5E325D</key>
+		<dict>
+			<key>className</key>
+			<string>IDECommandLineBuildLog</string>
+			<key>documentTypeString</key>
+			<string>&lt;nil&gt;</string>
+			<key>domainType</key>
+			<string>Xcode.IDEActivityLogDomainType.BuildLog</string>
+			<key>fileName</key>
+			<string>A150915C-AA07-46FE-B1C1-F7388A5E325D.xcactivitylog</string>
+			<key>hasPrimaryLog</key>
+			<true/>
+			<key>primaryObservable</key>
+			<dict>
+				<key>highLevelStatus</key>
+				<string>W</string>
+				<key>totalNumberOfAnalyzerIssues</key>
+				<integer>0</integer>
+				<key>totalNumberOfErrors</key>
+				<integer>0</integer>
+				<key>totalNumberOfTestFailures</key>
+				<integer>0</integer>
+				<key>totalNumberOfWarnings</key>
+				<integer>20</integer>
+			</dict>
+			<key>schemeIdentifier-containerName</key>
+			<string>SoniqueBar project</string>
+			<key>schemeIdentifier-schemeName</key>
+			<string>SoniqueBar</string>
+			<key>schemeIdentifier-sharedScheme</key>
+			<integer>1</integer>
+			<key>signature</key>
+			<string>Building project SoniqueBar with scheme SoniqueBar and configuration Debug</string>
+			<key>timeStartedRecording</key>
+			<real>806306734.52595901</real>
+			<key>timeStoppedRecording</key>
+			<real>806306737.53128803</real>
+			<key>title</key>
+			<string>Building project SoniqueBar with scheme SoniqueBar and configuration Debug</string>
+			<key>uniqueIdentifier</key>
+			<string>A150915C-AA07-46FE-B1C1-F7388A5E325D</string>
+		</dict>
+		<key>A98C1D1F-FBF3-471D-9573-9576A176FDC6</key>
+		<dict>
+			<key>className</key>
+			<string>IDECommandLineBuildLog</string>
+			<key>documentTypeString</key>
+			<string>&lt;nil&gt;</string>
+			<key>domainType</key>
+			<string>Xcode.IDEActivityLogDomainType.BuildLog</string>
+			<key>fileName</key>
+			<string>A98C1D1F-FBF3-471D-9573-9576A176FDC6.xcactivitylog</string>
+			<key>hasPrimaryLog</key>
+			<true/>
+			<key>primaryObservable</key>
+			<dict>
+				<key>highLevelStatus</key>
+				<string>W</string>
+				<key>totalNumberOfAnalyzerIssues</key>
+				<integer>0</integer>
+				<key>totalNumberOfErrors</key>
+				<integer>0</integer>
+				<key>totalNumberOfTestFailures</key>
+				<integer>0</integer>
+				<key>totalNumberOfWarnings</key>
+				<integer>20</integer>
+			</dict>
+			<key>schemeIdentifier-containerName</key>
+			<string>SoniqueBar project</string>
+			<key>schemeIdentifier-schemeName</key>
+			<string>SoniqueBar</string>
+			<key>schemeIdentifier-sharedScheme</key>
+			<integer>1</integer>
+			<key>signature</key>
+			<string>Building project SoniqueBar with scheme SoniqueBar and configuration Debug</string>
+			<key>timeStartedRecording</key>
+			<real>806306658.58681905</real>
+			<key>timeStoppedRecording</key>
+			<real>806306662.16168404</real>
+			<key>title</key>
+			<string>Building project SoniqueBar with scheme SoniqueBar and configuration Debug</string>
+			<key>uniqueIdentifier</key>
+			<string>A98C1D1F-FBF3-471D-9573-9576A176FDC6</string>
+		</dict>
+		<key>C96F0B10-1D36-4057-907F-AD53BC1E5F32</key>
+		<dict>
+			<key>className</key>
+			<string>IDECommandLineBuildLog</string>
+			<key>documentTypeString</key>
+			<string>&lt;nil&gt;</string>
+			<key>domainType</key>
+			<string>Xcode.IDEActivityLogDomainType.BuildLog</string>
+			<key>fileName</key>
+			<string>C96F0B10-1D36-4057-907F-AD53BC1E5F32.xcactivitylog</string>
+			<key>hasPrimaryLog</key>
+			<true/>
+			<key>primaryObservable</key>
+			<dict>
+				<key>highLevelStatus</key>
+				<string>W</string>
+				<key>totalNumberOfAnalyzerIssues</key>
+				<integer>0</integer>
+				<key>totalNumberOfErrors</key>
+				<integer>0</integer>
+				<key>totalNumberOfTestFailures</key>
+				<integer>0</integer>
+				<key>totalNumberOfWarnings</key>
+				<integer>18</integer>
+			</dict>
+			<key>schemeIdentifier-containerName</key>
+			<string>SoniqueBar project</string>
+			<key>schemeIdentifier-schemeName</key>
+			<string>SoniqueBar</string>
+			<key>schemeIdentifier-sharedScheme</key>
+			<integer>1</integer>
+			<key>signature</key>
+			<string>Building project SoniqueBar with scheme SoniqueBar and configuration Debug</string>
+			<key>timeStartedRecording</key>
+			<real>806306585.741395</real>
+			<key>timeStoppedRecording</key>
+			<real>806306589.21676099</real>
+			<key>title</key>
+			<string>Building project SoniqueBar with scheme SoniqueBar and configuration Debug</string>
+			<key>uniqueIdentifier</key>
+			<string>C96F0B10-1D36-4057-907F-AD53BC1E5F32</string>
 		</dict>
 	</dict>
 </dict>
