@@ -6,7 +6,6 @@ import os.log
 /// Layer 2: Context (semi-permanent) - context.md (Charlie, projects, team, environment)
 /// Layer 3: Conversations (rolling 90-day JSONL)
 /// Layer 4: Working Memory (session-only, handled by ClaudeCodeBridge)
-@MainActor
 final class MemoryService {
     static let shared = MemoryService()
 

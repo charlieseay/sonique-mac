@@ -38,15 +38,22 @@ class ClaudeCodeBridge {
             conversationHistory.removeFirst()
         }
 
+        NSLog("[ClaudeCodeBridge] DEBUG: About to load memory...")
         // Load FULL memory context from Application Support (not just iCloud personality)
         // This includes: Identity + Rules + Soul + Context (Charlie) + Recent Conversations
         let fullMemory = await MemoryService.shared.loadFullContext()
+        NSLog("[ClaudeCodeBridge] DEBUG: Memory loaded, length: \(fullMemory.count)")
 
-        // Also load name from iCloud (user-configurable)
-        let assistantName = await SoniqueBrain.shared.getAssistantName()
+        // TEMPORARY: Hardcode name to test if iCloud is the blocker
+        let assistantName = "Quinn"
+        // TODO: Restore this after testing
+        // let assistantName = await SoniqueBrain.shared.getAssistantName()
+        NSLog("[ClaudeCodeBridge] DEBUG: Assistant name: \(assistantName)")
 
         // Generate capability context
+        NSLog("[ClaudeCodeBridge] DEBUG: About to generate capability context...")
         let capabilityContext = CapabilityIndex.generateCapabilitySummary()
+        NSLog("[ClaudeCodeBridge] DEBUG: Capability context length: \(capabilityContext.count)")
 
         // Detect project mentions and add vault path context
         var projectContext = ""

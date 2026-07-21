@@ -243,24 +243,11 @@ class ModelRouter {
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
 
-        // Split prompt into system context and user query
-        var systemContent = ""
-        var userContent = prompt
-
-        if let userIndex = prompt.range(of: "\n\nUser: ", options: .backwards) {
-            systemContent = String(prompt[..<userIndex.lowerBound])
-            userContent = String(prompt[userIndex.upperBound...])
-        }
-
-        var messages: [[String: String]] = []
-        if !systemContent.isEmpty {
-            messages.append(["role": "system", "content": systemContent])
-        }
-        messages.append(["role": "user", "content": userContent])
-
         let body: [String: Any] = [
             "model": provider.model,
-            "messages": messages,
+            "messages": [
+                ["role": "user", "content": prompt]
+            ],
             "stream": false
         ]
         request.httpBody = try JSONSerialization.data(withJSONObject: body)
