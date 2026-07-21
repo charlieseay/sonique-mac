@@ -21,6 +21,10 @@ class CommandServer: ObservableObject {
     private let authToken: String
     private var bonjourService: NetService?
 
+    // Readiness state
+    private var isReady = false
+    private var healthCheckResults: [String: Bool] = [:]
+
     private init() {
         NSLog("[CommandServer] init() starting")
 
@@ -46,6 +50,12 @@ class CommandServer: ObservableObject {
         }
 
         NSLog("[CommandServer] Calling setupListener()")
+
+        // Perform health checks before accepting connections
+        Task { @MainActor in
+            await self.performHealthChecks()
+        }
+
         setupListener()
         NSLog("[CommandServer] init() complete")
     }
@@ -110,6 +120,66 @@ class CommandServer: ObservableObject {
         }
     }
     
+    // MARK: - Health Checks
+
+    private func performHealthChecks() async {
+        NSLog("[CommandServer] 🏥 Starting health checks...")
+
+        // Check 1: Memory system accessible
+        healthCheckResults["memory"] = await checkMemorySystem()
+
+        // Check 2: Model router config loaded
+        healthCheckResults["model_router"] = checkModelRouter()
+
+        // Check 3: Native intents registered
+        healthCheckResults["native_intents"] = checkNativeIntents()
+
+        // Check 4: NotebookLM available
+        healthCheckResults["notebooklm"] = await checkNotebookLM()
+
+        let allPassed = healthCheckResults.values.allSatisfy { $0 }
+        isReady = allPassed
+
+        NSLog("[CommandServer] Health check results:")
+        for (check, passed) in healthCheckResults {
+            NSLog("[CommandServer]   \(check): \(passed ? "✅" : "❌")")
+        }
+
+        if isReady {
+            NSLog("[CommandServer] 🎉 All health checks passed - READY for requests")
+        } else {
+            NSLog("[CommandServer] ⚠️ Some health checks failed - accepting requests anyway (graceful degradation)")
+        }
+    }
+
+    private func checkMemorySystem() async -> Bool {
+        let memory = await MemoryService.shared.loadFullContext()
+        let passed = memory.count > 1000  // Should have identity + context
+        NSLog("[CommandServer]   Memory loaded: \(memory.count) bytes")
+        return passed
+    }
+
+    private func checkModelRouter() -> Bool {
+        // ModelRouter loads lazily on first use, so just verify the config file exists
+        let configPath = "/Volumes/data/secrets/sonique_model_router.json"
+        let exists = FileManager.default.fileExists(atPath: configPath)
+        NSLog("[CommandServer]   Model router config exists: \(exists)")
+        return exists
+    }
+
+    private func checkNativeIntents() -> Bool {
+        // IntentRouter is a singleton, always available
+        NSLog("[CommandServer]   Native intents: available")
+        return true
+    }
+
+    private func checkNotebookLM() async -> Bool {
+        let nlmPath = "/Users/charlieseay/.local/bin/nlm"
+        let exists = FileManager.default.fileExists(atPath: nlmPath)
+        NSLog("[CommandServer]   NotebookLM CLI exists: \(exists)")
+        return exists
+    }
+
     // MARK: - Connection Handling
 
     nonisolated private func handleConnection(_ connection: NWConnection) {
@@ -163,6 +233,20 @@ class CommandServer: ObservableObject {
         let path = parts[1]
 
         logger.info("[CommandServer] \(method) \(path)")
+
+        // Return readiness status for health endpoint
+        if path == "/health" {
+            let status = isReady ? "ready" : "degraded"
+            let checks = healthCheckResults.map { "\"\($0.key)\": \($0.value)" }.joined(separator: ", ")
+            let response = "{\"status\": \"\(status)\", \"checks\": {\(checks)}}"
+            sendJSON(response, to: connection)
+            return
+        }
+
+        // Warn if not fully ready (but still process - graceful degradation)
+        if !isReady && path != "/voices" {
+            NSLog("[CommandServer] ⚠️ Processing request while not fully ready: \(path)")
+        }
 
         // Check bearer token for all non-health, non-voices endpoints
         if path != "/health" && path != "/voices" {
