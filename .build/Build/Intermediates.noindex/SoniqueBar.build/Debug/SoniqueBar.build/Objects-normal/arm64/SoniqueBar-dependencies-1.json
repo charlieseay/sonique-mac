@@ -56,6 +56,11 @@
   },
   {
     "isFramework" : false,
+    "moduleName" : "CoreLocation",
+    "modulePath" : "\/Applications\/Xcode.app\/Contents\/Developer\/Toolchains\/XcodeDefault.xctoolchain\/usr\/lib\/swift\/macosx\/prebuilt-modules\/26.2\/CoreLocation.swiftmodule\/arm64e-apple-macos.swiftmodule"
+  },
+  {
+    "isFramework" : false,
     "moduleName" : "CoreMIDI",
     "modulePath" : "\/Applications\/Xcode.app\/Contents\/Developer\/Toolchains\/XcodeDefault.xctoolchain\/usr\/lib\/swift\/macosx\/prebuilt-modules\/26.2\/CoreMIDI.swiftmodule\/arm64e-apple-macos.swiftmodule"
   },
@@ -103,6 +108,11 @@
     "isFramework" : false,
     "moduleName" : "Distributed",
     "modulePath" : "\/Applications\/Xcode.app\/Contents\/Developer\/Toolchains\/XcodeDefault.xctoolchain\/usr\/lib\/swift\/macosx\/prebuilt-modules\/26.2\/Distributed.swiftmodule\/arm64e-apple-macos.swiftmodule"
+  },
+  {
+    "isFramework" : true,
+    "moduleName" : "EventKit",
+    "modulePath" : "\/Applications\/Xcode.app\/Contents\/Developer\/Toolchains\/XcodeDefault.xctoolchain\/usr\/lib\/swift\/macosx\/prebuilt-modules\/26.2\/EventKit.swiftmodule\/arm64e-apple-macos.swiftmodule"
   },
   {
     "isFramework" : true,
@@ -231,511 +241,532 @@
   },
   {
     "clangModuleMapPath" : "\/Applications\/Xcode.app\/Contents\/Developer\/Platforms\/MacOSX.platform\/Developer\/SDKs\/MacOSX.sdk\/System\/Library\/Frameworks\/AVFAudio.framework\/Modules\/module.modulemap",
-    "clangModulePath" : "\/Users\/charlieseay\/Projects\/sonique-mac\/.build\/ModuleCache.noindex\/AVFAudio-98OPOZCFL5WILKZ6UREBP4W3G.pcm",
+    "clangModulePath" : "\/Users\/charlieseay\/Projects\/sonique-mac\/.build\/ModuleCache.noindex\/AVFAudio-689EKYAJ5BF46ZPZ500C7FHX0.pcm",
     "isBridgingHeaderDependency" : false,
     "isFramework" : false,
     "moduleName" : "AVFAudio"
   },
   {
     "clangModuleMapPath" : "\/Applications\/Xcode.app\/Contents\/Developer\/Platforms\/MacOSX.platform\/Developer\/SDKs\/MacOSX.sdk\/System\/Library\/Frameworks\/AVFoundation.framework\/Modules\/module.modulemap",
-    "clangModulePath" : "\/Users\/charlieseay\/Projects\/sonique-mac\/.build\/ModuleCache.noindex\/AVFoundation-6FP7R0VRXVRFJOAY9J8AGHUOF.pcm",
+    "clangModulePath" : "\/Users\/charlieseay\/Projects\/sonique-mac\/.build\/ModuleCache.noindex\/AVFoundation-59GOB50GDRB61Q30D6DU2E02Y.pcm",
     "isBridgingHeaderDependency" : false,
     "isFramework" : false,
     "moduleName" : "AVFoundation"
   },
   {
     "clangModuleMapPath" : "\/Applications\/Xcode.app\/Contents\/Developer\/Platforms\/MacOSX.platform\/Developer\/SDKs\/MacOSX.sdk\/System\/Library\/Frameworks\/Accessibility.framework\/Modules\/module.modulemap",
-    "clangModulePath" : "\/Users\/charlieseay\/Projects\/sonique-mac\/.build\/ModuleCache.noindex\/Accessibility-9VAOGGHPJJOGXLLESIHJA2297.pcm",
+    "clangModulePath" : "\/Users\/charlieseay\/Projects\/sonique-mac\/.build\/ModuleCache.noindex\/Accessibility-DGZF3ZGAATLJDIFW7BJJNFBXI.pcm",
     "isBridgingHeaderDependency" : false,
     "isFramework" : false,
     "moduleName" : "Accessibility"
   },
   {
     "clangModuleMapPath" : "\/Applications\/Xcode.app\/Contents\/Developer\/Platforms\/MacOSX.platform\/Developer\/SDKs\/MacOSX.sdk\/System\/Library\/Frameworks\/AppKit.framework\/Modules\/module.modulemap",
-    "clangModulePath" : "\/Users\/charlieseay\/Projects\/sonique-mac\/.build\/ModuleCache.noindex\/AppKit-ATK8TR0NYOJP6AV7X1KE9XEPC.pcm",
+    "clangModulePath" : "\/Users\/charlieseay\/Projects\/sonique-mac\/.build\/ModuleCache.noindex\/AppKit-A638J8DMZ62WSWHQTJTKLS5AG.pcm",
     "isBridgingHeaderDependency" : false,
     "isFramework" : false,
     "moduleName" : "AppKit"
   },
   {
     "clangModuleMapPath" : "\/Applications\/Xcode.app\/Contents\/Developer\/Platforms\/MacOSX.platform\/Developer\/SDKs\/MacOSX.sdk\/System\/Library\/Frameworks\/ApplicationServices.framework\/Modules\/module.modulemap",
-    "clangModulePath" : "\/Users\/charlieseay\/Projects\/sonique-mac\/.build\/ModuleCache.noindex\/ApplicationServices-73HB5WZWILO21XP2379ZRMNWS.pcm",
+    "clangModulePath" : "\/Users\/charlieseay\/Projects\/sonique-mac\/.build\/ModuleCache.noindex\/ApplicationServices-DV4UUZPNOU26DYVPAJZM9BQNM.pcm",
     "isBridgingHeaderDependency" : false,
     "isFramework" : false,
     "moduleName" : "ApplicationServices"
   },
   {
     "clangModuleMapPath" : "\/Applications\/Xcode.app\/Contents\/Developer\/Platforms\/MacOSX.platform\/Developer\/SDKs\/MacOSX.sdk\/System\/Library\/Frameworks\/AudioToolbox.framework\/Modules\/module.modulemap",
-    "clangModulePath" : "\/Users\/charlieseay\/Projects\/sonique-mac\/.build\/ModuleCache.noindex\/AudioToolbox-28BRZK9BDS0SJMKUWC6U3THJO.pcm",
+    "clangModulePath" : "\/Users\/charlieseay\/Projects\/sonique-mac\/.build\/ModuleCache.noindex\/AudioToolbox-95P032SDIPWIRAYZ7RE3QC58.pcm",
     "isBridgingHeaderDependency" : false,
     "isFramework" : false,
     "moduleName" : "AudioToolbox"
   },
   {
     "clangModuleMapPath" : "\/Applications\/Xcode.app\/Contents\/Developer\/Platforms\/MacOSX.platform\/Developer\/SDKs\/MacOSX.sdk\/System\/Library\/Frameworks\/CFNetwork.framework\/Modules\/module.modulemap",
-    "clangModulePath" : "\/Users\/charlieseay\/Projects\/sonique-mac\/.build\/ModuleCache.noindex\/CFNetwork-1IJGH5OUAFXUSKUDTHQXXH7E3.pcm",
+    "clangModulePath" : "\/Users\/charlieseay\/Projects\/sonique-mac\/.build\/ModuleCache.noindex\/CFNetwork-2RHUOUEBPUDQP8FORH43ZYG7P.pcm",
     "isBridgingHeaderDependency" : false,
     "isFramework" : false,
     "moduleName" : "CFNetwork"
   },
   {
     "clangModuleMapPath" : "\/Applications\/Xcode.app\/Contents\/Developer\/Platforms\/MacOSX.platform\/Developer\/SDKs\/MacOSX.sdk\/usr\/include\/cups.modulemap",
-    "clangModulePath" : "\/Users\/charlieseay\/Projects\/sonique-mac\/.build\/ModuleCache.noindex\/CUPS-EULZSE4XK216XJMXVI3E7CHR7.pcm",
+    "clangModulePath" : "\/Users\/charlieseay\/Projects\/sonique-mac\/.build\/ModuleCache.noindex\/CUPS-259ARNRQ0AHSL722AL7FXS7A1.pcm",
     "isBridgingHeaderDependency" : false,
     "isFramework" : false,
     "moduleName" : "CUPS"
   },
   {
     "clangModuleMapPath" : "\/Applications\/Xcode.app\/Contents\/Developer\/Platforms\/MacOSX.platform\/Developer\/SDKs\/MacOSX.sdk\/System\/Library\/Frameworks\/Carbon.framework\/Modules\/module.modulemap",
-    "clangModulePath" : "\/Users\/charlieseay\/Projects\/sonique-mac\/.build\/ModuleCache.noindex\/Carbon-D1L0813VUI53BSWNGSEJIGJAC.pcm",
+    "clangModulePath" : "\/Users\/charlieseay\/Projects\/sonique-mac\/.build\/ModuleCache.noindex\/Carbon-2TI8EHOZ3EBKGLLANN5TOGN9Y.pcm",
     "isBridgingHeaderDependency" : false,
     "isFramework" : false,
     "moduleName" : "Carbon"
   },
   {
     "clangModuleMapPath" : "\/Applications\/Xcode.app\/Contents\/Developer\/Platforms\/MacOSX.platform\/Developer\/SDKs\/MacOSX.sdk\/System\/Library\/Frameworks\/ColorSync.framework\/Modules\/module.modulemap",
-    "clangModulePath" : "\/Users\/charlieseay\/Projects\/sonique-mac\/.build\/ModuleCache.noindex\/ColorSync-2G8K1MAMRTVVCI72XZXHLDNYB.pcm",
+    "clangModulePath" : "\/Users\/charlieseay\/Projects\/sonique-mac\/.build\/ModuleCache.noindex\/ColorSync-1IKAKT0BY68QZX93XKQX7R0JY.pcm",
     "isBridgingHeaderDependency" : false,
     "isFramework" : false,
     "moduleName" : "ColorSync"
   },
   {
     "clangModuleMapPath" : "\/Applications\/Xcode.app\/Contents\/Developer\/Platforms\/MacOSX.platform\/Developer\/SDKs\/MacOSX.sdk\/System\/Library\/Frameworks\/CoreAudio.framework\/Modules\/module.modulemap",
-    "clangModulePath" : "\/Users\/charlieseay\/Projects\/sonique-mac\/.build\/ModuleCache.noindex\/CoreAudio-CTUPMH9PAXBJL2AZI0Z1YXLXK.pcm",
+    "clangModulePath" : "\/Users\/charlieseay\/Projects\/sonique-mac\/.build\/ModuleCache.noindex\/CoreAudio-4AIV8N2RTVXX5FQQO69MJWWGU.pcm",
     "isBridgingHeaderDependency" : false,
     "isFramework" : false,
     "moduleName" : "CoreAudio"
   },
   {
     "clangModuleMapPath" : "\/Applications\/Xcode.app\/Contents\/Developer\/Platforms\/MacOSX.platform\/Developer\/SDKs\/MacOSX.sdk\/System\/Library\/Frameworks\/CoreAudioTypes.framework\/Modules\/module.modulemap",
-    "clangModulePath" : "\/Users\/charlieseay\/Projects\/sonique-mac\/.build\/ModuleCache.noindex\/CoreAudioTypes-45TYYZ2VDMEL2427AXY4SJOJR.pcm",
+    "clangModulePath" : "\/Users\/charlieseay\/Projects\/sonique-mac\/.build\/ModuleCache.noindex\/CoreAudioTypes-665P0B3Q06BFGG3FLMOSKX40M.pcm",
     "isBridgingHeaderDependency" : false,
     "isFramework" : false,
     "moduleName" : "CoreAudioTypes"
   },
   {
     "clangModuleMapPath" : "\/Applications\/Xcode.app\/Contents\/Developer\/Platforms\/MacOSX.platform\/Developer\/SDKs\/MacOSX.sdk\/System\/Library\/Frameworks\/CoreData.framework\/Modules\/module.modulemap",
-    "clangModulePath" : "\/Users\/charlieseay\/Projects\/sonique-mac\/.build\/ModuleCache.noindex\/CoreData-13BHO07D3JGLXRNSYCO95DYS4.pcm",
+    "clangModulePath" : "\/Users\/charlieseay\/Projects\/sonique-mac\/.build\/ModuleCache.noindex\/CoreData-37O7QBGEJL3EAU56AS3HH0GBH.pcm",
     "isBridgingHeaderDependency" : false,
     "isFramework" : false,
     "moduleName" : "CoreData"
   },
   {
     "clangModuleMapPath" : "\/Applications\/Xcode.app\/Contents\/Developer\/Platforms\/MacOSX.platform\/Developer\/SDKs\/MacOSX.sdk\/System\/Library\/Frameworks\/CoreFoundation.framework\/Modules\/module.modulemap",
-    "clangModulePath" : "\/Users\/charlieseay\/Projects\/sonique-mac\/.build\/ModuleCache.noindex\/CoreFoundation-DKH2UTRKBTB23B8TUAYD6AV7B.pcm",
+    "clangModulePath" : "\/Users\/charlieseay\/Projects\/sonique-mac\/.build\/ModuleCache.noindex\/CoreFoundation-DW1EGGVZIEQTMCB2F52CAGHYN.pcm",
     "isBridgingHeaderDependency" : false,
     "isFramework" : false,
     "moduleName" : "CoreFoundation"
   },
   {
     "clangModuleMapPath" : "\/Applications\/Xcode.app\/Contents\/Developer\/Platforms\/MacOSX.platform\/Developer\/SDKs\/MacOSX.sdk\/System\/Library\/Frameworks\/CoreGraphics.framework\/Modules\/module.modulemap",
-    "clangModulePath" : "\/Users\/charlieseay\/Projects\/sonique-mac\/.build\/ModuleCache.noindex\/CoreGraphics-3N1C5N4V4FBUKIT7GHZNVT7QS.pcm",
+    "clangModulePath" : "\/Users\/charlieseay\/Projects\/sonique-mac\/.build\/ModuleCache.noindex\/CoreGraphics-33KUAH9BLNC99AL1ROPCWYHMY.pcm",
     "isBridgingHeaderDependency" : false,
     "isFramework" : false,
     "moduleName" : "CoreGraphics"
   },
   {
     "clangModuleMapPath" : "\/Applications\/Xcode.app\/Contents\/Developer\/Platforms\/MacOSX.platform\/Developer\/SDKs\/MacOSX.sdk\/System\/Library\/Frameworks\/CoreImage.framework\/Modules\/module.modulemap",
-    "clangModulePath" : "\/Users\/charlieseay\/Projects\/sonique-mac\/.build\/ModuleCache.noindex\/CoreImage-7YCUE4RAXINN7KLN4E96V8C4K.pcm",
+    "clangModulePath" : "\/Users\/charlieseay\/Projects\/sonique-mac\/.build\/ModuleCache.noindex\/CoreImage-7Q4S8IDTIPD7RMBN2107FPKFO.pcm",
     "isBridgingHeaderDependency" : false,
     "isFramework" : false,
     "moduleName" : "CoreImage"
   },
   {
+    "clangModuleMapPath" : "\/Applications\/Xcode.app\/Contents\/Developer\/Platforms\/MacOSX.platform\/Developer\/SDKs\/MacOSX.sdk\/System\/Library\/Frameworks\/CoreLocation.framework\/Modules\/module.modulemap",
+    "clangModulePath" : "\/Users\/charlieseay\/Projects\/sonique-mac\/.build\/ModuleCache.noindex\/CoreLocation-85ZT80E0POJUJQL3DP1C3MX1H.pcm",
+    "isBridgingHeaderDependency" : false,
+    "isFramework" : false,
+    "moduleName" : "CoreLocation"
+  },
+  {
     "clangModuleMapPath" : "\/Applications\/Xcode.app\/Contents\/Developer\/Platforms\/MacOSX.platform\/Developer\/SDKs\/MacOSX.sdk\/System\/Library\/Frameworks\/CoreMIDI.framework\/Modules\/module.modulemap",
-    "clangModulePath" : "\/Users\/charlieseay\/Projects\/sonique-mac\/.build\/ModuleCache.noindex\/CoreMIDI-5SO1GRF9HW6QPRI2K92GM8P40.pcm",
+    "clangModulePath" : "\/Users\/charlieseay\/Projects\/sonique-mac\/.build\/ModuleCache.noindex\/CoreMIDI-3C7G71BOACIX7U3HFXFKXQ5UO.pcm",
     "isBridgingHeaderDependency" : false,
     "isFramework" : false,
     "moduleName" : "CoreMIDI"
   },
   {
     "clangModuleMapPath" : "\/Applications\/Xcode.app\/Contents\/Developer\/Platforms\/MacOSX.platform\/Developer\/SDKs\/MacOSX.sdk\/System\/Library\/Frameworks\/CoreMedia.framework\/Modules\/module.modulemap",
-    "clangModulePath" : "\/Users\/charlieseay\/Projects\/sonique-mac\/.build\/ModuleCache.noindex\/CoreMedia-C4AFLINX6H1VOK43QOHPZIE10.pcm",
+    "clangModulePath" : "\/Users\/charlieseay\/Projects\/sonique-mac\/.build\/ModuleCache.noindex\/CoreMedia-AZZW5QQLVX2KCWUOXUEMADDE7.pcm",
     "isBridgingHeaderDependency" : false,
     "isFramework" : false,
     "moduleName" : "CoreMedia"
   },
   {
     "clangModuleMapPath" : "\/Applications\/Xcode.app\/Contents\/Developer\/Platforms\/MacOSX.platform\/Developer\/SDKs\/MacOSX.sdk\/System\/Library\/Frameworks\/CoreServices.framework\/Modules\/module.modulemap",
-    "clangModulePath" : "\/Users\/charlieseay\/Projects\/sonique-mac\/.build\/ModuleCache.noindex\/CoreServices-2CUBCC6EJGY0XBSAMRX4IIJGB.pcm",
+    "clangModulePath" : "\/Users\/charlieseay\/Projects\/sonique-mac\/.build\/ModuleCache.noindex\/CoreServices-31Q0DAFWLFUXDF341TZ37C3ZG.pcm",
     "isBridgingHeaderDependency" : false,
     "isFramework" : false,
     "moduleName" : "CoreServices"
   },
   {
     "clangModuleMapPath" : "\/Applications\/Xcode.app\/Contents\/Developer\/Platforms\/MacOSX.platform\/Developer\/SDKs\/MacOSX.sdk\/System\/Library\/Frameworks\/CoreText.framework\/Modules\/module.modulemap",
-    "clangModulePath" : "\/Users\/charlieseay\/Projects\/sonique-mac\/.build\/ModuleCache.noindex\/CoreText-6NEGCHA4Z26MU8YKDTCPRMQ2E.pcm",
+    "clangModulePath" : "\/Users\/charlieseay\/Projects\/sonique-mac\/.build\/ModuleCache.noindex\/CoreText-F31MQYDTSC7B6NUL9L3W4USD3.pcm",
     "isBridgingHeaderDependency" : false,
     "isFramework" : false,
     "moduleName" : "CoreText"
   },
   {
     "clangModuleMapPath" : "\/Applications\/Xcode.app\/Contents\/Developer\/Platforms\/MacOSX.platform\/Developer\/SDKs\/MacOSX.sdk\/System\/Library\/Frameworks\/CoreTransferable.framework\/Modules\/module.modulemap",
-    "clangModulePath" : "\/Users\/charlieseay\/Projects\/sonique-mac\/.build\/ModuleCache.noindex\/CoreTransferable-Q4VGNQS0MSOA3P3K0OLOU6.pcm",
+    "clangModulePath" : "\/Users\/charlieseay\/Projects\/sonique-mac\/.build\/ModuleCache.noindex\/CoreTransferable-AF9FQTAGMD7NUYMW2AY5ABVOS.pcm",
     "isBridgingHeaderDependency" : false,
     "isFramework" : false,
     "moduleName" : "CoreTransferable"
   },
   {
     "clangModuleMapPath" : "\/Applications\/Xcode.app\/Contents\/Developer\/Platforms\/MacOSX.platform\/Developer\/SDKs\/MacOSX.sdk\/System\/Library\/Frameworks\/CoreVideo.framework\/Modules\/module.modulemap",
-    "clangModulePath" : "\/Users\/charlieseay\/Projects\/sonique-mac\/.build\/ModuleCache.noindex\/CoreVideo-2SUF53850UUNSVI9PHK6VQJP7.pcm",
+    "clangModulePath" : "\/Users\/charlieseay\/Projects\/sonique-mac\/.build\/ModuleCache.noindex\/CoreVideo-DF64Y1MA21UXKS8O5CAHFXXM5.pcm",
     "isBridgingHeaderDependency" : false,
     "isFramework" : false,
     "moduleName" : "CoreVideo"
   },
   {
     "clangModuleMapPath" : "\/Applications\/Xcode.app\/Contents\/Developer\/Platforms\/MacOSX.platform\/Developer\/SDKs\/MacOSX.sdk\/usr\/include\/Darwin.modulemap",
-    "clangModulePath" : "\/Users\/charlieseay\/Projects\/sonique-mac\/.build\/ModuleCache.noindex\/Darwin-BN7AQNLHHDMXY3OM0WHVJ0ULG.pcm",
+    "clangModulePath" : "\/Users\/charlieseay\/Projects\/sonique-mac\/.build\/ModuleCache.noindex\/Darwin-7YJXIHNX0B7J7IMXCEQJNPTCU.pcm",
     "isBridgingHeaderDependency" : false,
     "isFramework" : false,
     "moduleName" : "Darwin"
   },
   {
     "clangModuleMapPath" : "\/Applications\/Xcode.app\/Contents\/Developer\/Platforms\/MacOSX.platform\/Developer\/SDKs\/MacOSX.sdk\/System\/Library\/Frameworks\/DataDetection.framework\/Modules\/module.modulemap",
-    "clangModulePath" : "\/Users\/charlieseay\/Projects\/sonique-mac\/.build\/ModuleCache.noindex\/DataDetection-CKP6WT957JNF940Y43TZWC7A1.pcm",
+    "clangModulePath" : "\/Users\/charlieseay\/Projects\/sonique-mac\/.build\/ModuleCache.noindex\/DataDetection-BEHL1PFBN71YB07SLVO4OLGHL.pcm",
     "isBridgingHeaderDependency" : false,
     "isFramework" : false,
     "moduleName" : "DataDetection"
   },
   {
     "clangModuleMapPath" : "\/Applications\/Xcode.app\/Contents\/Developer\/Platforms\/MacOSX.platform\/Developer\/SDKs\/MacOSX.sdk\/System\/Library\/Frameworks\/DeveloperToolsSupport.framework\/Modules\/module.modulemap",
-    "clangModulePath" : "\/Users\/charlieseay\/Projects\/sonique-mac\/.build\/ModuleCache.noindex\/DeveloperToolsSupport-DYU3W04BLDUEBTSUBN7FKKSMC.pcm",
+    "clangModulePath" : "\/Users\/charlieseay\/Projects\/sonique-mac\/.build\/ModuleCache.noindex\/DeveloperToolsSupport-3X7IWV2HMKFP2B2KYJ7QEZTW.pcm",
     "isBridgingHeaderDependency" : false,
     "isFramework" : false,
     "moduleName" : "DeveloperToolsSupport"
   },
   {
     "clangModuleMapPath" : "\/Applications\/Xcode.app\/Contents\/Developer\/Platforms\/MacOSX.platform\/Developer\/SDKs\/MacOSX.sdk\/System\/Library\/Frameworks\/DiskArbitration.framework\/Modules\/module.modulemap",
-    "clangModulePath" : "\/Users\/charlieseay\/Projects\/sonique-mac\/.build\/ModuleCache.noindex\/DiskArbitration-EW09GA3Q5DYATKT3LQPVT8OFB.pcm",
+    "clangModulePath" : "\/Users\/charlieseay\/Projects\/sonique-mac\/.build\/ModuleCache.noindex\/DiskArbitration-2KVO6SWKNKT9Z1XAMCQZ5NJHJ.pcm",
     "isBridgingHeaderDependency" : false,
     "isFramework" : false,
     "moduleName" : "DiskArbitration"
   },
   {
     "clangModuleMapPath" : "\/Applications\/Xcode.app\/Contents\/Developer\/Platforms\/MacOSX.platform\/Developer\/SDKs\/MacOSX.sdk\/usr\/include\/dispatch.modulemap",
-    "clangModulePath" : "\/Users\/charlieseay\/Projects\/sonique-mac\/.build\/ModuleCache.noindex\/Dispatch-2TFJTB4I7AOG16ZW2IXSGAE4Z.pcm",
+    "clangModulePath" : "\/Users\/charlieseay\/Projects\/sonique-mac\/.build\/ModuleCache.noindex\/Dispatch-6KDLEL7YWJK6LNZQRNZ6XK4NE.pcm",
     "isBridgingHeaderDependency" : false,
     "isFramework" : false,
     "moduleName" : "Dispatch"
   },
   {
+    "clangModuleMapPath" : "\/Applications\/Xcode.app\/Contents\/Developer\/Platforms\/MacOSX.platform\/Developer\/SDKs\/MacOSX.sdk\/System\/Library\/Frameworks\/EventKit.framework\/Modules\/module.modulemap",
+    "clangModulePath" : "\/Users\/charlieseay\/Projects\/sonique-mac\/.build\/ModuleCache.noindex\/EventKit-3I2IM6H9P00BTL35RL33OYW1V.pcm",
+    "isBridgingHeaderDependency" : false,
+    "isFramework" : false,
+    "moduleName" : "EventKit"
+  },
+  {
     "clangModuleMapPath" : "\/Applications\/Xcode.app\/Contents\/Developer\/Platforms\/MacOSX.platform\/Developer\/SDKs\/MacOSX.sdk\/System\/Library\/Frameworks\/Foundation.framework\/Modules\/module.modulemap",
-    "clangModulePath" : "\/Users\/charlieseay\/Projects\/sonique-mac\/.build\/ModuleCache.noindex\/Foundation-X8FKXLADHID4Z72EZX3KHIX7.pcm",
+    "clangModulePath" : "\/Users\/charlieseay\/Projects\/sonique-mac\/.build\/ModuleCache.noindex\/Foundation-5ITQ78LEYCZE3E0VH7ZR8TCGA.pcm",
     "isBridgingHeaderDependency" : false,
     "isFramework" : false,
     "moduleName" : "Foundation"
   },
   {
     "clangModuleMapPath" : "\/Applications\/Xcode.app\/Contents\/Developer\/Platforms\/MacOSX.platform\/Developer\/SDKs\/MacOSX.sdk\/System\/Library\/Frameworks\/IOKit.framework\/Modules\/module.modulemap",
-    "clangModulePath" : "\/Users\/charlieseay\/Projects\/sonique-mac\/.build\/ModuleCache.noindex\/IOKit-6QLK49WZ4KHULSW16DHBSZRSF.pcm",
+    "clangModulePath" : "\/Users\/charlieseay\/Projects\/sonique-mac\/.build\/ModuleCache.noindex\/IOKit-G08H8RQPDESEIKZ6A9YRGFA1.pcm",
     "isBridgingHeaderDependency" : false,
     "isFramework" : false,
     "moduleName" : "IOKit"
   },
   {
     "clangModuleMapPath" : "\/Applications\/Xcode.app\/Contents\/Developer\/Platforms\/MacOSX.platform\/Developer\/SDKs\/MacOSX.sdk\/System\/Library\/Frameworks\/IOSurface.framework\/Modules\/module.modulemap",
-    "clangModulePath" : "\/Users\/charlieseay\/Projects\/sonique-mac\/.build\/ModuleCache.noindex\/IOSurface-EM1EXJC250I9TK8FW0IL7ZLN3.pcm",
+    "clangModulePath" : "\/Users\/charlieseay\/Projects\/sonique-mac\/.build\/ModuleCache.noindex\/IOSurface-4EIQC9JVZAKRJAKJ2XX4STG5D.pcm",
     "isBridgingHeaderDependency" : false,
     "isFramework" : false,
     "moduleName" : "IOSurface"
   },
   {
     "clangModuleMapPath" : "\/Applications\/Xcode.app\/Contents\/Developer\/Platforms\/MacOSX.platform\/Developer\/SDKs\/MacOSX.sdk\/System\/Library\/Frameworks\/ImageIO.framework\/Modules\/module.modulemap",
-    "clangModulePath" : "\/Users\/charlieseay\/Projects\/sonique-mac\/.build\/ModuleCache.noindex\/ImageIO-3748DHA29LP7IS6GLNU8EX0W7.pcm",
+    "clangModulePath" : "\/Users\/charlieseay\/Projects\/sonique-mac\/.build\/ModuleCache.noindex\/ImageIO-6AD47KD4MLNODKADGJJRVJH3Y.pcm",
     "isBridgingHeaderDependency" : false,
     "isFramework" : false,
     "moduleName" : "ImageIO"
   },
   {
     "clangModuleMapPath" : "\/Applications\/Xcode.app\/Contents\/Developer\/Platforms\/MacOSX.platform\/Developer\/SDKs\/MacOSX.sdk\/usr\/include\/DarwinBasic.modulemap",
-    "clangModulePath" : "\/Users\/charlieseay\/Projects\/sonique-mac\/.build\/ModuleCache.noindex\/MachO-7PVWPWAMU8KUTOCRCP8HEKSYD.pcm",
+    "clangModulePath" : "\/Users\/charlieseay\/Projects\/sonique-mac\/.build\/ModuleCache.noindex\/MachO-3SZSMHKKSKLH8NW3RZFF13CJC.pcm",
     "isBridgingHeaderDependency" : false,
     "isFramework" : false,
     "moduleName" : "MachO"
   },
   {
     "clangModuleMapPath" : "\/Applications\/Xcode.app\/Contents\/Developer\/Platforms\/MacOSX.platform\/Developer\/SDKs\/MacOSX.sdk\/System\/Library\/Frameworks\/MediaToolbox.framework\/Modules\/module.modulemap",
-    "clangModulePath" : "\/Users\/charlieseay\/Projects\/sonique-mac\/.build\/ModuleCache.noindex\/MediaToolbox-COMVJ2EEC5WGKH3SHW7OZ7HKV.pcm",
+    "clangModulePath" : "\/Users\/charlieseay\/Projects\/sonique-mac\/.build\/ModuleCache.noindex\/MediaToolbox-4TTXNWGH0TCOZC5MDUW8O9EXX.pcm",
     "isBridgingHeaderDependency" : false,
     "isFramework" : false,
     "moduleName" : "MediaToolbox"
   },
   {
     "clangModuleMapPath" : "\/Applications\/Xcode.app\/Contents\/Developer\/Platforms\/MacOSX.platform\/Developer\/SDKs\/MacOSX.sdk\/System\/Library\/Frameworks\/Metal.framework\/Modules\/module.modulemap",
-    "clangModulePath" : "\/Users\/charlieseay\/Projects\/sonique-mac\/.build\/ModuleCache.noindex\/Metal-59WWCL1EBEMW42HPRLTSOKDCV.pcm",
+    "clangModulePath" : "\/Users\/charlieseay\/Projects\/sonique-mac\/.build\/ModuleCache.noindex\/Metal-DN6ELCRLX4NI89UECEDHA9AJA.pcm",
     "isBridgingHeaderDependency" : false,
     "isFramework" : false,
     "moduleName" : "Metal"
   },
   {
     "clangModuleMapPath" : "\/Applications\/Xcode.app\/Contents\/Developer\/Platforms\/MacOSX.platform\/Developer\/SDKs\/MacOSX.sdk\/System\/Library\/Frameworks\/Network.framework\/Modules\/module.modulemap",
-    "clangModulePath" : "\/Users\/charlieseay\/Projects\/sonique-mac\/.build\/ModuleCache.noindex\/Network-6M9NDEQ61NNX07S3U60YYEGFN.pcm",
+    "clangModulePath" : "\/Users\/charlieseay\/Projects\/sonique-mac\/.build\/ModuleCache.noindex\/Network-EKNPPPDO2IV6PF3LX4A3OISM2.pcm",
     "isBridgingHeaderDependency" : false,
     "isFramework" : false,
     "moduleName" : "Network"
   },
   {
     "clangModuleMapPath" : "\/Applications\/Xcode.app\/Contents\/Developer\/Platforms\/MacOSX.platform\/Developer\/SDKs\/MacOSX.sdk\/System\/Library\/Frameworks\/OSLog.framework\/Modules\/module.modulemap",
-    "clangModulePath" : "\/Users\/charlieseay\/Projects\/sonique-mac\/.build\/ModuleCache.noindex\/OSLog-DZ0U6OQQX9CVB5WW0RL9C7AWE.pcm",
+    "clangModulePath" : "\/Users\/charlieseay\/Projects\/sonique-mac\/.build\/ModuleCache.noindex\/OSLog-D8VY8DUW3CUQJ8N4QIXP67EBO.pcm",
     "isBridgingHeaderDependency" : false,
     "isFramework" : false,
     "moduleName" : "OSLog"
   },
   {
     "clangModuleMapPath" : "\/Applications\/Xcode.app\/Contents\/Developer\/Platforms\/MacOSX.platform\/Developer\/SDKs\/MacOSX.sdk\/usr\/include\/ObjectiveC.modulemap",
-    "clangModulePath" : "\/Users\/charlieseay\/Projects\/sonique-mac\/.build\/ModuleCache.noindex\/ObjectiveC-DS4GXRPJ6T71NZXSZWKUK51QY.pcm",
+    "clangModulePath" : "\/Users\/charlieseay\/Projects\/sonique-mac\/.build\/ModuleCache.noindex\/ObjectiveC-BY2T10EY4AAZU1BYPHU038JQ1.pcm",
     "isBridgingHeaderDependency" : false,
     "isFramework" : false,
     "moduleName" : "ObjectiveC"
   },
   {
     "clangModuleMapPath" : "\/Applications\/Xcode.app\/Contents\/Developer\/Platforms\/MacOSX.platform\/Developer\/SDKs\/MacOSX.sdk\/System\/Library\/Frameworks\/OpenGL.framework\/Modules\/module.modulemap",
-    "clangModulePath" : "\/Users\/charlieseay\/Projects\/sonique-mac\/.build\/ModuleCache.noindex\/OpenGL-32E5YB6P0T08RVZC8OKV6JNKI.pcm",
+    "clangModulePath" : "\/Users\/charlieseay\/Projects\/sonique-mac\/.build\/ModuleCache.noindex\/OpenGL-14VPQG7GFWWNJRWNZHS1R4UFQ.pcm",
     "isBridgingHeaderDependency" : false,
     "isFramework" : false,
     "moduleName" : "OpenGL"
   },
   {
     "clangModuleMapPath" : "\/Applications\/Xcode.app\/Contents\/Developer\/Platforms\/MacOSX.platform\/Developer\/SDKs\/MacOSX.sdk\/System\/Library\/Frameworks\/QuartzCore.framework\/Modules\/module.modulemap",
-    "clangModulePath" : "\/Users\/charlieseay\/Projects\/sonique-mac\/.build\/ModuleCache.noindex\/QuartzCore-2D6Z0MDPFHF9C59IUYUBO4Y77.pcm",
+    "clangModulePath" : "\/Users\/charlieseay\/Projects\/sonique-mac\/.build\/ModuleCache.noindex\/QuartzCore-3KNI6S72E5JCW07MDCWCJ0MMK.pcm",
     "isBridgingHeaderDependency" : false,
     "isFramework" : false,
     "moduleName" : "QuartzCore"
   },
   {
     "clangModuleMapPath" : "\/Applications\/Xcode.app\/Contents\/Developer\/Platforms\/MacOSX.platform\/Developer\/SDKs\/MacOSX.sdk\/System\/Library\/Frameworks\/Security.framework\/Modules\/module.modulemap",
-    "clangModulePath" : "\/Users\/charlieseay\/Projects\/sonique-mac\/.build\/ModuleCache.noindex\/Security-AALSJUNOU6JDAXAHBWZRAUVBD.pcm",
+    "clangModulePath" : "\/Users\/charlieseay\/Projects\/sonique-mac\/.build\/ModuleCache.noindex\/Security-5NWVLRM44Q9YVZID5HYVHUDUX.pcm",
     "isBridgingHeaderDependency" : false,
     "isFramework" : false,
     "moduleName" : "Security"
   },
   {
     "clangModuleMapPath" : "\/Applications\/Xcode.app\/Contents\/Developer\/Platforms\/MacOSX.platform\/Developer\/SDKs\/MacOSX.sdk\/usr\/include\/Spatial\/module.modulemap",
-    "clangModulePath" : "\/Users\/charlieseay\/Projects\/sonique-mac\/.build\/ModuleCache.noindex\/Spatial-EQ3EVCMFSN6Q36829XNSGQ4CV.pcm",
+    "clangModulePath" : "\/Users\/charlieseay\/Projects\/sonique-mac\/.build\/ModuleCache.noindex\/Spatial-5RIBAB3S8M89EF05OOSKONV5X.pcm",
     "isBridgingHeaderDependency" : false,
     "isFramework" : false,
     "moduleName" : "Spatial"
   },
   {
     "clangModuleMapPath" : "\/Applications\/Xcode.app\/Contents\/Developer\/Platforms\/MacOSX.platform\/Developer\/SDKs\/MacOSX.sdk\/usr\/lib\/swift\/shims\/module.modulemap",
-    "clangModulePath" : "\/Users\/charlieseay\/Projects\/sonique-mac\/.build\/ModuleCache.noindex\/SwiftShims-10F0XFSOYZWIEJSKYN78RZ8CP.pcm",
+    "clangModulePath" : "\/Users\/charlieseay\/Projects\/sonique-mac\/.build\/ModuleCache.noindex\/SwiftShims-33DX79W34NY4KCBVN8QSUT6DY.pcm",
     "isBridgingHeaderDependency" : false,
     "isFramework" : false,
     "moduleName" : "SwiftShims"
   },
   {
     "clangModuleMapPath" : "\/Applications\/Xcode.app\/Contents\/Developer\/Platforms\/MacOSX.platform\/Developer\/SDKs\/MacOSX.sdk\/System\/Library\/Frameworks\/SwiftUI.framework\/Modules\/module.modulemap",
-    "clangModulePath" : "\/Users\/charlieseay\/Projects\/sonique-mac\/.build\/ModuleCache.noindex\/SwiftUI-9ZMNEYUDEOP6D4FL8UWELIIXT.pcm",
+    "clangModulePath" : "\/Users\/charlieseay\/Projects\/sonique-mac\/.build\/ModuleCache.noindex\/SwiftUI-BETF098U99ZTCD8KOV8SKYMI.pcm",
     "isBridgingHeaderDependency" : false,
     "isFramework" : false,
     "moduleName" : "SwiftUI"
   },
   {
     "clangModuleMapPath" : "\/Applications\/Xcode.app\/Contents\/Developer\/Platforms\/MacOSX.platform\/Developer\/SDKs\/MacOSX.sdk\/System\/Library\/Frameworks\/SwiftUICore.framework\/Modules\/module.modulemap",
-    "clangModulePath" : "\/Users\/charlieseay\/Projects\/sonique-mac\/.build\/ModuleCache.noindex\/SwiftUICore-DDWNGQDDX7UXUEKU5D3J085JE.pcm",
+    "clangModulePath" : "\/Users\/charlieseay\/Projects\/sonique-mac\/.build\/ModuleCache.noindex\/SwiftUICore-8UZ3Q95RRNP896136GIFNZPDH.pcm",
     "isBridgingHeaderDependency" : false,
     "isFramework" : false,
     "moduleName" : "SwiftUICore"
   },
   {
     "clangModuleMapPath" : "\/Applications\/Xcode.app\/Contents\/Developer\/Platforms\/MacOSX.platform\/Developer\/SDKs\/MacOSX.sdk\/System\/Library\/Frameworks\/Symbols.framework\/Modules\/module.modulemap",
-    "clangModulePath" : "\/Users\/charlieseay\/Projects\/sonique-mac\/.build\/ModuleCache.noindex\/Symbols-CQG62PTO0FXPL6G8D9TZKMHTA.pcm",
+    "clangModulePath" : "\/Users\/charlieseay\/Projects\/sonique-mac\/.build\/ModuleCache.noindex\/Symbols-1WG66SF5WFKHXB7P2IQSMGE28.pcm",
     "isBridgingHeaderDependency" : false,
     "isFramework" : false,
     "moduleName" : "Symbols"
   },
   {
     "clangModuleMapPath" : "\/Applications\/Xcode.app\/Contents\/Developer\/Platforms\/MacOSX.platform\/Developer\/SDKs\/MacOSX.sdk\/System\/Library\/Frameworks\/UniformTypeIdentifiers.framework\/Modules\/module.modulemap",
-    "clangModulePath" : "\/Users\/charlieseay\/Projects\/sonique-mac\/.build\/ModuleCache.noindex\/UniformTypeIdentifiers-43R3Q8QJQQQQJNGUDOS8ZH9Z5.pcm",
+    "clangModulePath" : "\/Users\/charlieseay\/Projects\/sonique-mac\/.build\/ModuleCache.noindex\/UniformTypeIdentifiers-3D83G9MFP3F0FGR4H1OL89OYB.pcm",
     "isBridgingHeaderDependency" : false,
     "isFramework" : false,
     "moduleName" : "UniformTypeIdentifiers"
   },
   {
     "clangModuleMapPath" : "\/Applications\/Xcode.app\/Contents\/Developer\/Platforms\/MacOSX.platform\/Developer\/SDKs\/MacOSX.sdk\/usr\/include\/xpc.modulemap",
-    "clangModulePath" : "\/Users\/charlieseay\/Projects\/sonique-mac\/.build\/ModuleCache.noindex\/XPC-9S5NKQU0KTHIITC99ZNZ3FFS9.pcm",
+    "clangModulePath" : "\/Users\/charlieseay\/Projects\/sonique-mac\/.build\/ModuleCache.noindex\/XPC-BKDMTV5AT9WI88NOUP840Q2A1.pcm",
     "isBridgingHeaderDependency" : false,
     "isFramework" : false,
     "moduleName" : "XPC"
   },
   {
     "clangModuleMapPath" : "\/Applications\/Xcode.app\/Contents\/Developer\/Platforms\/MacOSX.platform\/Developer\/SDKs\/MacOSX.sdk\/usr\/include\/DarwinFoundation1.modulemap",
-    "clangModulePath" : "\/Users\/charlieseay\/Projects\/sonique-mac\/.build\/ModuleCache.noindex\/_AvailabilityInternal-DTUAPKDRBM7XJJC8DQBNLC0FQ.pcm",
+    "clangModulePath" : "\/Users\/charlieseay\/Projects\/sonique-mac\/.build\/ModuleCache.noindex\/_AvailabilityInternal-34FWJLVEQJEBQEJK4SNY76VDQ.pcm",
     "isBridgingHeaderDependency" : false,
     "isFramework" : false,
     "moduleName" : "_AvailabilityInternal"
   },
   {
     "clangModuleMapPath" : "\/Applications\/Xcode.app\/Contents\/Developer\/Toolchains\/XcodeDefault.xctoolchain\/usr\/lib\/clang\/17\/include\/module.modulemap",
-    "clangModulePath" : "\/Users\/charlieseay\/Projects\/sonique-mac\/.build\/ModuleCache.noindex\/_Builtin_float-M3PTD0946IGC5VNXLQJZJ8ES.pcm",
+    "clangModulePath" : "\/Users\/charlieseay\/Projects\/sonique-mac\/.build\/ModuleCache.noindex\/_Builtin_float-46U4I22DGX2CGN7RN5L1LSR5N.pcm",
     "isBridgingHeaderDependency" : false,
     "isFramework" : false,
     "moduleName" : "_Builtin_float"
   },
   {
     "clangModuleMapPath" : "\/Applications\/Xcode.app\/Contents\/Developer\/Toolchains\/XcodeDefault.xctoolchain\/usr\/lib\/clang\/17\/include\/module.modulemap",
-    "clangModulePath" : "\/Users\/charlieseay\/Projects\/sonique-mac\/.build\/ModuleCache.noindex\/_Builtin_intrinsics-F19OOANQPOQZTZFB603N1X551.pcm",
+    "clangModulePath" : "\/Users\/charlieseay\/Projects\/sonique-mac\/.build\/ModuleCache.noindex\/_Builtin_intrinsics-3IFWDMG5OYRZ9A7YRXVEJ6JG3.pcm",
     "isBridgingHeaderDependency" : false,
     "isFramework" : false,
     "moduleName" : "_Builtin_intrinsics"
   },
   {
     "clangModuleMapPath" : "\/Applications\/Xcode.app\/Contents\/Developer\/Toolchains\/XcodeDefault.xctoolchain\/usr\/lib\/clang\/17\/include\/module.modulemap",
-    "clangModulePath" : "\/Users\/charlieseay\/Projects\/sonique-mac\/.build\/ModuleCache.noindex\/_Builtin_inttypes-2V0ZZ475W9P0B4L6ZXHNW9ZTO.pcm",
+    "clangModulePath" : "\/Users\/charlieseay\/Projects\/sonique-mac\/.build\/ModuleCache.noindex\/_Builtin_inttypes-9GPGIELPRB1I0BNV7D3NWZNGV.pcm",
     "isBridgingHeaderDependency" : false,
     "isFramework" : false,
     "moduleName" : "_Builtin_inttypes"
   },
   {
     "clangModuleMapPath" : "\/Applications\/Xcode.app\/Contents\/Developer\/Toolchains\/XcodeDefault.xctoolchain\/usr\/lib\/clang\/17\/include\/module.modulemap",
-    "clangModulePath" : "\/Users\/charlieseay\/Projects\/sonique-mac\/.build\/ModuleCache.noindex\/_Builtin_limits-9NR3ZNI2E5K698QEL5TRN11GF.pcm",
+    "clangModulePath" : "\/Users\/charlieseay\/Projects\/sonique-mac\/.build\/ModuleCache.noindex\/_Builtin_limits-C7IHW1YZ9BIX3XAK0E17X3JLB.pcm",
     "isBridgingHeaderDependency" : false,
     "isFramework" : false,
     "moduleName" : "_Builtin_limits"
   },
   {
     "clangModuleMapPath" : "\/Applications\/Xcode.app\/Contents\/Developer\/Toolchains\/XcodeDefault.xctoolchain\/usr\/lib\/clang\/17\/include\/module.modulemap",
-    "clangModulePath" : "\/Users\/charlieseay\/Projects\/sonique-mac\/.build\/ModuleCache.noindex\/_Builtin_stdarg-B5JR1G0JI4IE3S5XSOUD86NPS.pcm",
+    "clangModulePath" : "\/Users\/charlieseay\/Projects\/sonique-mac\/.build\/ModuleCache.noindex\/_Builtin_stdarg-55HWZH841HH75FJ4P4SLV6Z9L.pcm",
     "isBridgingHeaderDependency" : false,
     "isFramework" : false,
     "moduleName" : "_Builtin_stdarg"
   },
   {
     "clangModuleMapPath" : "\/Applications\/Xcode.app\/Contents\/Developer\/Toolchains\/XcodeDefault.xctoolchain\/usr\/lib\/clang\/17\/include\/module.modulemap",
-    "clangModulePath" : "\/Users\/charlieseay\/Projects\/sonique-mac\/.build\/ModuleCache.noindex\/_Builtin_stdatomic-DCWVV8SDY0AEINKWA6AJBCVN5.pcm",
+    "clangModulePath" : "\/Users\/charlieseay\/Projects\/sonique-mac\/.build\/ModuleCache.noindex\/_Builtin_stdatomic-C1L1BJ1HS50JM52LKSBI7VYYT.pcm",
     "isBridgingHeaderDependency" : false,
     "isFramework" : false,
     "moduleName" : "_Builtin_stdatomic"
   },
   {
     "clangModuleMapPath" : "\/Applications\/Xcode.app\/Contents\/Developer\/Toolchains\/XcodeDefault.xctoolchain\/usr\/lib\/clang\/17\/include\/module.modulemap",
-    "clangModulePath" : "\/Users\/charlieseay\/Projects\/sonique-mac\/.build\/ModuleCache.noindex\/_Builtin_stdbool-B7AUPIGFE0OXSRN4KPPHSYOCB.pcm",
+    "clangModulePath" : "\/Users\/charlieseay\/Projects\/sonique-mac\/.build\/ModuleCache.noindex\/_Builtin_stdbool-268YZ18AM4LEVFGHF8TYBWAXH.pcm",
     "isBridgingHeaderDependency" : false,
     "isFramework" : false,
     "moduleName" : "_Builtin_stdbool"
   },
   {
     "clangModuleMapPath" : "\/Applications\/Xcode.app\/Contents\/Developer\/Toolchains\/XcodeDefault.xctoolchain\/usr\/lib\/clang\/17\/include\/module.modulemap",
-    "clangModulePath" : "\/Users\/charlieseay\/Projects\/sonique-mac\/.build\/ModuleCache.noindex\/_Builtin_stddef-81J4UYF0QT57KVFRGLVPKSXZF.pcm",
+    "clangModulePath" : "\/Users\/charlieseay\/Projects\/sonique-mac\/.build\/ModuleCache.noindex\/_Builtin_stddef-C88N33SKO0YZ56CELIQ550ZLQ.pcm",
     "isBridgingHeaderDependency" : false,
     "isFramework" : false,
     "moduleName" : "_Builtin_stddef"
   },
   {
     "clangModuleMapPath" : "\/Applications\/Xcode.app\/Contents\/Developer\/Toolchains\/XcodeDefault.xctoolchain\/usr\/lib\/clang\/17\/include\/module.modulemap",
-    "clangModulePath" : "\/Users\/charlieseay\/Projects\/sonique-mac\/.build\/ModuleCache.noindex\/_Builtin_stdint-CI0GQYXRJ6F9UYQCJNREWNP2S.pcm",
+    "clangModulePath" : "\/Users\/charlieseay\/Projects\/sonique-mac\/.build\/ModuleCache.noindex\/_Builtin_stdint-6UKTRN9LDY8WQJVR6TUVN2AOL.pcm",
     "isBridgingHeaderDependency" : false,
     "isFramework" : false,
     "moduleName" : "_Builtin_stdint"
   },
   {
     "clangModuleMapPath" : "\/Applications\/Xcode.app\/Contents\/Developer\/Toolchains\/XcodeDefault.xctoolchain\/usr\/lib\/clang\/17\/include\/module.modulemap",
-    "clangModulePath" : "\/Users\/charlieseay\/Projects\/sonique-mac\/.build\/ModuleCache.noindex\/_Builtin_tgmath-ADYC8NO6MKXX1U8IPQHZUWBMZ.pcm",
+    "clangModulePath" : "\/Users\/charlieseay\/Projects\/sonique-mac\/.build\/ModuleCache.noindex\/_Builtin_tgmath-BI4WVTLAGPULW9L4OP0JO6QMG.pcm",
     "isBridgingHeaderDependency" : false,
     "isFramework" : false,
     "moduleName" : "_Builtin_tgmath"
   },
   {
     "clangModuleMapPath" : "\/Applications\/Xcode.app\/Contents\/Developer\/Platforms\/MacOSX.platform\/Developer\/SDKs\/MacOSX.sdk\/usr\/include\/DarwinFoundation1.modulemap",
-    "clangModulePath" : "\/Users\/charlieseay\/Projects\/sonique-mac\/.build\/ModuleCache.noindex\/_DarwinFoundation1-34HCQ6LHZYZMCXH2UUE3FT2M5.pcm",
+    "clangModulePath" : "\/Users\/charlieseay\/Projects\/sonique-mac\/.build\/ModuleCache.noindex\/_DarwinFoundation1-ETI5OKL3VOMB8ZG7G9V5CH6O4.pcm",
     "isBridgingHeaderDependency" : false,
     "isFramework" : false,
     "moduleName" : "_DarwinFoundation1"
   },
   {
     "clangModuleMapPath" : "\/Applications\/Xcode.app\/Contents\/Developer\/Platforms\/MacOSX.platform\/Developer\/SDKs\/MacOSX.sdk\/usr\/include\/DarwinFoundation2.modulemap",
-    "clangModulePath" : "\/Users\/charlieseay\/Projects\/sonique-mac\/.build\/ModuleCache.noindex\/_DarwinFoundation2-1Q7IA4BSE7UVOMP67HB4L3YCD.pcm",
+    "clangModulePath" : "\/Users\/charlieseay\/Projects\/sonique-mac\/.build\/ModuleCache.noindex\/_DarwinFoundation2-6ZF27PVZA0XEIBG52RBUZFIQ3.pcm",
     "isBridgingHeaderDependency" : false,
     "isFramework" : false,
     "moduleName" : "_DarwinFoundation2"
   },
   {
     "clangModuleMapPath" : "\/Applications\/Xcode.app\/Contents\/Developer\/Platforms\/MacOSX.platform\/Developer\/SDKs\/MacOSX.sdk\/usr\/include\/DarwinFoundation3.modulemap",
-    "clangModulePath" : "\/Users\/charlieseay\/Projects\/sonique-mac\/.build\/ModuleCache.noindex\/_DarwinFoundation3-BOHPA5DU9U9EEOYZ1Q60N4209.pcm",
+    "clangModulePath" : "\/Users\/charlieseay\/Projects\/sonique-mac\/.build\/ModuleCache.noindex\/_DarwinFoundation3-6A81JUL9NLKLDZVQA22SCGIH6.pcm",
     "isBridgingHeaderDependency" : false,
     "isFramework" : false,
     "moduleName" : "_DarwinFoundation3"
   },
   {
+    "clangModuleMapPath" : "\/Applications\/Xcode.app\/Contents\/Developer\/Platforms\/MacOSX.platform\/Developer\/SDKs\/MacOSX.sdk\/System\/Library\/Frameworks\/_LocationEssentials.framework\/Modules\/module.modulemap",
+    "clangModulePath" : "\/Users\/charlieseay\/Projects\/sonique-mac\/.build\/ModuleCache.noindex\/_LocationEssentials-EOG2KKANL5K25RHLP5R61ENJY.pcm",
+    "isBridgingHeaderDependency" : false,
+    "isFramework" : false,
+    "moduleName" : "_LocationEssentials"
+  },
+  {
     "clangModuleMapPath" : "\/Applications\/Xcode.app\/Contents\/Developer\/Platforms\/MacOSX.platform\/Developer\/SDKs\/MacOSX.sdk\/usr\/lib\/swift\/shims\/module.modulemap",
-    "clangModulePath" : "\/Users\/charlieseay\/Projects\/sonique-mac\/.build\/ModuleCache.noindex\/_SwiftConcurrencyShims-AWBK0R3BOVOS2QK8K51MNE6PL.pcm",
+    "clangModulePath" : "\/Users\/charlieseay\/Projects\/sonique-mac\/.build\/ModuleCache.noindex\/_SwiftConcurrencyShims-AF1QUGQ299U9AUFAZELTWRLX8.pcm",
     "isBridgingHeaderDependency" : false,
     "isFramework" : false,
     "moduleName" : "_SwiftConcurrencyShims"
   },
   {
     "clangModuleMapPath" : "\/Applications\/Xcode.app\/Contents\/Developer\/Platforms\/MacOSX.platform\/Developer\/SDKs\/MacOSX.sdk\/usr\/include\/dnssd.modulemap",
-    "clangModulePath" : "\/Users\/charlieseay\/Projects\/sonique-mac\/.build\/ModuleCache.noindex\/dnssd-AOZOZEG8NTPUND7UUTTS3MFIT.pcm",
+    "clangModulePath" : "\/Users\/charlieseay\/Projects\/sonique-mac\/.build\/ModuleCache.noindex\/dnssd-7HBW671EA5FKL1R3HKAUIX0MX.pcm",
     "isBridgingHeaderDependency" : false,
     "isFramework" : false,
     "moduleName" : "dnssd"
   },
   {
     "clangModuleMapPath" : "\/Applications\/Xcode.app\/Contents\/Developer\/Platforms\/MacOSX.platform\/Developer\/SDKs\/MacOSX.sdk\/usr\/include\/launch.modulemap",
-    "clangModulePath" : "\/Users\/charlieseay\/Projects\/sonique-mac\/.build\/ModuleCache.noindex\/launch-AXEGXCLBZQI7Z4ZA7JIM1PTRH.pcm",
+    "clangModulePath" : "\/Users\/charlieseay\/Projects\/sonique-mac\/.build\/ModuleCache.noindex\/launch-5PNMFJ6IH9WW1KFIR7QWWSVJL.pcm",
     "isBridgingHeaderDependency" : false,
     "isFramework" : false,
     "moduleName" : "launch"
   },
   {
     "clangModuleMapPath" : "\/Applications\/Xcode.app\/Contents\/Developer\/Platforms\/MacOSX.platform\/Developer\/SDKs\/MacOSX.sdk\/usr\/include\/libDER\/module.modulemap",
-    "clangModulePath" : "\/Users\/charlieseay\/Projects\/sonique-mac\/.build\/ModuleCache.noindex\/libDER-1FU8PDTQE1HDR466VKL6Y0RTN.pcm",
+    "clangModulePath" : "\/Users\/charlieseay\/Projects\/sonique-mac\/.build\/ModuleCache.noindex\/libDER-58L9B3VJ7U3WKLIWV7BT3ILV.pcm",
     "isBridgingHeaderDependency" : false,
     "isFramework" : false,
     "moduleName" : "libDER"
   },
   {
     "clangModuleMapPath" : "\/Applications\/Xcode.app\/Contents\/Developer\/Platforms\/MacOSX.platform\/Developer\/SDKs\/MacOSX.sdk\/usr\/include\/libkern.modulemap",
-    "clangModulePath" : "\/Users\/charlieseay\/Projects\/sonique-mac\/.build\/ModuleCache.noindex\/libkern-AAC4DR9PTYYGN706E2DUZYPL5.pcm",
+    "clangModulePath" : "\/Users\/charlieseay\/Projects\/sonique-mac\/.build\/ModuleCache.noindex\/libkern-AOB12AR2RL5TJ6S1G1GPILJUQ.pcm",
     "isBridgingHeaderDependency" : false,
     "isFramework" : false,
     "moduleName" : "libkern"
   },
   {
     "clangModuleMapPath" : "\/Applications\/Xcode.app\/Contents\/Developer\/Platforms\/MacOSX.platform\/Developer\/SDKs\/MacOSX.sdk\/usr\/include\/os.modulemap",
-    "clangModulePath" : "\/Users\/charlieseay\/Projects\/sonique-mac\/.build\/ModuleCache.noindex\/os-918VM1ET5QIQ8WDQI95WX0HRS.pcm",
+    "clangModulePath" : "\/Users\/charlieseay\/Projects\/sonique-mac\/.build\/ModuleCache.noindex\/os-5H8CU0SUJMJG1ZBH3UQLN8V09.pcm",
     "isBridgingHeaderDependency" : false,
     "isFramework" : false,
     "moduleName" : "os"
   },
   {
     "clangModuleMapPath" : "\/Applications\/Xcode.app\/Contents\/Developer\/Platforms\/MacOSX.platform\/Developer\/SDKs\/MacOSX.sdk\/usr\/include\/os.modulemap",
-    "clangModulePath" : "\/Users\/charlieseay\/Projects\/sonique-mac\/.build\/ModuleCache.noindex\/os_object-7V1F7DQETVIIC0ROBVMSKXSAT.pcm",
+    "clangModulePath" : "\/Users\/charlieseay\/Projects\/sonique-mac\/.build\/ModuleCache.noindex\/os_object-4ZKJWZN1HE02J1PPGVXBY35BZ.pcm",
     "isBridgingHeaderDependency" : false,
     "isFramework" : false,
     "moduleName" : "os_object"
   },
   {
     "clangModuleMapPath" : "\/Applications\/Xcode.app\/Contents\/Developer\/Platforms\/MacOSX.platform\/Developer\/SDKs\/MacOSX.sdk\/usr\/include\/os.modulemap",
-    "clangModulePath" : "\/Users\/charlieseay\/Projects\/sonique-mac\/.build\/ModuleCache.noindex\/os_workgroup-145ZP71S1ILD5XZ6834ANLULY.pcm",
+    "clangModulePath" : "\/Users\/charlieseay\/Projects\/sonique-mac\/.build\/ModuleCache.noindex\/os_workgroup-5EEDT2N5KMRHZGCIYLGZ3OAZM.pcm",
     "isBridgingHeaderDependency" : false,
     "isFramework" : false,
     "moduleName" : "os_workgroup"
   },
   {
     "clangModuleMapPath" : "\/Applications\/Xcode.app\/Contents\/Developer\/Toolchains\/XcodeDefault.xctoolchain\/usr\/lib\/clang\/17\/include\/module.modulemap",
-    "clangModulePath" : "\/Users\/charlieseay\/Projects\/sonique-mac\/.build\/ModuleCache.noindex\/ptrauth-7PXTQPDFO4ZCN2J0EAG0NO242.pcm",
+    "clangModulePath" : "\/Users\/charlieseay\/Projects\/sonique-mac\/.build\/ModuleCache.noindex\/ptrauth-8VPXRL2XCWO5ADYO4HKKOR5U6.pcm",
     "isBridgingHeaderDependency" : false,
     "isFramework" : false,
     "moduleName" : "ptrauth"
   },
   {
     "clangModuleMapPath" : "\/Applications\/Xcode.app\/Contents\/Developer\/Toolchains\/XcodeDefault.xctoolchain\/usr\/lib\/clang\/17\/include\/module.modulemap",
-    "clangModulePath" : "\/Users\/charlieseay\/Projects\/sonique-mac\/.build\/ModuleCache.noindex\/ptrcheck-6D9EPQYXB0YOCFBEOVUWNQS80.pcm",
+    "clangModulePath" : "\/Users\/charlieseay\/Projects\/sonique-mac\/.build\/ModuleCache.noindex\/ptrcheck-D9PPSNEER2Q7VO1FHN5E6MJ16.pcm",
     "isBridgingHeaderDependency" : false,
     "isFramework" : false,
     "moduleName" : "ptrcheck"
   },
   {
     "clangModuleMapPath" : "\/Applications\/Xcode.app\/Contents\/Developer\/Platforms\/MacOSX.platform\/Developer\/SDKs\/MacOSX.sdk\/usr\/include\/simd\/module.modulemap",
-    "clangModulePath" : "\/Users\/charlieseay\/Projects\/sonique-mac\/.build\/ModuleCache.noindex\/simd-ALNIZN7WA2XQGWKVIFHSA0CHN.pcm",
+    "clangModulePath" : "\/Users\/charlieseay\/Projects\/sonique-mac\/.build\/ModuleCache.noindex\/simd-1VPTKH0VP7PRVWVTD5GSVG0S9.pcm",
     "isBridgingHeaderDependency" : false,
     "isFramework" : false,
     "moduleName" : "simd"
   },
   {
     "clangModuleMapPath" : "\/Applications\/Xcode.app\/Contents\/Developer\/Platforms\/MacOSX.platform\/Developer\/SDKs\/MacOSX.sdk\/usr\/include\/DarwinFoundation2.modulemap",
-    "clangModulePath" : "\/Users\/charlieseay\/Projects\/sonique-mac\/.build\/ModuleCache.noindex\/sys_types-VNIXYD9T4HHLKW1RVICJJ6XK.pcm",
+    "clangModulePath" : "\/Users\/charlieseay\/Projects\/sonique-mac\/.build\/ModuleCache.noindex\/sys_types-4BWAEXSJZS4ZTDCWK4I7A3TGC.pcm",
     "isBridgingHeaderDependency" : false,
     "isFramework" : false,
     "moduleName" : "sys_types"

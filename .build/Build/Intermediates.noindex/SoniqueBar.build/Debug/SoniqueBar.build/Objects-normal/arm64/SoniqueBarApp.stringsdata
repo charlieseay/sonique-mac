@@ -1,0 +1,88 @@
+{
+  "source": "/Users/charlieseay/Projects/sonique-mac/SoniqueBar/SoniqueBarApp.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "Quit SoniqueBar",
+        "location": {
+          "startingColumn": 24,
+          "startingLine": 76
+        }
+      },
+      {
+        "comment": "",
+        "key": "SoniqueBar",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 23
+        }
+      },
+      {
+        "comment": "",
+        "key": "Online (port 8890)",
+        "location": {
+          "startingColumn": 52,
+          "startingLine": 37
+        }
+      },
+      {
+        "comment": "",
+        "key": "Offline",
+        "location": {
+          "startingColumn": 75,
+          "startingLine": 37
+        }
+      },
+      {
+        "comment": "",
+        "key": "Requests: %lld",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 42
+        }
+      },
+      {
+        "comment": "",
+        "key": "Last: %@",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 45
+        }
+      },
+      {
+        "comment": "",
+        "key": "Open Logs",
+        "location": {
+          "startingColumn": 27,
+          "startingLine": 55
+        }
+      },
+      {
+        "comment": "",
+        "key": "Test Connection",
+        "location": {
+          "startingColumn": 27,
+          "startingLine": 60
+        }
+      },
+      {
+        "comment": "",
+        "key": "Settings",
+        "location": {
+          "startingColumn": 27,
+          "startingLine": 65
+        }
+      },
+      {
+        "comment": "",
+        "key": "Chat with Quinn",
+        "location": {
+          "startingColumn": 27,
+          "startingLine": 70
+        }
+      }
+    ]
+  },
+  "version": 1
+}

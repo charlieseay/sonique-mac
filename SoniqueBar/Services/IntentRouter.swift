@@ -390,7 +390,7 @@ final class IntentRouter {
             return "NotebookLM unavailable and unknown fallback path for: \(notebook)"
         }
 
-        // Use grep to search vault files
+        // Use grep to search vault files WITH CONTEXT (Quinn's suggestion!)
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/usr/bin/grep")
 
@@ -400,7 +400,8 @@ final class IntentRouter {
             return "NotebookLM unavailable. Please try a more specific query or check NotebookLM status."
         }
 
-        process.arguments = ["-r", "-i", "-l", searchTerms.joined(separator: "|"), searchPath]
+        // -C 2 = show 2 lines of context around matches (Quinn's improvement!)
+        process.arguments = ["-r", "-i", "-n", "-C", "2", searchTerms.joined(separator: "|"), searchPath]
 
         let pipe = Pipe()
         process.standardOutput = pipe
@@ -415,32 +416,101 @@ final class IntentRouter {
                 return "NotebookLM unavailable and direct search failed."
             }
 
-            let files = output.components(separatedBy: "\n").filter { !$0.isEmpty }
-            if files.isEmpty {
-                return "NotebookLM unavailable. No matching files found in vault for: \(query)"
+            if output.isEmpty {
+                return "NotebookLM unavailable. No matching content found in vault for: \(query)"
             }
 
-            return """
-            ⚠️ NotebookLM unavailable - using direct file search fallback
+            // Parse grep output to extract file excerpts
+            let excerpts = parseGrepOutput(output)
+            if excerpts.isEmpty {
+                return "NotebookLM unavailable. No matching content found in vault for: \(query)"
+            }
 
-            Found \(files.count) potentially relevant file(s):
-            \(files.prefix(5).joined(separator: "\n"))
+            // Build response with excerpts (Quinn's suggestion: show content, not just paths!)
+            var response = "⚠️ NotebookLM unavailable - showing vault excerpts:\n\n"
+            for (idx, excerpt) in excerpts.prefix(3).enumerated() {
+                response += "[\(idx + 1)] \(excerpt.file)\n\(excerpt.content)\n\n"
+            }
 
-            For detailed answers, please check NotebookLM availability or specify which file to read.
-            """
+            if excerpts.count > 3 {
+                response += "... and \(excerpts.count - 3) more matches.\n"
+            }
+
+            return response
 
         } catch {
             return "NotebookLM unavailable and direct file access failed: \(error.localizedDescription)"
         }
     }
 
+    private struct GrepExcerpt {
+        let file: String
+        let content: String
+    }
+
+    private func parseGrepOutput(_ output: String) -> [GrepExcerpt] {
+        var excerpts: [GrepExcerpt] = []
+        var currentFile: String?
+        var currentLines: [String] = []
+
+        for line in output.components(separatedBy: "\n") {
+            // Grep format: path/to/file:123:content or path/to/file-123-context
+            if let colonRange = line.range(of: ":"),
+               let dashRange = line.range(of: "-") {
+                // New file or continuation
+                let filePath = String(line[..<min(colonRange.lowerBound, dashRange.lowerBound)])
+                if currentFile != filePath {
+                    // Save previous excerpt
+                    if let file = currentFile, !currentLines.isEmpty {
+                        excerpts.append(GrepExcerpt(
+                            file: file,
+                            content: currentLines.joined(separator: "\n")
+                        ))
+                    }
+                    currentFile = filePath
+                    currentLines = []
+                }
+                // Extract content after line number
+                if let contentStart = line.firstIndex(of: ":") {
+                    currentLines.append(String(line[line.index(after: contentStart)...]))
+                }
+            }
+        }
+
+        // Save last excerpt
+        if let file = currentFile, !currentLines.isEmpty {
+            excerpts.append(GrepExcerpt(
+                file: file,
+                content: currentLines.joined(separator: "\n")
+            ))
+        }
+
+        return excerpts
+    }
+
     private func extractSearchTerms(from query: String) -> [String] {
-        // Simple extraction: get meaningful words (>3 chars, not common words)
-        let commonWords = Set(["what", "when", "where", "which", "have", "does", "could", "would", "should", "about", "from", "with"])
+        // Improved stopword filtering (Quinn's suggestion!)
+        let stopwords = Set([
+            // Question words
+            "what", "when", "where", "which", "who", "whom", "whose", "why", "how",
+            // Auxiliary verbs
+            "have", "has", "had", "does", "did", "do", "will", "would", "should", "could", "can",
+            "may", "might", "must", "shall",
+            // Common verbs
+            "is", "are", "was", "were", "been", "being", "am",
+            // Prepositions & conjunctions
+            "about", "from", "with", "into", "onto", "through", "between", "among",
+            "and", "or", "but", "for", "nor", "yet", "so",
+            // Articles & pronouns
+            "the", "a", "an", "this", "that", "these", "those",
+            "it", "its", "they", "them", "their"
+        ])
+
         let words = query.lowercased()
             .components(separatedBy: CharacterSet.alphanumerics.inverted)
-            .filter { $0.count > 3 && !commonWords.contains($0) }
-        return Array(words.prefix(3))  // Top 3 terms for grep
+            .filter { $0.count > 2 && !stopwords.contains($0) }  // Lowered from >3 to >2 for "api", "db", etc
+
+        return Array(words.prefix(5))  // Top 5 terms (increased from 3 for better matches)
     }
 
     private func handleListFilesQuery(_ query: String) async -> String {

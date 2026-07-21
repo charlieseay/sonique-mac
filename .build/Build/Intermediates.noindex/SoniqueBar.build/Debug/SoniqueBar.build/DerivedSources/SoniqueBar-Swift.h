@@ -282,6 +282,8 @@ typedef unsigned int swift_uint4  __attribute__((__ext_vector_type__(4)));
 #pragma clang diagnostic ignored "-Watimport-in-framework-header"
 #endif
 @import AppKit;
+@import CoreLocation;
+@import Foundation;
 @import ObjectiveC;
 #endif
 
@@ -312,6 +314,23 @@ SWIFT_CLASS("_TtC10SoniqueBar11AppDelegate")
 - (void)applicationDidFinishLaunching:(NSNotification * _Nonnull)notification;
 - (void)applicationWillTerminate:(NSNotification * _Nonnull)notification;
 - (nonnull instancetype)init OBJC_DESIGNATED_INITIALIZER;
+@end
+
+@class CLLocationManager;
+SWIFT_CLASS("_TtC10SoniqueBar20SetupWizardViewModel")
+@interface SetupWizardViewModel : NSObject <CLLocationManagerDelegate>
+- (nonnull instancetype)init OBJC_DESIGNATED_INITIALIZER;
+- (void)locationManagerDidChangeAuthorization:(CLLocationManager * _Nonnull)manager;
+@end
+
+@class CLLocation;
+/// Fetches current weather using device location + OpenWeather API
+SWIFT_CLASS("_TtC10SoniqueBar14WeatherService")
+@interface WeatherService : NSObject <CLLocationManagerDelegate>
+- (nonnull instancetype)init SWIFT_UNAVAILABLE;
++ (nonnull instancetype)new SWIFT_UNAVAILABLE_MSG("-init is unavailable");
+- (void)locationManager:(CLLocationManager * _Nonnull)manager didUpdateLocations:(NSArray<CLLocation *> * _Nonnull)locations;
+- (void)locationManager:(CLLocationManager * _Nonnull)manager didFailWithError:(NSError * _Nonnull)error;
 @end
 
 #endif

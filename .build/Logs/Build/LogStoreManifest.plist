@@ -5,6 +5,49 @@
 	<key>logFormatVersion</key>
 	<integer>12</integer>
 	<key>logs</key>
-	<dict/>
+	<dict>
+		<key>7FBFF973-1E50-4A98-BAC0-814ED052C98D</key>
+		<dict>
+			<key>className</key>
+			<string>IDECommandLineBuildLog</string>
+			<key>documentTypeString</key>
+			<string>&lt;nil&gt;</string>
+			<key>domainType</key>
+			<string>Xcode.IDEActivityLogDomainType.BuildLog</string>
+			<key>fileName</key>
+			<string>7FBFF973-1E50-4A98-BAC0-814ED052C98D.xcactivitylog</string>
+			<key>hasPrimaryLog</key>
+			<true/>
+			<key>primaryObservable</key>
+			<dict>
+				<key>highLevelStatus</key>
+				<string>W</string>
+				<key>totalNumberOfAnalyzerIssues</key>
+				<integer>0</integer>
+				<key>totalNumberOfErrors</key>
+				<integer>0</integer>
+				<key>totalNumberOfTestFailures</key>
+				<integer>0</integer>
+				<key>totalNumberOfWarnings</key>
+				<integer>18</integer>
+			</dict>
+			<key>schemeIdentifier-containerName</key>
+			<string>SoniqueBar project</string>
+			<key>schemeIdentifier-schemeName</key>
+			<string>SoniqueBar</string>
+			<key>schemeIdentifier-sharedScheme</key>
+			<integer>1</integer>
+			<key>signature</key>
+			<string>Building project SoniqueBar with scheme SoniqueBar and configuration Debug</string>
+			<key>timeStartedRecording</key>
+			<real>806304407.92245197</real>
+			<key>timeStoppedRecording</key>
+			<real>806304415.07141197</real>
+			<key>title</key>
+			<string>Building project SoniqueBar with scheme SoniqueBar and configuration Debug</string>
+			<key>uniqueIdentifier</key>
+			<string>7FBFF973-1E50-4A98-BAC0-814ED052C98D</string>
+		</dict>
+	</dict>
 </dict>
 </plist>
