@@ -110,16 +110,16 @@ class ModelRouter {
 
         var providers = getProvidersForTier(tier)
 
-        // Reorder providers based on complexity
-        if complexity == .complex {
-            // Complex queries: put Claude CLI first, Ollama second
-            providers = providers.sorted(by: { p1, p2 in
-                if p1.name.contains("claude") { return true }
-                if p2.name.contains("claude") { return false }
-                return p1.config.priority < p2.config.priority
-            })
-            NSLog("[ModelRouter] Complex query detected - prioritizing Claude CLI")
-        }
+        // Adjust timeouts based on complexity (keep provider order)
+        let complexityTimeout: Double = {
+            switch complexity {
+            case .simple: return 1.0      // Use provider default
+            case .moderate: return 1.6    // 60% longer (25s → 40s for Ollama)
+            case .complex: return 3.6     // 3.6x longer (25s → 90s for Ollama)
+            }
+        }()
+
+        NSLog("[ModelRouter] Complexity: \(complexity), timeout multiplier: \(complexityTimeout)x")
 
         NSLog("[ModelRouter] Got \(providers.count) providers for tier \(tier.rawValue)")
         guard !providers.isEmpty else {
@@ -130,7 +130,10 @@ class ModelRouter {
         var lastError: Error?
         for provider in providers {
             do {
-                let response = try await callProvider(provider, prompt: prompt, tier: tier)
+                // Apply complexity-based timeout multiplier
+                let adjustedTimeout = provider.config.timeout * complexityTimeout
+
+                let response = try await callProvider(provider, prompt: prompt, tier: tier, overrideTimeout: adjustedTimeout)
 
                 // Check if escalation needed
                 if config.escalation.enabled,
@@ -260,8 +263,8 @@ class ModelRouter {
         return sorted
     }
 
-    private func callProvider(_ provider: ProviderInfo, prompt: String, tier: QueryTier) async throws -> ProviderResult {
-        let timeout = provider.config.timeout
+    private func callProvider(_ provider: ProviderInfo, prompt: String, tier: QueryTier, overrideTimeout: Double? = nil) async throws -> ProviderResult {
+        let timeout = overrideTimeout ?? provider.config.timeout
 
         switch provider.config.type {
         case .ollama:
