@@ -94,7 +94,8 @@ final class MemoryService {
 
     private func loadContext() -> String {
         guard let contextContent = readFile("context.md") else {
-            logger.warning("[MemoryService] context.md not found - Quinn doesn't know who Charlie is!")
+            logger.warning("[MemoryService] context.md not found - continuing with identity only")
+            // Return empty string instead of crashing - graceful degradation
             return ""
         }
 
@@ -112,21 +113,35 @@ final class MemoryService {
         }
 
         // Parse JSONL (one JSON object per line)
+        // Security: Validate JSONL format and skip malformed entries
         let lines = content.components(separatedBy: .newlines).filter { !$0.isEmpty }
         let recentLines = lines.suffix(count)
 
         var conversationContext = "# Recent Conversations\n\n"
+        var skippedCount = 0
 
         for line in recentLines {
-            guard let jsonData = line.data(using: .utf8),
+            // Trim whitespace
+            let trimmedLine = line.trimmingCharacters(in: .whitespaces)
+            if trimmedLine.isEmpty {
+                continue
+            }
+
+            guard let jsonData = trimmedLine.data(using: .utf8),
                   let json = try? JSONSerialization.jsonObject(with: jsonData) as? [String: Any],
                   let user = json["user"] as? String,
                   let assistant = json["assistant"] as? String else {
+                skippedCount += 1
+                logger.warning("[MemoryService] Skipped malformed JSONL entry")
                 continue
             }
 
             conversationContext += "User: \(user)\n"
             conversationContext += "Assistant: \(assistant)\n\n"
+        }
+
+        if skippedCount > 0 {
+            logger.info("[MemoryService] Loaded \(recentLines.count - skippedCount) conversations, skipped \(skippedCount) malformed entries")
         }
 
         return conversationContext

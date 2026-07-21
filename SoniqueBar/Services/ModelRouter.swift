@@ -279,10 +279,6 @@ class ModelRouter {
             return try await callOpenAI(provider: provider, prompt: prompt, timeout: timeout)
         case .nvidiaAPI:
             return try await callNVIDIA(provider: provider, prompt: prompt, timeout: timeout)
-        case .bash:
-            return try await callBash(provider: provider, prompt: prompt, timeout: timeout)
-        case .custom:
-            return try await callCustom(provider: provider, prompt: prompt, timeout: timeout)
         }
     }
 
@@ -293,8 +289,16 @@ class ModelRouter {
             throw RouterError.missingConfig("Ollama endpoint not specified")
         }
 
-        // Use OpenAI-compatible API for better compatibility
-        let url = URL(string: "\(endpoint)/v1/chat/completions")!
+        // BUG FIX #1: Use URLComponents for safe endpoint URL encoding
+        // Raw string concatenation fails with special chars (spaces, ampersands, etc.)
+        guard var components = URLComponents(string: endpoint) else {
+            throw RouterError.missingConfig("Invalid Ollama endpoint URL")
+        }
+        components.path = "/v1/chat/completions"
+        guard let url = components.url else {
+            throw RouterError.missingConfig("Failed to construct valid Ollama URL")
+        }
+
         var request = URLRequest(url: url, timeoutInterval: timeout)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
@@ -385,21 +389,6 @@ class ModelRouter {
         )
     }
 
-    private func callBash(provider: ProviderInfo, prompt: String, timeout: Double) async throws -> ProviderResult {
-        guard let command = provider.config.cliCommand else {
-            throw RouterError.missingConfig("Bash command not specified")
-        }
-
-        // Bash tools don't use the full prompt - they expect specific commands
-        // This is a simplified execution - the actual tool dispatch happens in IntentRouter
-        return try await callCLI(
-            command: command,
-            args: [prompt],
-            timeout: timeout,
-            providerName: provider.name
-        )
-    }
-
     private func callOpenAI(provider: ProviderInfo, prompt: String, timeout: Double) async throws -> ProviderResult {
         guard let endpoint = provider.config.endpoint,
               let apiKey = provider.config.apiKey else {
@@ -444,43 +433,6 @@ class ModelRouter {
         )
     }
 
-    private func callCustom(provider: ProviderInfo, prompt: String, timeout: Double) async throws -> ProviderResult {
-        guard let endpoint = provider.config.endpoint else {
-            throw RouterError.missingConfig("Custom endpoint not specified")
-        }
-
-        let url = URL(string: "\(endpoint)/v1/chat/completions")!
-        var request = URLRequest(url: url, timeoutInterval: timeout)
-        request.httpMethod = "POST"
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-
-        if let apiKey = provider.config.apiKey {
-            request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
-        }
-
-        let body: [String: Any] = [
-            "model": provider.model,
-            "messages": [["role": "user", "content": prompt]]
-        ]
-        request.httpBody = try JSONSerialization.data(withJSONObject: body)
-
-        let (data, response) = try await URLSession.shared.data(for: request)
-
-        guard let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 else {
-            throw RouterError.executionFailed("Custom API HTTP \((response as? HTTPURLResponse)?.statusCode ?? -1)")
-        }
-
-        let json = try JSONSerialization.jsonObject(with: data) as? [String: Any]
-        guard let choices = json?["choices"] as? [[String: Any]],
-              let message = choices.first?["message"] as? [String: Any],
-              let content = message["content"] as? String else {
-            throw RouterError.executionFailed("Invalid custom API response format")
-        }
-
-        updateProviderHealth(provider.name, healthy: true)
-        return ProviderResult(text: content)
-    }
-
     private func callCLI(command: String, args: [String], timeout: Double, providerName: String) async throws -> ProviderResult {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: command)
@@ -497,17 +449,31 @@ class ModelRouter {
 
         return try await withCheckedThrowingContinuation { continuation in
             var didComplete = false
+            // BUG FIX #7: Use atomic flag + lock to prevent timer from firing twice
+            let lock = NSLock()
 
             let timer = Timer.scheduledTimer(withTimeInterval: timeout, repeats: false) { _ in
-                guard !didComplete else { return }
+                lock.lock()
+                guard !didComplete else {
+                    lock.unlock()
+                    return
+                }
                 didComplete = true
+                lock.unlock()
+
                 process.terminate()
                 continuation.resume(throwing: RouterError.timeout("CLI timed out after \(timeout)s"))
             }
 
             process.terminationHandler = { process in
-                guard !didComplete else { return }
+                lock.lock()
+                guard !didComplete else {
+                    lock.unlock()
+                    return
+                }
                 didComplete = true
+                lock.unlock()
+
                 timer.invalidate()
 
                 let output = String(data: outputPipe.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8) ?? ""
@@ -523,8 +489,14 @@ class ModelRouter {
             do {
                 try process.run()
             } catch {
-                guard !didComplete else { return }
+                lock.lock()
+                guard !didComplete else {
+                    lock.unlock()
+                    return
+                }
                 didComplete = true
+                lock.unlock()
+
                 timer.invalidate()
                 continuation.resume(throwing: error)
             }
@@ -635,8 +607,6 @@ struct ProviderConfiguration: Codable {
         case bedrock
         case openaiAPI
         case nvidiaAPI
-        case bash
-        case custom
     }
 
     private enum CodingKeys: String, CodingKey {

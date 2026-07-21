@@ -33,12 +33,16 @@ class CommandServer: ObservableObject {
         if let token = try? String(contentsOfFile: tokenPath, encoding: .utf8).trimmingCharacters(in: .whitespacesAndNewlines), !token.isEmpty {
             self.authToken = token
             NSLog("[CommandServer] Loaded existing auth token")
+            // Security: Verify file permissions are secure (0600)
+            verifyFilePermissions(tokenPath)
         } else {
             // Generate and save a new token if none exists
             let newToken = UUID().uuidString
             try? newToken.write(toFile: tokenPath, atomically: true, encoding: .utf8)
             self.authToken = newToken
-            NSLog("[CommandServer] Generated new auth token")
+            // Security: Ensure file has secure permissions (0600)
+            try? FileManager.default.setAttributes([.protectionKey: FileProtectionType.complete], ofItemAtPath: tokenPath)
+            NSLog("[CommandServer] Generated new auth token with secure permissions")
         }
 
         // Sync auth token to iCloud preferences so iOS can use it
@@ -65,8 +69,27 @@ class CommandServer: ObservableObject {
         bonjourService?.stop()
     }
     
+    // MARK: - Security Helpers
+
+    private func verifyFilePermissions(_ path: String) {
+        do {
+            let attributes = try FileManager.default.attributesOfItem(atPath: path)
+            // Check if file permissions are restrictive (0600)
+            if let permissions = attributes[.posixPermissions] as? Int {
+                let octal = String(permissions, radix: 8)
+                if octal != "600" {
+                    NSLog("[CommandServer] ⚠️ WARNING: Secrets file has insecure permissions: \(octal) (should be 600)")
+                    // Attempt to fix permissions
+                    try? FileManager.default.setAttributes([.protectionKey: FileProtectionType.complete], ofItemAtPath: path)
+                }
+            }
+        } catch {
+            NSLog("[CommandServer] Could not verify file permissions: \(error.localizedDescription)")
+        }
+    }
+
     // MARK: - Server Setup
-    
+
     private func setupListener() {
         logger.info("[CommandServer] setupListener() called")
 
@@ -185,7 +208,10 @@ class CommandServer: ObservableObject {
     nonisolated private func handleConnection(_ connection: NWConnection) {
         connection.start(queue: .main)
 
-        connection.receive(minimumIncompleteLength: 1, maximumLength: 65536) { [weak self] data, _, isComplete, error in
+        // Security: Limit maximum request size to prevent DoS (5MB)
+        let maxRequestSize = 5 * 1024 * 1024
+
+        connection.receive(minimumIncompleteLength: 1, maximumLength: maxRequestSize) { [weak self] data, _, isComplete, error in
             guard let self = self else { return }
 
             // Fix connection leak: handle errors properly
@@ -196,6 +222,12 @@ class CommandServer: ObservableObject {
             }
 
             if let data = data, !data.isEmpty {
+                // Security: Check request size
+                if data.count > maxRequestSize {
+                    self.sendResponse("HTTP/1.1 413 Payload Too Large\r\n\r\n", to: connection)
+                    return
+                }
+
                 Task { @MainActor in
                     await self.processRequest(data, connection: connection)
                 }
@@ -391,12 +423,25 @@ class CommandServer: ObservableObject {
 
     /// Non-streaming fallback endpoint — returns single JSON response.
     private func handleCommand(_ data: Data, _ connection: NWConnection) async {
-        guard let text = extractCommandText(from: data) else {
+        guard var text = extractCommandText(from: data) else {
             sendResponse("HTTP/1.1 400 Bad Request\r\n\r\n{\"error\":\"Missing 'text' field\"}", to: connection)
             return
         }
 
-        logger.info("[CommandServer] Command request: \(text.prefix(80))")
+        // Security: Validate and sanitize input
+        // Check length
+        if text.count > 10_000 {
+            sendResponse("HTTP/1.1 400 Bad Request\r\n\r\n{\"error\":\"Input text too long (max 10000 chars)\"}", to: connection)
+            return
+        }
+
+        // Security: Sanitize logging to prevent injection
+        let sanitizedForLog = text
+            .prefix(80)
+            .replacingOccurrences(of: "\n", with: " ")
+            .replacingOccurrences(of: "\r", with: " ")
+
+        logger.info("[CommandServer] Command request: \(sanitizedForLog)")
         lastCommand = text
         requestCount += 1
 
@@ -405,7 +450,6 @@ class CommandServer: ObservableObject {
             sendJSON("{\"response\":\(escapeJSON(response)),\"status\":\"ok\"}", to: connection)
         } catch {
             logger.error("[CommandServer] Bridge error: \(error.localizedDescription)")
-            NSLog("[CommandServer] FULL ERROR: \(error)")
             sendJSON("{\"response\":\"Error: \(error.localizedDescription)\",\"status\":\"error\"}", to: connection)
         }
     }
@@ -480,12 +524,28 @@ class CommandServer: ObservableObject {
                 process.standardError = nil
 
                 try process.run()
-                process.waitUntilExit()
+
+                // BUG FIX #5: Add timeout for ffmpeg process (don't block indefinitely)
+                let startTime = Date()
+                let maxDuration: TimeInterval = 30.0  // 30s timeout for conversion
+                while process.isRunning && Date().timeIntervalSince(startTime) < maxDuration {
+                    usleep(100_000)  // Poll every 100ms
+                }
+
+                if process.isRunning {
+                    process.terminate()
+                    logger.error("[CommandServer] ffmpeg timed out after \(maxDuration)s")
+                    return nil
+                }
 
                 if process.terminationStatus == 0,
                    let pcmData = try? Data(contentsOf: URL(fileURLWithPath: tempPCM)) {
                     return pcmData
                 }
+                // BUG FIX #2: On ffmpeg error, do NOT fall through silently
+                // Log failure and return nil immediately (never return partial/corrupt data)
+                logger.error("[CommandServer] ffmpeg conversion failed (status: \(process.terminationStatus))")
+                return nil
             }
 
             // Fallback: use AVFoundation

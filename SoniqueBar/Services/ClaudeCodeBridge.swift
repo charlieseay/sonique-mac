@@ -38,22 +38,17 @@ class ClaudeCodeBridge {
             conversationHistory.removeFirst()
         }
 
-        NSLog("[ClaudeCodeBridge] DEBUG: About to load memory...")
         // Load FULL memory context from Application Support (not just iCloud personality)
         // This includes: Identity + Rules + Soul + Context (Charlie) + Recent Conversations
         let fullMemory = await MemoryService.shared.loadFullContext()
-        NSLog("[ClaudeCodeBridge] DEBUG: Memory loaded, length: \(fullMemory.count)")
 
         // TEMPORARY: Hardcode name to test if iCloud is the blocker
         let assistantName = "Quinn"
         // TODO: Restore this after testing
         // let assistantName = await SoniqueBrain.shared.getAssistantName()
-        NSLog("[ClaudeCodeBridge] DEBUG: Assistant name: \(assistantName)")
 
         // Generate capability context
-        NSLog("[ClaudeCodeBridge] DEBUG: About to generate capability context...")
         let capabilityContext = CapabilityIndex.generateCapabilitySummary()
-        NSLog("[ClaudeCodeBridge] DEBUG: Capability context length: \(capabilityContext.count)")
 
         // Detect project mentions and add vault path context
         var projectContext = ""
@@ -86,14 +81,10 @@ class ClaudeCodeBridge {
 
         let result: (stdout: String, stderr: String, exitCode: Int32)
         do {
-            NSLog("[ClaudeCodeBridge] Calling ModelRouter.route() with prompt length: \(prompt.count)")
             let response = try await ModelRouter.shared.route(prompt: prompt, context: context)
-            NSLog("[ClaudeCodeBridge] ✓ ModelRouter success: Provider: \(response.provider), Tier: \(response.tier.rawValue), Latency: \(String(format: "%.2f", response.latency))s")
             logger.info("[ClaudeCodeBridge] Provider: \(response.provider), Tier: \(response.tier.rawValue), Latency: \(String(format: "%.2f", response.latency))s")
             result = (stdout: response.text, stderr: "", exitCode: 0)
         } catch {
-            NSLog("[ClaudeCodeBridge] ❌ ModelRouter failed: \(error)")
-            NSLog("[ClaudeCodeBridge] ❌ DETAILED ERROR: \(String(describing: error))")
             logger.error("[ClaudeCodeBridge] ModelRouter failed: \(error.localizedDescription)")
             // Propagate the actual error instead of wrapping it
             throw BridgeError.executionFailed("ModelRouter error: \(error.localizedDescription)")

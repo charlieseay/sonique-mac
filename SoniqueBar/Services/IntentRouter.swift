@@ -358,20 +358,32 @@ final class IntentRouter {
 
         let taskDesc = String(beforeTo[taskStart...]).trimmingCharacters(in: .whitespaces)
 
-        // Debug logging
-        NSLog("[TaskDispatch] Parsed - Task: '\(taskDesc)', Owner: '\(ownerStr)', Effort: '\(effortStr)'")
+        // Security: Sanitize logging to prevent injection
+        let sanitizedTask = taskDesc
+            .replacingOccurrences(of: "\n", with: " ")
+            .replacingOccurrences(of: "\r", with: " ")
+            .prefix(100)
+        NSLog("[TaskDispatch] Parsed - Task: '\(sanitizedTask)', Owner: '\(ownerStr)', Effort: '\(effortStr)'")
 
-        // Validate
+        // Validate task description
         guard !taskDesc.isEmpty else {
             return "Task description cannot be empty"
         }
 
-        guard ["CHARLIE", "AIDER-GEM", "NVIDIA-AGENT", "CURSOR", "CLAUDE"].contains(ownerStr) else {
-            return "Invalid owner '\(ownerStr)'. Must be one of: CHARLIE, AIDER-GEM, NVIDIA-AGENT, CURSOR, CLAUDE"
+        guard taskDesc.count <= 500 else {
+            return "Task description too long (max 500 chars)"
         }
 
-        guard ["S", "M", "L", "XL"].contains(effortStr) else {
-            return "Invalid effort '\(effortStr)'. Must be one of: S, M, L, XL"
+        // Security: Validate owner field to prevent injection
+        let validOwners = ["CHARLIE", "AIDER-GEM", "NVIDIA-AGENT", "CURSOR", "CLAUDE"]
+        guard validOwners.contains(ownerStr) else {
+            return "Invalid owner '\(ownerStr)'. Must be one of: \(validOwners.joined(separator: ", "))"
+        }
+
+        // Security: Validate effort field
+        let validEfforts = ["S", "M", "L", "XL"]
+        guard validEfforts.contains(effortStr) else {
+            return "Invalid effort '\(effortStr)'. Must be one of: \(validEfforts.joined(separator: ", "))"
         }
 
         // Create the task
@@ -474,12 +486,15 @@ final class IntentRouter {
         do {
             try process.run()
 
-            // Wait for process with timeout (NotebookLM can take 20-30s)
+            // BUG FIX #4: Wait for process with timeout AND cancellation support
+            // (NotebookLM can take 20-30s) — must handle task cancellation gracefully
             let maxWaitTime: TimeInterval = 45.0
             let checkInterval: TimeInterval = 0.5
             var elapsed: TimeInterval = 0
 
             while process.isRunning && elapsed < maxWaitTime {
+                // Check for cancellation before sleeping
+                try Task.checkCancellation()
                 try await Task.sleep(nanoseconds: UInt64(checkInterval * 1_000_000_000))
                 elapsed += checkInterval
             }
