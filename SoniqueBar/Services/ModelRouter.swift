@@ -297,9 +297,23 @@ class ModelRouter {
     }
 
     private func callBedrock(provider: ProviderInfo, prompt: String, timeout: Double) async throws -> ProviderResult {
+        guard let command = provider.config.cliCommand else {
+            throw RouterError.missingConfig("No cliCommand for provider: \(provider.name)")
+        }
+
+        // Parse command and args from cliCommand (e.g. "/path/to/cmd --model haiku")
+        let parts = command.split(separator: " ").map(String.init)
+        guard !parts.isEmpty else {
+            throw RouterError.missingConfig("Empty cliCommand for provider: \(provider.name)")
+        }
+
+        let executablePath = parts[0]
+        var args = Array(parts.dropFirst())
+        args.append(contentsOf: ["-p", prompt])
+
         return try await callCLI(
-            command: "/usr/local/bin/ask_claude_bedrock",
-            args: ["-p", prompt],
+            command: executablePath,
+            args: args,
             timeout: timeout,
             providerName: provider.name
         )
