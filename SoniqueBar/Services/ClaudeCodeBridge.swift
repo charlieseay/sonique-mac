@@ -6,10 +6,10 @@ class ClaudeCodeBridge {
     private let logger = Logger(subsystem: "com.seayniclabs.soniquebar", category: "ClaudeCodeBridge")
 
     // PERF OPT #7: Time-based conversation history instead of fixed count
-    // Keep messages from last 30 minutes (sliding window) instead of last N messages
-    // More context-aware: old conversations from hours ago are dropped automatically
+    // Keep messages from last 7 days (sliding window) to maintain context across gaps in usage
+    // Example: Friday noon → Monday morning should retain Friday's context
     private var conversationHistory: [(role: String, content: String, timestamp: Date)] = []
-    private let maxHistoryDuration: TimeInterval = 30 * 60  // 30 minutes
+    private let maxHistoryDuration: TimeInterval = 7 * 24 * 60 * 60  // 7 days
 
     func execute(text: String, mcpToolsAvailable: Bool = true) async throws -> String {
         logger.info("[ClaudeCodeBridge] Executing: \(text.prefix(80))")
