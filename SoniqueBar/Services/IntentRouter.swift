@@ -155,6 +155,22 @@ final class IntentRouter {
             return await handleNotebookQuery(query, notebook: "team-kb")
         }
 
+        // NotebookLM vault queries - tech stack knowledge base (NEW!)
+        if matchesPattern(lower, patterns: [
+            "how does",
+            "how to use",
+            "api documentation",
+            "framework documentation",
+            "library reference",
+            "tech stack",
+            "claude api",
+            "docker compose",
+            "swift syntax",
+            "python async"
+        ]) {
+            return await handleNotebookQuery(query, notebook: "tech-kb")
+        }
+
         // No native intent matched - route to LLM
         return nil
     }
@@ -312,6 +328,8 @@ final class IntentRouter {
             notebookId = "201885bd-9c21-4d6d-ad7d-bb69e72d11df"
         case "team-kb":
             notebookId = "d45f4666-0a50-4986-9f53-abe7d92107c1"
+        case "tech-kb":
+            notebookId = "60211d85-ad2b-46a1-b2a4-4dd40294dbb1"
         default:
             return "Unknown notebook: \(notebook)"
         }
@@ -408,6 +426,8 @@ final class IntentRouter {
             searchPath = "\(vaultPath)/Projects"
         case "team-kb":
             searchPath = vaultPath  // Broader search for infrastructure
+        case "tech-kb":
+            searchPath = vaultPath  // Tech docs could be anywhere
         default:
             // Log failed fallback
             logFallback(

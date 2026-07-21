@@ -6,7 +6,7 @@
 	<integer>12</integer>
 	<key>logs</key>
 	<dict>
-		<key>7FBFF973-1E50-4A98-BAC0-814ED052C98D</key>
+		<key>0D399C26-9873-493B-8295-6F0144CAA9D9</key>
 		<dict>
 			<key>className</key>
 			<string>IDECommandLineBuildLog</string>
@@ -15,7 +15,7 @@
 			<key>domainType</key>
 			<string>Xcode.IDEActivityLogDomainType.BuildLog</string>
 			<key>fileName</key>
-			<string>7FBFF973-1E50-4A98-BAC0-814ED052C98D.xcactivitylog</string>
+			<string>0D399C26-9873-493B-8295-6F0144CAA9D9.xcactivitylog</string>
 			<key>hasPrimaryLog</key>
 			<true/>
 			<key>primaryObservable</key>
@@ -40,13 +40,13 @@
 			<key>signature</key>
 			<string>Building project SoniqueBar with scheme SoniqueBar and configuration Debug</string>
 			<key>timeStartedRecording</key>
-			<real>806304407.92245197</real>
+			<real>806305841.93093705</real>
 			<key>timeStoppedRecording</key>
-			<real>806304415.07141197</real>
+			<real>806305846.42032397</real>
 			<key>title</key>
 			<string>Building project SoniqueBar with scheme SoniqueBar and configuration Debug</string>
 			<key>uniqueIdentifier</key>
-			<string>7FBFF973-1E50-4A98-BAC0-814ED052C98D</string>
+			<string>0D399C26-9873-493B-8295-6F0144CAA9D9</string>
 		</dict>
 		<key>8EC0186E-A4D8-4E5A-9D65-D795188EE1DF</key>
 		<dict>
