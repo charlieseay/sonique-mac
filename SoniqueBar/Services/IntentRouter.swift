@@ -29,6 +29,21 @@ final class IntentRouter {
     func route(_ query: String) async -> String? {
         let lower = query.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
 
+        // Greetings - instant responses (no LLM)
+        if matchesPattern(lower, patterns: [
+            "good morning",
+            "morning",
+            "good afternoon",
+            "afternoon",
+            "good evening",
+            "evening",
+            "hello",
+            "hi",
+            "hey"
+        ]) {
+            return handleGreeting(query: lower)
+        }
+
         // Combined day + date queries
         if matchesPattern(lower, patterns: [
             "day and date",
