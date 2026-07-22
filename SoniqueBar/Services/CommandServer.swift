@@ -1179,7 +1179,7 @@ class CommandServer: ObservableObject {
 
         let payload: [String: Any] = [
             "text": text,
-            "model_id": "eleven_monolingual_v1",
+            "model_id": "eleven_flash_v2_5",
             "voice_settings": ["stability": 0.5, "similarity_boost": 0.75]
         ]
 
