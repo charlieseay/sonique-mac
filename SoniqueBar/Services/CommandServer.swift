@@ -485,20 +485,67 @@ class CommandServer: ObservableObject {
         let ack = thinkingAcks.randomElement()!
         await sendNDJSONChunk("{\"chunk\":\(escapeJSON(ack + " ")),\"is_final\":false}", to: connection)
 
+        // Watchdog: Kill LLM call if it takes >60s + send keepalive pings every 10s
+        let llmTimeout: TimeInterval = 60.0
+        var llmCompleted = false
+
+        // Keepalive task - sends heartbeat every 10s while LLM is processing
+        let keepaliveTask = Task {
+            while !Task.isCancelled && !llmCompleted {
+                try? await Task.sleep(nanoseconds: 10_000_000_000)  // 10s
+                if !llmCompleted {
+                    await sendNDJSONChunk("{\"heartbeat\":true}", to: connection)
+                    logger.info("[CommandServer] Sent keepalive ping")
+                }
+            }
+        }
+
+        // LLM execution task with timeout
+        let llmTask = Task {
+            try await claudeBridge.execute(text: text, imageBase64: imageBase64)
+        }
+
+        // Watchdog task - cancels LLM if it takes too long
+        let watchdogTask = Task {
+            try? await Task.sleep(nanoseconds: UInt64(llmTimeout * 1_000_000_000))
+            if !llmCompleted {
+                llmTask.cancel()
+                logger.error("[CommandServer] LLM timeout after \(llmTimeout)s")
+            }
+        }
+
         do {
-            let response = try await claudeBridge.execute(text: text, imageBase64: imageBase64)
-            // Split response into word-sized chunks so iOS starts speaking immediately.
-            let words = response.components(separatedBy: " ")
-            for (i, word) in words.enumerated() {
-                let isLast = i == words.index(before: words.endIndex)
-                let piece = isLast ? word : word + " "
-                if !piece.trimmingCharacters(in: .whitespaces).isEmpty {
+            let response = try await llmTask.value
+            llmCompleted = true
+            keepaliveTask.cancel()
+            watchdogTask.cancel()
+
+            // Split response into phrase-sized chunks (sentences) so iOS starts speaking immediately
+            // without excessive overhead from word-by-word processing
+            let sentences = response.components(separatedBy: CharacterSet(charactersIn: ".!?"))
+            var sentenceIndex = 0
+            for sentence in sentences {
+                let trimmed = sentence.trimmingCharacters(in: .whitespaces)
+                if !trimmed.isEmpty {
+                    sentenceIndex += 1
+                    let isLast = sentenceIndex == sentences.count
+                    // Re-add punctuation for complete sentence
+                    let piece = isLast ? trimmed : trimmed + ". "
                     await sendNDJSONChunk("{\"chunk\":\(escapeJSON(piece)),\"is_final\":false}", to: connection)
                 }
             }
         } catch {
+            llmCompleted = true
+            keepaliveTask.cancel()
+            watchdogTask.cancel()
+
             logger.error("[CommandServer] Bridge error: \(error.localizedDescription)")
-            let msg = "I encountered an error. Please try again."
+            let msg: String
+            if error is CancellationError {
+                msg = "That query took too long. Try asking something simpler."
+            } else {
+                msg = "I encountered an error. Please try again."
+            }
             await sendNDJSONChunk("{\"chunk\":\(escapeJSON(msg)),\"is_final\":false}", to: connection)
         }
 

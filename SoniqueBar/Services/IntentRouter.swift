@@ -55,7 +55,23 @@ final class IntentRouter {
             return "Today is \(fullDate)."
         }
 
-        // Time queries
+        // Time in specific timezone/city (CHECK THIS BEFORE generic "what time is it")
+        if matchesPattern(lower, patterns: [
+            "what time is it in ",
+            "time in ",
+            "what's the time in "
+        ]) {
+            // Skip multi-city queries (contain "and") - route to LLM for complex time comparisons
+            if lower.contains(" and ") {
+                return nil  // Route to LLM instead
+            }
+            let location = extractCity(from: lower)
+            if !location.isEmpty {
+                return getTimeInLocation(location)
+            }
+        }
+
+        // Time queries (generic, check AFTER location-specific)
         if matchesPattern(lower, patterns: [
             "what time is it",
             "what's the time",
@@ -99,6 +115,8 @@ final class IntentRouter {
         // Calendar queries
         if matchesPattern(lower, patterns: [
             "what's on my calendar",
+            "what's on my calendar today",
+            "whats on my calendar today",
             "my calendar today",
             "today's calendar",
             "calendar events",
@@ -153,18 +171,6 @@ final class IntentRouter {
                 }
             }
             return await WeatherService.shared.getCurrentWeather()
-        }
-
-        // Time in specific timezone/city
-        if matchesPattern(lower, patterns: [
-            "what time is it in ",
-            "time in ",
-            "what's the time in "
-        ]) {
-            let location = extractCity(from: lower)
-            if !location.isEmpty {
-                return getTimeInLocation(location)
-            }
         }
 
         // iOS Shortcuts - Timer
@@ -314,6 +320,22 @@ final class IntentRouter {
         formatter.dateFormat = "EEEE"
         let day = formatter.string(from: Date())
         return "Today is \(day)."
+    }
+
+    private func handleGreeting(query: String) -> String {
+        let hour = Calendar.current.component(.hour, from: Date())
+
+        // Time-appropriate greeting
+        if query.contains("morning") || (hour >= 5 && hour < 12) {
+            return ["Good morning!", "Morning!", "Hello! Good morning."].randomElement()!
+        } else if query.contains("afternoon") || (hour >= 12 && hour < 17) {
+            return ["Good afternoon!", "Afternoon!", "Hello! Good afternoon."].randomElement()!
+        } else if query.contains("evening") || (hour >= 17 && hour < 22) {
+            return ["Good evening!", "Evening!", "Hello! Good evening."].randomElement()!
+        } else {
+            // Generic greetings for "hello", "hi", "hey" or late night
+            return ["Hello!", "Hi there!", "Hey!", "Hello! How can I help?"].randomElement()!
+        }
     }
 
     private func handleCalendarQuery(daysFromToday: Int = 0) async -> String {
