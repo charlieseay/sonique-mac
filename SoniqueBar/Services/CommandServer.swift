@@ -389,9 +389,25 @@ class CommandServer: ObservableObject {
         // Read API key from secrets
         let keyPath = "/Volumes/data/secrets/elevenlabs_api_key"
         if let apiKey = try? String(contentsOfFile: keyPath, encoding: .utf8).trimmingCharacters(in: .whitespacesAndNewlines), !apiKey.isEmpty {
+            // Load voice preference from iCloud (defaults to Jessica)
+            let prefs = SoniqueBrain.shared.loadPreferences()
+            let voiceId = prefs.selectedVoiceId ?? "cgSgspJ2msm6clMCkdW9"  // Jessica default
+
             let response = """
             {
-                "elevenlabsAPIKey": "\(apiKey)"
+                "elevenlabs": {
+                    "api_key": "\(apiKey)",
+                    "voice_id": "\(voiceId)",
+                    "model": "eleven_multilingual_v2"
+                },
+                "kokoro": {
+                    "enabled": true,
+                    "url": "http://127.0.0.1:8890/synthesize/kokoro"
+                },
+                "conversation": {
+                    "session_id": "\(UUID().uuidString)",
+                    "interface": "voice"
+                }
             }
             """
             sendJSON(response, to: connection)
