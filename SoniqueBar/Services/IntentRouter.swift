@@ -88,9 +88,54 @@ final class IntentRouter {
             "weather forecast",
             "how's the weather",
             "weather like",
-            "what is the weather"
+            "what is the weather",
+            "weather in ",
+            "how's the weather in "
         ]) {
+            // Check if city specified
+            if lower.contains(" in ") {
+                let city = extractCity(from: lower)
+                return "I can check weather by location, but city-specific weather lookup isn't fully implemented yet. For now, I can only check the weather at your current location."
+            }
             return await WeatherService.shared.getCurrentWeather()
+        }
+
+        // iOS Shortcuts - Timer
+        if matchesPattern(lower, patterns: [
+            "set timer for",
+            "timer for",
+            "set a timer"
+        ]) {
+            return handleShortcutIntent(.setTimer(parseMinutes(from: query)))
+        }
+
+        // iOS Shortcuts - Do Not Disturb
+        if matchesPattern(lower, patterns: [
+            "turn on do not disturb",
+            "enable do not disturb",
+            "turn on dnd",
+            "enable dnd"
+        ]) {
+            return handleShortcutIntent(.toggleDND(true))
+        }
+
+        if matchesPattern(lower, patterns: [
+            "turn off do not disturb",
+            "disable do not disturb",
+            "turn off dnd",
+            "disable dnd"
+        ]) {
+            return handleShortcutIntent(.toggleDND(false))
+        }
+
+        // iOS Shortcuts - Reminders
+        if matchesPattern(lower, patterns: [
+            "remind me to",
+            "create reminder",
+            "add reminder"
+        ]) {
+            let reminderText = extractReminderText(from: query)
+            return handleShortcutIntent(.createReminder(reminderText))
         }
 
         // System info
@@ -897,5 +942,61 @@ final class IntentRouter {
         } catch {
             NSLog("[IntentRouter] Failed to log fallback: \(error)")
         }
+    }
+
+    // MARK: - Shortcut Intent Handling
+
+    private enum ShortcutIntent {
+        case setTimer(Int)  // minutes
+        case toggleDND(Bool)  // enable/disable
+        case createReminder(String)  // text
+    }
+
+    private func handleShortcutIntent(_ intent: ShortcutIntent) -> String {
+        // Return JSON instruction for iOS to execute
+        // iOS VoiceLoop will parse this and call ShortcutsManager
+        switch intent {
+        case .setTimer(let minutes):
+            return "[SHORTCUT:SET_TIMER:\(minutes)]"
+        case .toggleDND(let enable):
+            return "[SHORTCUT:TOGGLE_DND:\(enable)]"
+        case .createReminder(let text):
+            let sanitized = text.replacingOccurrences(of: "]", with: "")
+            return "[SHORTCUT:CREATE_REMINDER:\(sanitized)]"
+        }
+    }
+
+    private func parseMinutes(from text: String) -> Int {
+        // Extract number from "set timer for 10 minutes"
+        let words = text.split(separator: " ")
+        for (index, word) in words.enumerated() {
+            if let num = Int(word) {
+                return num
+            }
+        }
+        return 5  // default to 5 minutes
+    }
+
+    private func extractReminderText(from text: String) -> String {
+        // Extract "pick up milk" from "remind me to pick up milk"
+        let lower = text.lowercased()
+        if let range = lower.range(of: "remind me to ") {
+            return String(text[range.upperBound...])
+        }
+        if let range = lower.range(of: "create reminder ") {
+            return String(text[range.upperBound...])
+        }
+        if let range = lower.range(of: "add reminder ") {
+            return String(text[range.upperBound...])
+        }
+        return text
+    }
+
+    private func extractCity(from text: String) -> String {
+        // Extract "Chicago" from "weather in Chicago"
+        if let range = text.range(of: " in ") {
+            return String(text[range.upperBound...])
+        }
+        return ""
     }
 }
