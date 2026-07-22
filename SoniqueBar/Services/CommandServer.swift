@@ -1154,7 +1154,10 @@ class CommandServer: ObservableObject {
             return
         }
 
-        logger.info("[handleSynthesizeElevenLabs] Synthesizing \(text.count) chars")
+        // Get voice_id from request (optional, falls back to default)
+        let voiceId = json["voice_id"] as? String ?? "EXAVITQu4vr4xnSDxMaL" // Default voice
+
+        logger.info("[handleSynthesizeElevenLabs] Synthesizing \(text.count) chars with voice \(voiceId)")
 
         // Load ElevenLabs API key
         let keyPath = "/Volumes/data/secrets/elevenlabs_api_key"
@@ -1165,7 +1168,6 @@ class CommandServer: ObservableObject {
         }
 
         // Call ElevenLabs API (returns MP3)
-        let voiceId = "EXAVITQu4vr4xnSDxMaL" // Default voice
         guard let url = URL(string: "https://api.elevenlabs.io/v1/text-to-speech/\(voiceId)") else {
             sendResponse("HTTP/1.1 500 Internal Server Error\r\n\r\n{\"error\":\"Invalid URL\"}", to: connection)
             return
