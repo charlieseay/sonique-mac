@@ -338,6 +338,8 @@ class CommandServer: ObservableObject {
             await handleSynthesize(data, connection)
         } else if path == "/synthesize/kokoro" && method == "POST" {
             await handleSynthesizeKokoro(data, connection)
+        } else if path == "/synthesize/elevenlabs" && method == "POST" {
+            await handleSynthesizeElevenLabs(data, connection)
         } else if path == "/feedback" && method == "POST" {
             await handleFeedback(data, connection)
         } else {
@@ -1132,6 +1134,86 @@ class CommandServer: ObservableObject {
             logger.info("[handleSynthesizeKokoro] Kokoro TTS → PCM: \(pcmData.count) bytes @ 24kHz")
         } catch {
             logger.error("[handleSynthesizeKokoro] Synthesis failed: \(error.localizedDescription)")
+            sendResponse("HTTP/1.1 500 Internal Server Error\r\n\r\n{\"error\":\"\(error.localizedDescription)\"}", to: connection)
+        }
+    }
+
+    private func handleSynthesizeElevenLabs(_ data: Data, _ connection: NWConnection) async {
+        guard let requestString = String(data: data, encoding: .utf8),
+              let range = requestString.range(of: "\r\n\r\n"),
+              let bodyData = String(requestString[range.upperBound...]).data(using: .utf8),
+              let json = try? JSONSerialization.jsonObject(with: bodyData) as? [String: Any] else {
+            logger.error("[handleSynthesizeElevenLabs] Failed to parse JSON")
+            sendResponse("HTTP/1.1 400 Bad Request\r\n\r\n{\"error\":\"Invalid JSON\"}", to: connection)
+            return
+        }
+
+        guard let text = json["text"] as? String else {
+            logger.error("[handleSynthesizeElevenLabs] Missing text field")
+            sendResponse("HTTP/1.1 400 Bad Request\r\n\r\n{\"error\":\"Missing text field\"}", to: connection)
+            return
+        }
+
+        logger.info("[handleSynthesizeElevenLabs] Synthesizing \(text.count) chars")
+
+        // Load ElevenLabs API key
+        let keyPath = "/Volumes/data/secrets/elevenlabs_api_key"
+        guard let apiKey = try? String(contentsOfFile: keyPath, encoding: .utf8).trimmingCharacters(in: .whitespacesAndNewlines) else {
+            logger.error("[handleSynthesizeElevenLabs] Failed to load API key")
+            sendResponse("HTTP/1.1 500 Internal Server Error\r\n\r\n{\"error\":\"API key not found\"}", to: connection)
+            return
+        }
+
+        // Call ElevenLabs API (returns MP3)
+        let voiceId = "EXAVITQu4vr4xnSDxMaL" // Default voice
+        guard let url = URL(string: "https://api.elevenlabs.io/v1/text-to-speech/\(voiceId)") else {
+            sendResponse("HTTP/1.1 500 Internal Server Error\r\n\r\n{\"error\":\"Invalid URL\"}", to: connection)
+            return
+        }
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.setValue(apiKey, forHTTPHeaderField: "xi-api-key")
+        request.timeoutInterval = 30
+
+        let payload: [String: Any] = [
+            "text": text,
+            "model_id": "eleven_monolingual_v1",
+            "voice_settings": ["stability": 0.5, "similarity_boost": 0.75]
+        ]
+
+        guard let body = try? JSONSerialization.data(withJSONObject: payload) else {
+            sendResponse("HTTP/1.1 500 Internal Server Error\r\n\r\n{\"error\":\"Failed to serialize payload\"}", to: connection)
+            return
+        }
+        request.httpBody = body
+
+        do {
+            let (mp3Data, response) = try await URLSession.shared.data(for: request)
+            guard let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 else {
+                logger.error("[handleSynthesizeElevenLabs] API error: \((response as? HTTPURLResponse)?.statusCode ?? -1)")
+                sendResponse("HTTP/1.1 500 Internal Server Error\r\n\r\n{\"error\":\"ElevenLabs API error\"}", to: connection)
+                return
+            }
+
+            // Return MP3 directly (iOS AVFoundation can play MP3 natively)
+            let responseHeader = """
+            HTTP/1.1 200 OK\r
+            Content-Type: audio/mpeg\r
+            Content-Length: \(mp3Data.count)\r
+            \r
+
+            """
+
+            connection.send(content: responseHeader.data(using: .utf8)!, completion: .contentProcessed { _ in })
+            connection.send(content: mp3Data, completion: .contentProcessed { _ in
+                connection.cancel()
+            })
+
+            logger.info("[handleSynthesizeElevenLabs] ElevenLabs TTS → MP3: \(mp3Data.count) bytes")
+        } catch {
+            logger.error("[handleSynthesizeElevenLabs] Synthesis failed: \(error.localizedDescription)")
             sendResponse("HTTP/1.1 500 Internal Server Error\r\n\r\n{\"error\":\"\(error.localizedDescription)\"}", to: connection)
         }
     }
