@@ -70,6 +70,17 @@ final class IntentRouter {
             return handleDayQuery()
         }
 
+        // Next meeting queries (check before general calendar)
+        if matchesPattern(lower, patterns: [
+            "when's my next meeting",
+            "when is my next meeting",
+            "next meeting",
+            "what's my next meeting",
+            "what's next on my calendar"
+        ]) {
+            return await handleNextMeetingQuery()
+        }
+
         // Calendar queries
         if matchesPattern(lower, patterns: [
             "what's on my calendar",
@@ -77,9 +88,36 @@ final class IntentRouter {
             "today's calendar",
             "calendar events",
             "my schedule",
-            "what's scheduled"
+            "what's scheduled",
+            "what's on my schedule",
+            "calendar for today",
+            "do i have any meetings",
+            "what meetings do i have",
+            "am i free"
         ]) {
             return await handleCalendarQuery()
+        }
+
+        // Tomorrow's calendar
+        if matchesPattern(lower, patterns: [
+            "calendar tomorrow",
+            "what's on my calendar tomorrow",
+            "tomorrow's calendar",
+            "tomorrow's schedule",
+            "meetings tomorrow",
+            "schedule for tomorrow"
+        ]) {
+            return await handleCalendarQuery(daysFromToday: 1)
+        }
+
+        // This week's calendar
+        if matchesPattern(lower, patterns: [
+            "calendar this week",
+            "this week's calendar",
+            "schedule this week",
+            "meetings this week"
+        ]) {
+            return await handleWeekCalendarQuery()
         }
 
         // Weather - city-specific or current location
@@ -263,7 +301,7 @@ final class IntentRouter {
         return "Today is \(day)."
     }
 
-    private func handleCalendarQuery() async -> String {
+    private func handleCalendarQuery(daysFromToday: Int = 0) async -> String {
         // Request calendar access (compatible with macOS 13+)
         if #available(macOS 14.0, *) {
             do {
@@ -286,8 +324,9 @@ final class IntentRouter {
             }
         }
 
-        // Get today's events
-        let startOfDay = calendar.startOfDay(for: Date())
+        // Calculate target day
+        let targetDate = calendar.date(byAdding: .day, value: daysFromToday, to: Date()) ?? Date()
+        let startOfDay = calendar.startOfDay(for: targetDate)
         let endOfDay = calendar.date(byAdding: .day, value: 1, to: startOfDay)!
 
         let predicate = eventStore.predicateForEvents(
@@ -297,8 +336,10 @@ final class IntentRouter {
         )
         let events = eventStore.events(matching: predicate)
 
+        let dayLabel = daysFromToday == 0 ? "today" : daysFromToday == 1 ? "tomorrow" : "that day"
+
         if events.isEmpty {
-            return "You have no events scheduled for today."
+            return "You have no events scheduled for \(dayLabel)."
         }
 
         if events.count == 1 {
@@ -306,7 +347,7 @@ final class IntentRouter {
             let timeFormatter = DateFormatter()
             timeFormatter.timeStyle = .short
             let time = timeFormatter.string(from: event.startDate)
-            return "You have 1 event today: \(event.title ?? "Untitled") at \(time)."
+            return "You have 1 event \(dayLabel): \(event.title ?? "Untitled") at \(time)."
         }
 
         // Multiple events - summarize
@@ -318,7 +359,133 @@ final class IntentRouter {
         }.joined(separator: ", ")
 
         let suffix = events.count > 3 ? ", and \(events.count - 3) more" : ""
-        return "You have \(events.count) events today: \(eventList)\(suffix)."
+        return "You have \(events.count) events \(dayLabel): \(eventList)\(suffix)."
+    }
+
+    private func handleWeekCalendarQuery() async -> String {
+        // Request calendar access
+        if #available(macOS 14.0, *) {
+            do {
+                let granted = try await eventStore.requestFullAccessToEvents()
+                guard granted else {
+                    return "I don't have calendar access. Please grant permission in System Settings."
+                }
+            } catch {
+                return "I couldn't access your calendar: \(error.localizedDescription)"
+            }
+        } else {
+            let granted = await withCheckedContinuation { continuation in
+                eventStore.requestAccess(to: .event) { granted, _ in
+                    continuation.resume(returning: granted)
+                }
+            }
+            guard granted else {
+                return "I don't have calendar access. Please grant permission in System Settings."
+            }
+        }
+
+        // Get events for the next 7 days
+        let now = Date()
+        let startOfToday = calendar.startOfDay(for: now)
+        let endOfWeek = calendar.date(byAdding: .day, value: 7, to: startOfToday)!
+
+        let predicate = eventStore.predicateForEvents(
+            withStart: startOfToday,
+            end: endOfWeek,
+            calendars: nil
+        )
+        let events = eventStore.events(matching: predicate)
+
+        if events.isEmpty {
+            return "You have no events scheduled this week."
+        }
+
+        // Group by day
+        var eventsByDay: [String: [EKEvent]] = [:]
+        let dayFormatter = DateFormatter()
+        dayFormatter.dateFormat = "EEEE"  // "Monday", "Tuesday", etc.
+
+        for event in events {
+            let dayKey = dayFormatter.string(from: event.startDate)
+            eventsByDay[dayKey, default: []].append(event)
+        }
+
+        let totalCount = events.count
+        let dayCount = eventsByDay.count
+
+        // Summarize by day
+        let summary = eventsByDay.keys.sorted().prefix(3).map { day in
+            let count = eventsByDay[day]?.count ?? 0
+            return "\(day): \(count) event\(count == 1 ? "" : "s")"
+        }.joined(separator: ", ")
+
+        let suffix = eventsByDay.count > 3 ? ", and more" : ""
+        return "You have \(totalCount) events across \(dayCount) days this week: \(summary)\(suffix)."
+    }
+
+    private func handleNextMeetingQuery() async -> String {
+        // Request calendar access
+        if #available(macOS 14.0, *) {
+            do {
+                let granted = try await eventStore.requestFullAccessToEvents()
+                guard granted else {
+                    return "I don't have calendar access. Please grant permission in System Settings."
+                }
+            } catch {
+                return "I couldn't access your calendar: \(error.localizedDescription)"
+            }
+        } else {
+            let granted = await withCheckedContinuation { continuation in
+                eventStore.requestAccess(to: .event) { granted, _ in
+                    continuation.resume(returning: granted)
+                }
+            }
+            guard granted else {
+                return "I don't have calendar access. Please grant permission in System Settings."
+            }
+        }
+
+        // Find next event starting from now
+        let now = Date()
+        let endOfWeek = calendar.date(byAdding: .day, value: 7, to: now)!
+
+        let predicate = eventStore.predicateForEvents(
+            withStart: now,
+            end: endOfWeek,
+            calendars: nil
+        )
+        let events = eventStore.events(matching: predicate)
+            .filter { $0.startDate > now }  // Only future events
+            .sorted { $0.startDate < $1.startDate }  // Sort by start time
+
+        guard let nextEvent = events.first else {
+            return "You have no upcoming meetings in the next 7 days."
+        }
+
+        let timeFormatter = DateFormatter()
+        timeFormatter.timeStyle = .short
+        let time = timeFormatter.string(from: nextEvent.startDate)
+
+        // Calculate time until meeting
+        let timeUntil = nextEvent.startDate.timeIntervalSince(now)
+        let hoursUntil = Int(timeUntil / 3600)
+        let minutesUntil = Int((timeUntil.truncatingRemainder(dividingBy: 3600)) / 60)
+
+        let timeUntilString: String
+        if hoursUntil >= 24 {
+            let dayFormatter = DateFormatter()
+            dayFormatter.dateFormat = "EEEE"
+            let day = dayFormatter.string(from: nextEvent.startDate)
+            timeUntilString = " on \(day) at \(time)"
+        } else if hoursUntil >= 1 {
+            timeUntilString = " in \(hoursUntil) hour\(hoursUntil == 1 ? "" : "s")"
+        } else if minutesUntil >= 1 {
+            timeUntilString = " in \(minutesUntil) minute\(minutesUntil == 1 ? "" : "s")"
+        } else {
+            timeUntilString = " starting now"
+        }
+
+        return "Your next meeting is \(nextEvent.title ?? "Untitled")\(timeUntilString)."
     }
 
     private func handleBatteryQuery() -> String {
