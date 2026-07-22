@@ -12,8 +12,13 @@ final class MemoryService {
     private let logger = Logger(subsystem: "com.seayniclabs.soniquebar", category: "MemoryService")
     private let fm = FileManager.default
 
-    // Memory directory in Application Support (NOT iCloud - this is local intelligence)
+    // Memory directory in iCloud (shared with iOS)
     private var memoryDir: URL {
+        // Use the same iCloud container as iOS
+        if let iCloudURL = fm.url(forUbiquityContainerIdentifier: "iCloud.com.seayniclabs.sonique") {
+            return iCloudURL.appendingPathComponent("Documents/SoniqueProfiles/shared")
+        }
+        // Fallback to local if iCloud unavailable
         let appSupport = fm.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
         return appSupport.appendingPathComponent("SoniqueBar/memory")
     }
