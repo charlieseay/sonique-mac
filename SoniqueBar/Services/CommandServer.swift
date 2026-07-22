@@ -555,8 +555,9 @@ class CommandServer: ObservableObject {
 
         let text = commandData.text
         let imageBase64 = commandData.imageBase64
+        let conversationHistory = commandData.conversationHistory
 
-        logger.info("[CommandServer] Stream request: \(text.prefix(80))\(imageBase64 != nil ? " [with image]" : "")")
+        logger.info("[CommandServer] Stream request: \(text.prefix(80))\(imageBase64 != nil ? " [with image]" : "")\(conversationHistory != nil ? " [with \(conversationHistory!.count) history items]" : "")")
         lastCommand = text
         requestCount += 1
 
@@ -610,7 +611,7 @@ class CommandServer: ObservableObject {
 
         // LLM execution task with timeout
         let llmTask = Task {
-            try await claudeBridge.execute(text: text, imageBase64: imageBase64)
+            try await claudeBridge.execute(text: text, imageBase64: imageBase64, conversationHistoryFromDevice: conversationHistory)
         }
 
         // Watchdog task - cancels LLM if it takes too long
@@ -1021,14 +1022,15 @@ class CommandServer: ObservableObject {
         return text
     }
 
-    private func extractCommandData(from data: Data) -> (text: String, imageBase64: String?)? {
+    private func extractCommandData(from data: Data) -> (text: String, imageBase64: String?, conversationHistory: [[String: String]]?)? {
         guard let requestString = String(data: data, encoding: .utf8),
               let range = requestString.range(of: "\r\n\r\n"),
               let bodyData = String(requestString[range.upperBound...]).data(using: .utf8),
               let json = try? JSONSerialization.jsonObject(with: bodyData) as? [String: Any],
               let text = json["text"] as? String else { return nil }
         let image = json["image"] as? String
-        return (text, image)
+        let history = json["conversation_history"] as? [[String: String]]
+        return (text, image, history)
     }
 
     nonisolated private func sendNDJSONChunk(_ line: String, to connection: NWConnection) async {

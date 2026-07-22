@@ -20,8 +20,21 @@ class ClaudeCodeBridge {
     // Memory mode control
     private var memoryMode: MemoryMode = .persistent  // Default: remember across sessions
 
-    func execute(text: String, imageBase64: String? = nil, mcpToolsAvailable: Bool = true) async throws -> String {
+    func execute(text: String, imageBase64: String? = nil, mcpToolsAvailable: Bool = true, conversationHistoryFromDevice: [[String: String]]? = nil) async throws -> String {
         logger.info("[ClaudeCodeBridge] Executing: \(text.prefix(80))\(imageBase64 != nil ? " [with image]" : "")")
+
+        // SYNC: Load conversation history from iOS device if provided
+        if let deviceHistory = conversationHistoryFromDevice, !deviceHistory.isEmpty {
+            self.conversationHistory.removeAll()  // Clear session history
+            let now = Date()
+            for exchange in deviceHistory {
+                if let user = exchange["user"], let assistant = exchange["assistant"] {
+                    self.conversationHistory.append((role: "user", content: user, timestamp: now))
+                    self.conversationHistory.append((role: "assistant", content: assistant, timestamp: now))
+                }
+            }
+            logger.info("[ClaudeCodeBridge] Loaded \(self.conversationHistory.count/2) exchanges from device history")
+        }
 
         // VISION: If image provided, route directly to Claude API (requires vision model)
         if let imageData = imageBase64 {
