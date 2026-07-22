@@ -73,6 +73,17 @@ struct CapabilityIndex {
         "vision": "Analyze screenshots with Claude Vision API"
     ]
 
+    // MARK: - iOS Features (Sonique App)
+
+    static let iosFeatures: [String: String] = [
+        "interruption_prediction": "Intelligent barge-in detection - distinguishes backchannels (mm-hmm) from real interruptions (stop). Tunable sensitivity slider in Settings.",
+        "memory_boundaries": "Explicit memory control via voice commands: remember [fact], recall via natural questions. 7-day conversation window.",
+        "post_interruption_state": "Preserves interrupted response context. When user interrupts, next query includes [INTERRUPTED: ...] prefix so I can resume gracefully.",
+        "proactive_agent": "Time-based notifications for calendar events, weather, tasks. Opt-in per category in Settings. 15-minute check cycle.",
+        "chat_interface": "Full text chat UI in iOS app. Same streaming responses as voice. Tap chat bubble icon to access.",
+        "vision_support": "Image understanding via chat. User can attach photos/screenshots, I analyze with Claude Vision API."
+    ]
+
     // MARK: - Project → Vault Path Mapping
 
     static let projectPaths: [String: String] = [
@@ -113,6 +124,11 @@ struct CapabilityIndex {
         summary += "\n## System Capabilities\n"
         for (capability, description) in systemCapabilities.sorted(by: { $0.key < $1.key }) {
             summary += "- **\(capability)**: \(description)\n"
+        }
+
+        summary += "\n## iOS Features (Sonique App)\n"
+        for (feature, description) in iosFeatures.sorted(by: { $0.key < $1.key }) {
+            summary += "- **\(feature)**: \(description)\n"
         }
 
         summary += "\n## Known Projects\n"
