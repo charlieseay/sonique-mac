@@ -45,12 +45,14 @@ class CommandServer: ObservableObject {
             NSLog("[CommandServer] Generated new auth token with secure permissions")
         }
 
-        // Sync auth token to iCloud preferences so iOS can use it
+        // Sync auth token + server URL to iCloud preferences so iOS can auto-configure
         Task { @MainActor in
+            let localIP = self.getLocalIPAddress()
             var prefs = SoniqueBrain.shared.loadPreferences()
             prefs.authToken = self.authToken
+            prefs.serverURL = "http://\(localIP):8890"
             SoniqueBrain.shared.savePreferences(prefs)
-            NSLog("[CommandServer] Synced auth token to iCloud preferences")
+            NSLog("[CommandServer] Synced to iCloud: serverURL=\(localIP):8890, authToken=<redacted>")
         }
 
         NSLog("[CommandServer] Calling setupListener()")
@@ -69,6 +71,37 @@ class CommandServer: ObservableObject {
         bonjourService?.stop()
     }
     
+    // MARK: - Network Helpers
+
+    private func getLocalIPAddress() -> String {
+        var address: String = "127.0.0.1"
+        var ifaddr: UnsafeMutablePointer<ifaddrs>?
+
+        guard getifaddrs(&ifaddr) == 0, let firstAddr = ifaddr else {
+            return address
+        }
+
+        for ifptr in sequence(first: firstAddr, next: { $0.pointee.ifa_next }) {
+            let interface = ifptr.pointee
+            let addrFamily = interface.ifa_addr.pointee.sa_family
+
+            if addrFamily == UInt8(AF_INET) {
+                let name = String(cString: interface.ifa_name)
+                if name == "en0" {  // Wi-Fi interface
+                    var hostname = [CChar](repeating: 0, count: Int(NI_MAXHOST))
+                    getnameinfo(interface.ifa_addr, socklen_t(interface.ifa_addr.pointee.sa_len),
+                               &hostname, socklen_t(hostname.count),
+                               nil, socklen_t(0), NI_NUMERICHOST)
+                    address = String(cString: hostname)
+                    break
+                }
+            }
+        }
+
+        freeifaddrs(ifaddr)
+        return address
+    }
+
     // MARK: - Security Helpers
 
     private func verifyFilePermissions(_ path: String) {

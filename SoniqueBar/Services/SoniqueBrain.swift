@@ -206,6 +206,7 @@ final class SoniqueBrain {
 
     struct Preferences: Codable {
         var authToken: String?  // Bearer token for CommandServer authentication
+        var serverURL: String?  // Auto-discovered server URL (for iOS auto-config)
     }
 
     func loadPreferences() -> Preferences {
