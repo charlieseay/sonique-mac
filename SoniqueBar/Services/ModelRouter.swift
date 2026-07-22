@@ -547,6 +547,29 @@ class ModelRouter {
         case executionFailed(String)
         case timeout(String)
     }
+
+    /// Get current health status for diagnostics endpoint
+    func getHealthStatus() -> [String: Any] {
+        var providerHealthStatus: [String: Any] = [:]
+        for (name, health) in providerCache {
+            var healthInfo: [String: Any] = [
+                "consecutive_failures": health.consecutiveFailures
+            ]
+            if let lastSuccess = health.lastSuccess {
+                healthInfo["last_success"] = ISO8601DateFormatter().string(from: lastSuccess)
+            }
+            if let lastFailure = health.lastFailure {
+                healthInfo["last_failure"] = ISO8601DateFormatter().string(from: lastFailure)
+            }
+            providerHealthStatus[name] = healthInfo
+        }
+
+        return [
+            "mode": config.mode.rawValue,
+            "providers_configured": config.providers.count,
+            "providers_health": providerHealthStatus
+        ]
+    }
 }
 
 // MARK: - Supporting Types

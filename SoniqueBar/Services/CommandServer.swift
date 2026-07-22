@@ -322,6 +322,8 @@ class CommandServer: ObservableObject {
         // Route requests
         if path == "/health" {
             await handleHealth(connection)
+        } else if path == "/diagnostics" {
+            await handleDiagnostics(connection)
         } else if path == "/register" && method == "POST" {
             await handleRegister(data, connection)
         } else if path == "/config" {
@@ -336,6 +338,8 @@ class CommandServer: ObservableObject {
             await handleSynthesize(data, connection)
         } else if path == "/synthesize/kokoro" && method == "POST" {
             await handleSynthesizeKokoro(data, connection)
+        } else if path == "/feedback" && method == "POST" {
+            await handleFeedback(data, connection)
         } else {
             sendResponse("HTTP/1.1 404 Not Found\r\n\r\n{\"error\":\"Not found\"}", to: connection)
         }
@@ -355,6 +359,110 @@ class CommandServer: ObservableObject {
         """
 
         sendJSON(response, to: connection)
+    }
+
+    /// Handle diagnostics - returns system status, recent activity, errors
+    private func handleDiagnostics(_ connection: NWConnection) async {
+        // Get model router status
+        let routerStatus = ModelRouter.shared.getHealthStatus()
+
+        // Get recent commands (last 10)
+        let recentCommand = lastCommand.isEmpty ? "none" : String(lastCommand.prefix(100))
+
+        // System uptime
+        let uptime = ProcessInfo.processInfo.systemUptime
+        let uptimeStr = String(format: "%.1f hours", uptime / 3600)
+
+        // Memory usage
+        var taskInfo = mach_task_basic_info()
+        var count = mach_msg_type_number_t(MemoryLayout<mach_task_basic_info>.size)/4
+        let kerr = withUnsafeMutablePointer(to: &taskInfo) {
+            $0.withMemoryRebound(to: integer_t.self, capacity: 1) {
+                task_info(mach_task_self_, task_flavor_t(MACH_TASK_BASIC_INFO), $0, &count)
+            }
+        }
+        let memoryMB = kerr == KERN_SUCCESS ? Int(taskInfo.resident_size) / 1024 / 1024 : 0
+
+        // Read Quinn's recent feedback (last 10 entries)
+        let feedbackLog = FileManager.default.homeDirectoryForCurrentUser
+            .appendingPathComponent("Library/Logs/SoniqueBar/quinn-feedback.jsonl").path
+        var recentFeedback: [[String: Any]] = []
+        if let feedbackContent = try? String(contentsOfFile: feedbackLog, encoding: .utf8) {
+            let lines = feedbackContent.split(separator: "\n").suffix(10)
+            for line in lines {
+                if let data = String(line).data(using: .utf8),
+                   let entry = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
+                    recentFeedback.append(entry)
+                }
+            }
+        }
+
+        let diagnostics: [String: Any] = [
+            "status": isReady ? "ready" : "degraded",
+            "health_checks": healthCheckResults,
+            "uptime": uptimeStr,
+            "memory_mb": memoryMB,
+            "request_count": requestCount,
+            "last_command": recentCommand,
+            "model_router": routerStatus,
+            "tts": [
+                "kokoro_available": FileManager.default.fileExists(atPath: "/Users/charlieseay/Library/Developer/Xcode/DerivedData/Kokoro-bucjbiopclclewcdvhstvyngclfr/Build/Products/Release/KokoroCLI")
+            ],
+            "quinn_feedback": recentFeedback,
+            "timestamp": ISO8601DateFormatter().string(from: Date())
+        ]
+
+        if let jsonData = try? JSONSerialization.data(withJSONObject: diagnostics, options: .prettyPrinted),
+           let jsonString = String(data: jsonData, encoding: .utf8) {
+            sendJSON(jsonString, to: connection)
+        } else {
+            sendJSON("{\"error\":\"Failed to generate diagnostics\"}", to: connection)
+        }
+    }
+
+    /// Handle feedback - Quinn reports issues, performance metrics, and observations
+    private func handleFeedback(_ data: Data, _ connection: NWConnection) async {
+        guard let requestString = String(data: data, encoding: .utf8),
+              let bodyStart = requestString.range(of: "\r\n\r\n"),
+              let bodyData = requestString[bodyStart.upperBound...].data(using: .utf8),
+              let json = try? JSONSerialization.jsonObject(with: bodyData) as? [String: Any] else {
+            sendResponse("HTTP/1.1 400 Bad Request\r\n\r\n{\"error\":\"Invalid feedback\"}", to: connection)
+            return
+        }
+
+        let feedbackType = json["type"] as? String ?? "unknown"
+        let message = json["message"] as? String ?? ""
+        let metadata = json["metadata"] as? [String: Any] ?? [:]
+        let timestamp = ISO8601DateFormatter().string(from: Date())
+
+        // Log feedback to file for Claude to read
+        let feedbackLog = FileManager.default.homeDirectoryForCurrentUser
+            .appendingPathComponent("Library/Logs/SoniqueBar/quinn-feedback.jsonl").path
+        let feedbackEntry: [String: Any] = [
+            "timestamp": timestamp,
+            "type": feedbackType,
+            "message": message,
+            "metadata": metadata
+        ]
+
+        if let feedbackData = try? JSONSerialization.data(withJSONObject: feedbackEntry),
+           let feedbackLine = String(data: feedbackData, encoding: .utf8) {
+            let logDir = "/Library/Logs/SoniqueBar"
+            try? FileManager.default.createDirectory(atPath: logDir, withIntermediateDirectories: true)
+
+            if let fileHandle = FileHandle(forWritingAtPath: feedbackLog) {
+                fileHandle.seekToEndOfFile()
+                fileHandle.write((feedbackLine + "\n").data(using: .utf8)!)
+                try? fileHandle.close()
+            } else {
+                try? (feedbackLine + "\n").write(toFile: feedbackLog, atomically: true, encoding: .utf8)
+            }
+
+            logger.info("[Quinn Feedback] \(feedbackType): \(message)")
+            NSLog("[Quinn Feedback] \(feedbackType): \(message)")
+        }
+
+        sendJSON("{\"status\":\"feedback_received\"}", to: connection)
     }
 
     /// Handle device registration - returns auth token
