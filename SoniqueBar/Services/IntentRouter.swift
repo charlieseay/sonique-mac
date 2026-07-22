@@ -82,7 +82,7 @@ final class IntentRouter {
             return await handleCalendarQuery()
         }
 
-        // Weather using device location
+        // Weather - city-specific or current location
         if matchesPattern(lower, patterns: [
             "what's the weather",
             "weather forecast",
@@ -95,9 +95,23 @@ final class IntentRouter {
             // Check if city specified
             if lower.contains(" in ") {
                 let city = extractCity(from: lower)
-                return "I can check weather by location, but city-specific weather lookup isn't fully implemented yet. For now, I can only check the weather at your current location."
+                if !city.isEmpty {
+                    return await WeatherService.shared.getWeatherForCity(city)
+                }
             }
             return await WeatherService.shared.getCurrentWeather()
+        }
+
+        // Time in specific timezone/city
+        if matchesPattern(lower, patterns: [
+            "what time is it in ",
+            "time in ",
+            "what's the time in "
+        ]) {
+            let location = extractCity(from: lower)
+            if !location.isEmpty {
+                return getTimeInLocation(location)
+            }
         }
 
         // iOS Shortcuts - Timer
@@ -995,8 +1009,47 @@ final class IntentRouter {
     private func extractCity(from text: String) -> String {
         // Extract "Chicago" from "weather in Chicago"
         if let range = text.range(of: " in ") {
-            return String(text[range.upperBound...])
+            return String(text[range.upperBound...]).trimmingCharacters(in: .whitespaces)
         }
         return ""
+    }
+
+    private func getTimeInLocation(_ location: String) -> String {
+        // Map common city names to timezone identifiers
+        let timezoneMap: [String: String] = [
+            "london": "Europe/London",
+            "paris": "Europe/Paris",
+            "tokyo": "Asia/Tokyo",
+            "new york": "America/New_York",
+            "los angeles": "America/Los_Angeles",
+            "chicago": "America/Chicago",
+            "denver": "America/Denver",
+            "sydney": "Australia/Sydney",
+            "mumbai": "Asia/Kolkata",
+            "beijing": "Asia/Shanghai",
+            "dubai": "Asia/Dubai",
+            "toronto": "America/Toronto",
+            "vancouver": "America/Vancouver",
+            "berlin": "Europe/Berlin",
+            "moscow": "Europe/Moscow",
+            "seoul": "Asia/Seoul",
+            "hong kong": "Asia/Hong_Kong",
+            "singapore": "Asia/Singapore",
+            "bangkok": "Asia/Bangkok"
+        ]
+
+        let locationLower = location.lowercased().trimmingCharacters(in: .whitespaces)
+
+        guard let tzIdentifier = timezoneMap[locationLower],
+              let timezone = TimeZone(identifier: tzIdentifier) else {
+            return "I'm not sure what timezone \(location) is in. Try major cities like London, Tokyo, or New York."
+        }
+
+        let formatter = DateFormatter()
+        formatter.timeZone = timezone
+        formatter.timeStyle = .short
+        let time = formatter.string(from: Date())
+
+        return "It's \(time) in \(location)."
     }
 }

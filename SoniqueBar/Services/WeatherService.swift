@@ -25,6 +25,25 @@ final class WeatherService: NSObject, CLLocationManagerDelegate {
         return await fetchWeather(lat: location.coordinate.latitude, lon: location.coordinate.longitude)
     }
 
+    /// Get weather for a specific city
+    func getWeatherForCity(_ cityName: String) async -> String {
+        // Use geocoding to convert city name to coordinates
+        let geocoder = CLGeocoder()
+
+        do {
+            let placemarks = try await geocoder.geocodeAddressString(cityName)
+            guard let location = placemarks.first?.location else {
+                return "I couldn't find the location '\(cityName)'. Try a major city name like 'Chicago' or 'London'."
+            }
+
+            let weather = await fetchWeather(lat: location.coordinate.latitude, lon: location.coordinate.longitude)
+            // Add city name to the response
+            return weather.replacingOccurrences(of: "It's currently", with: "In \(cityName), it's")
+        } catch {
+            return "I couldn't look up the weather for '\(cityName)'. Try a different city name."
+        }
+    }
+
     private func getLocation() async -> CLLocation? {
         // Check authorization status
         let status = locationManager.authorizationStatus
