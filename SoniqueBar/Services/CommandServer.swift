@@ -389,15 +389,11 @@ class CommandServer: ObservableObject {
         // Read API key from secrets
         let keyPath = "/Volumes/data/secrets/elevenlabs_api_key"
         if let apiKey = try? String(contentsOfFile: keyPath, encoding: .utf8).trimmingCharacters(in: .whitespacesAndNewlines), !apiKey.isEmpty {
-            // Load voice preference from iCloud (defaults to Jessica)
-            let prefs = SoniqueBrain.shared.loadPreferences()
-            let voiceId = prefs.selectedVoiceId ?? "cgSgspJ2msm6clMCkdW9"  // Jessica default
-
             let response = """
             {
                 "elevenlabs": {
                     "api_key": "\(apiKey)",
-                    "voice_id": "\(voiceId)",
+                    "voice_id": "cgSgspJ2msm6clMCkdW9",
                     "model": "eleven_multilingual_v2"
                 },
                 "kokoro": {
@@ -454,22 +450,34 @@ class CommandServer: ObservableObject {
         let header = "HTTP/1.1 200 OK\r\nContent-Type: application/x-ndjson\r\nTransfer-Encoding: chunked\r\n\r\n"
         sendRaw(header, to: connection)
 
-        // Check if this will be handled by native intent (instant response, no thinking ack needed)
-        let needsThinkingAck = await IntentRouter.shared.route(text) == nil
-
-        // Send immediate acknowledgment for LLM queries (avoid awkward silence)
-        if needsThinkingAck {
-            let thinkingAcks = [
-                "Let me think about that.",
-                "Give me a moment.",
-                "One second.",
-                "Let me check.",
-                "Thinking...",
-                "Just a sec."
-            ]
-            let ack = thinkingAcks.randomElement()!
-            await sendNDJSONChunk("{\"chunk\":\(escapeJSON(ack + " ")),\"is_final\":false}", to: connection)
+        // Check if this can be handled by native intent (instant response, no LLM needed)
+        if let nativeResponse = await IntentRouter.shared.route(text) {
+            // Native intent handled - send response immediately
+            let words = nativeResponse.components(separatedBy: " ")
+            for (i, word) in words.enumerated() {
+                let isLast = i == words.index(before: words.endIndex)
+                let piece = isLast ? word : word + " "
+                if !piece.trimmingCharacters(in: .whitespaces).isEmpty {
+                    await sendNDJSONChunk("{\"chunk\":\(escapeJSON(piece)),\"is_final\":false}", to: connection)
+                }
+            }
+            await sendNDJSONChunk("{\"done\":true}", to: connection)
+            sendRaw("0\r\n\r\n", to: connection)
+            connection.cancel()
+            return
         }
+
+        // Not a native intent - route to LLM with thinking acknowledgment
+        let thinkingAcks = [
+            "Let me think about that.",
+            "Give me a moment.",
+            "One second.",
+            "Let me check.",
+            "Thinking...",
+            "Just a sec."
+        ]
+        let ack = thinkingAcks.randomElement()!
+        await sendNDJSONChunk("{\"chunk\":\(escapeJSON(ack + " ")),\"is_final\":false}", to: connection)
 
         do {
             let response = try await claudeBridge.execute(text: text, imageBase64: imageBase64)
