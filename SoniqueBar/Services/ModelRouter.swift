@@ -126,16 +126,26 @@ class ModelRouter {
 
         NSLog("[ModelRouter] Got \(providers.count) providers for tier \(tier.rawValue)")
         guard !providers.isEmpty else {
-            NSLog("[ModelRouter] ⚠️  No LLM providers configured")
+            NSLog("[ModelRouter] ⚠️  No LLM providers configured - checking cache...")
 
-            // TODO: Re-enable cached response fallback once ConversationMemory is added to Xcode project
-            // if let cachedResponse = ConversationMemory.shared.findSimilarResponse(for: prompt) {
-            //     return RouterResponse(text: "Based on our earlier conversation: \(cachedResponse)", ...)
-            // }
+            // Try to find a cached response for similar query
+            if let cachedResponse = ConversationMemory.shared.findSimilarResponse(for: prompt) {
+                NSLog("[ModelRouter] ✓ Found cached response for offline fallback")
+                logger.info("[Router] Offline fallback: returning cached response")
+                return RouterResponse(
+                    text: "Based on our earlier conversation: \(cachedResponse)",
+                    provider: "cache",
+                    tier: tier,
+                    latency: 0.001,
+                    wasEscalated: false
+                )
+            }
 
-            logger.info("[Router] Offline: no providers configured")
+            // No cache hit - return offline message
+            NSLog("[ModelRouter] ❌ No cached response found - offline")
+            logger.info("[Router] Offline: no providers + no cache")
             return RouterResponse(
-                text: "I'm currently offline. My language models aren't available right now.",
+                text: "I'm currently offline. My language models aren't available right now, and I don't have a cached answer for that question.",
                 provider: "offline",
                 tier: tier,
                 latency: 0.001,
@@ -185,12 +195,21 @@ class ModelRouter {
             }
         }
 
-        // All providers failed
-        // TODO: Re-enable cached response fallback once ConversationMemory is added to Xcode project
-        // if let cachedResponse = ConversationMemory.shared.findSimilarResponse(for: prompt) {
-        //     return RouterResponse(text: "Based on our earlier conversation: \(cachedResponse)", ...)
-        // }
+        // All providers failed - try cached response
+        NSLog("[ModelRouter] ⚠️  All providers failed - checking cache...")
+        if let cachedResponse = ConversationMemory.shared.findSimilarResponse(for: prompt) {
+            NSLog("[ModelRouter] ✓ Found cached response for failed query")
+            logger.info("[Router] Fallback: all providers failed, returning cached response")
+            return RouterResponse(
+                text: "I'm having trouble connecting to my language models right now. Based on our earlier conversation: \(cachedResponse)",
+                provider: "cache-fallback",
+                tier: tier,
+                latency: Date().timeIntervalSince(startTime),
+                wasEscalated: false
+            )
+        }
 
+        // No cache - throw original error
         throw lastError ?? RouterError.allProvidersFailed
     }
 
