@@ -62,7 +62,10 @@ class ProviderManager: ObservableObject {
             self.activeProvider = provider
         }
 
-        updateConfiguredState()
+        // Update state async
+        Task { @MainActor in
+            await self.updateConfiguredState()
+        }
     }
 
     /// Check if current provider has valid session

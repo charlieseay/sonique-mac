@@ -12,6 +12,7 @@ class ClaudeWebClient: NSObject {
     private var webView: WKWebView?
     private var currentCompletion: ((Result<String, Error>) -> Void)?
     private var queryTimeout: Timer?
+    private var currentPrompt: String?
 
     private override init() {
         super.init()
@@ -29,7 +30,8 @@ class ClaudeWebClient: NSObject {
     private func performQuery(_ prompt: String, cookies: [HTTPCookie], timeout: TimeInterval, completion: @escaping (Result<String, Error>) -> Void) {
         logger.info("[ClaudeWebClient] Starting query with \(cookies.count) cookies")
 
-        // Store completion handler
+        // Store prompt and completion handler
+        currentPrompt = prompt
         currentCompletion = completion
 
         // Set timeout
@@ -75,6 +77,7 @@ class ClaudeWebClient: NSObject {
         webView?.navigationDelegate = nil
         webView = nil
         currentCompletion = nil
+        currentPrompt = nil
     }
 }
 
@@ -106,7 +109,8 @@ extension ClaudeWebClient: WKNavigationDelegate {
     }
 
     private func injectPromptAndWaitForResponse() {
-        guard let webView = webView else { return }
+        guard let webView = webView,
+              let prompt = currentPrompt else { return }
 
         // JavaScript to inject prompt and extract response
         let js = """
