@@ -36,7 +36,7 @@ struct SetupAssistantView: View {
 
     @StateObject private var providerManager = ProviderManager.shared
     @State private var selectedProvider: LLMProvider?
-    @State private var isAuthenticating = false
+    @State private var showingAuth = false
     @State private var setupComplete = false
     @State private var errorMessage: String?
     @State private var testResponse: String?
@@ -65,10 +65,10 @@ struct SetupAssistantView: View {
                             ProviderRow(
                                 provider: provider,
                                 isSelected: selectedProvider == provider,
-                                isAuthenticating: isAuthenticating && selectedProvider == provider,
+                                isAuthenticating: false,
                                 action: {
                                     selectedProvider = provider
-                                    authenticateProvider(provider)
+                                    showingAuth = true
                                 }
                             )
                         }
@@ -148,30 +148,16 @@ struct SetupAssistantView: View {
             }
         }
         .frame(width: 600, height: 500)
-    }
-
-    private func authenticateProvider(_ provider: LLMProvider) {
-        isAuthenticating = true
-        errorMessage = nil
-
-        // Open browser for OAuth
-        NSWorkspace.shared.open(provider.authURL)
-
-        // TODO: Implement proper browser auth capture
-        // For now, show instructions
-        let alert = NSAlert()
-        alert.messageText = "Sign In"
-        alert.informativeText = "Sign in to \(provider.displayName) in your browser, then click Continue."
-        alert.addButton(withTitle: "Continue")
-        alert.addButton(withTitle: "Cancel")
-
-        if alert.runModal() == .alertFirstButtonReturn {
-            // User claims they signed in
-            // TODO: Actually capture cookies from browser
-            setupComplete = true
-            isAuthenticating = false
-        } else {
-            isAuthenticating = false
+        .sheet(isPresented: $showingAuth) {
+            if let provider = selectedProvider {
+                LLMAuthSheet(
+                    provider: provider,
+                    isPresented: $showingAuth,
+                    onSuccess: { _ in
+                        setupComplete = true
+                    }
+                )
+            }
         }
     }
 
