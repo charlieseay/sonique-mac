@@ -193,24 +193,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func showSetupWizardIfNeeded() {
-        let setupComplete = UserDefaults.standard.bool(forKey: "SoniqueBar.SetupComplete")
+        Task { @MainActor in
+            // Check if consumer auth is configured
+            let isConfigured = await ProviderManager.shared.isConfigured
 
-        guard !setupComplete else { return }
+            guard !isConfigured else {
+                NSLog("[SoniqueBar] Setup already complete")
+                return
+            }
 
-        // Show setup wizard
-        let wizard = SetupWizard()
-        let hostingController = NSHostingController(rootView: wizard)
+            // Show setup assistant
+            let assistant = SetupAssistantController()
+            assistant.show()
 
-        let window = NSWindow(contentViewController: hostingController)
-        window.title = "Welcome to SoniqueBar"
-        window.styleMask = [.titled, .closable]
-        window.isReleasedWhenClosed = false
-        window.center()
-
-        window.makeKeyAndOrderFront(nil)
-        NSApp.activate(ignoringOtherApps: true)
-
-        NSLog("[SoniqueBar] ✓ First run: showing setup wizard")
+            NSLog("[SoniqueBar] ✓ First run: showing setup assistant")
+        }
     }
 
     func applicationWillTerminate(_ notification: Notification) {

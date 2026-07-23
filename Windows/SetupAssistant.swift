@@ -52,7 +52,6 @@ struct SetupAssistantView: View {
                     Image(systemName: "waveform.circle.fill")
                         .font(.system(size: 80))
                         .foregroundColor(.blue)
-                        .symbolEffect(.pulse)
 
                     Text("Welcome to Quinn")
                         .font(.largeTitle)
