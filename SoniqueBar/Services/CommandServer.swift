@@ -25,24 +25,44 @@ class CommandServer: ObservableObject {
     private var isReady = false
     private var healthCheckResults: [String: Bool] = [:]
 
+    // MARK: - Secrets Path Resolution
+
+    /// Get path for secrets - tries lab infrastructure first, falls back to user's Application Support
+    /// This allows Sonique to work for users without /Volumes/data infrastructure
+    private static func getSecretsPath(for filename: String) -> String {
+        // Option 1: Lab infrastructure (if available)
+        let labPath = "/Volumes/data/secrets/\(filename)"
+        if FileManager.default.fileExists(atPath: labPath) {
+            return labPath
+        }
+
+        // Option 2: User's Application Support directory (standard macOS location)
+        let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
+        let soniqueDir = appSupport.appendingPathComponent("SoniqueBar/secrets")
+        return soniqueDir.appendingPathComponent(filename).path
+    }
+
     private init() {
         NSLog("[CommandServer] init() starting")
 
-        // Load auth token from secrets
-        let tokenPath = "/Volumes/data/secrets/sonique_auth_token"
+        // Load auth token from user's Application Support directory (or lab secrets if available)
+        let tokenPath = Self.getSecretsPath(for: "sonique_auth_token")
         if let token = try? String(contentsOfFile: tokenPath, encoding: .utf8).trimmingCharacters(in: .whitespacesAndNewlines), !token.isEmpty {
             self.authToken = token
-            NSLog("[CommandServer] Loaded existing auth token")
+            NSLog("[CommandServer] Loaded existing auth token from \(tokenPath)")
             // Security: Verify file permissions are secure (0600)
             verifyFilePermissions(tokenPath)
         } else {
             // Generate and save a new token if none exists
             let newToken = UUID().uuidString
+            // Ensure directory exists
+            let dirPath = (tokenPath as NSString).deletingLastPathComponent
+            try? FileManager.default.createDirectory(atPath: dirPath, withIntermediateDirectories: true, attributes: nil)
             try? newToken.write(toFile: tokenPath, atomically: true, encoding: .utf8)
             self.authToken = newToken
             // Security: Ensure file has secure permissions (0600)
             try? FileManager.default.setAttributes([.protectionKey: FileProtectionType.complete], ofItemAtPath: tokenPath)
-            NSLog("[CommandServer] Generated new auth token with secure permissions")
+            NSLog("[CommandServer] Generated new auth token at \(tokenPath)")
         }
 
         // Sync auth token AND server URL to iCloud preferences so iOS can auto-configure
@@ -206,11 +226,11 @@ class CommandServer: ObservableObject {
     }
 
     private func checkModelRouter() -> Bool {
-        // ModelRouter loads lazily on first use, so just verify the config file exists
-        let configPath = "/Volumes/data/secrets/sonique_model_router.json"
+        // ModelRouter loads lazily on first use, config is optional (defaults if missing)
+        let configPath = Self.getSecretsPath(for: "sonique_model_router.json")
         let exists = FileManager.default.fileExists(atPath: configPath)
-        NSLog("[CommandServer]   Model router config exists: \(exists)")
-        return exists
+        NSLog("[CommandServer]   Model router config exists: \(exists) (optional - will use defaults)")
+        return true  // Always return true since config is optional
     }
 
     private func checkNativeIntents() -> Bool {
@@ -500,10 +520,10 @@ class CommandServer: ObservableObject {
         sendJSON(response, to: connection)
     }
 
-    /// Return ElevenLabs API key for iOS TTS
+    /// Return ElevenLabs API key for iOS TTS (optional - user may not have ElevenLabs)
     private func handleConfig(_ connection: NWConnection) async {
-        // Read API key from secrets
-        let keyPath = "/Volumes/data/secrets/elevenlabs_api_key"
+        // Read API key from secrets (optional - user may not have ElevenLabs configured)
+        let keyPath = Self.getSecretsPath(for: "elevenlabs_api_key")
         if let apiKey = try? String(contentsOfFile: keyPath, encoding: .utf8).trimmingCharacters(in: .whitespacesAndNewlines), !apiKey.isEmpty {
             let response = """
             {
@@ -976,12 +996,12 @@ class CommandServer: ObservableObject {
         return audioData
     }
 
-    /// ElevenLabs TTS - cloud, premium (optional)
+    /// ElevenLabs TTS - cloud, premium (optional - user must configure API key)
     private func synthesizeWithElevenLabs(text: String) async throws -> Data {
-        // Load API key from secrets
-        let keyPath = "/Volumes/data/secrets/elevenlabs_api_key"
+        // Load API key from secrets (user-configured, optional)
+        let keyPath = Self.getSecretsPath(for: "elevenlabs_api_key")
         guard let apiKey = try? String(contentsOfFile: keyPath, encoding: .utf8).trimmingCharacters(in: .whitespacesAndNewlines), !apiKey.isEmpty else {
-            throw NSError(domain: "ElevenLabs", code: 1, userInfo: [NSLocalizedDescriptionKey: "API key not found"])
+            throw NSError(domain: "ElevenLabs", code: 1, userInfo: [NSLocalizedDescriptionKey: "ElevenLabs API key not configured. Add your API key to: \(keyPath)"])
         }
 
         // Jessica voice ID (Playful, Bright, Warm)
@@ -1159,11 +1179,11 @@ class CommandServer: ObservableObject {
 
         logger.info("[handleSynthesizeElevenLabs] Synthesizing \(text.count) chars with voice \(voiceId)")
 
-        // Load ElevenLabs API key
-        let keyPath = "/Volumes/data/secrets/elevenlabs_api_key"
+        // Load ElevenLabs API key (user-configured, optional)
+        let keyPath = Self.getSecretsPath(for: "elevenlabs_api_key")
         guard let apiKey = try? String(contentsOfFile: keyPath, encoding: .utf8).trimmingCharacters(in: .whitespacesAndNewlines) else {
-            logger.error("[handleSynthesizeElevenLabs] Failed to load API key")
-            sendResponse("HTTP/1.1 500 Internal Server Error\r\n\r\n{\"error\":\"API key not found\"}", to: connection)
+            logger.error("[handleSynthesizeElevenLabs] ElevenLabs API key not configured at \(keyPath)")
+            sendResponse("HTTP/1.1 500 Internal Server Error\r\n\r\n{\"error\":\"ElevenLabs API key not configured. Add your key to: \(keyPath)\"}", to: connection)
             return
         }
 
