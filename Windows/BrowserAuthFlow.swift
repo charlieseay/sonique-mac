@@ -157,98 +157,72 @@ struct BrowserAuthFlow: View {
         isImporting = true
 
         Task { @MainActor in
-            // Read cookies from Safari's containerized location (macOS 13+)
-            // This requires Full Disk Access permission
-            let safariCookiesPath = FileManager.default.homeDirectoryForCurrentUser
-                .appendingPathComponent("Library/Containers/com.apple.Safari/Data/Library/Cookies/Cookies.binarycookies")
+            // Use Node.js script with @mherod/get-cookie to read Safari cookies
+            let scriptPath = Bundle.main.resourcePath! + "/../../../Scripts/get-safari-cookies.js"
+            let process = Process()
+            process.executableURL = URL(fileURLWithPath: "/usr/local/bin/node")
+            process.arguments = [scriptPath, provider.chatURL.host!]
 
-            // Use python to read Safari's binary cookies format
-            let pythonScript = """
-            import sys
-            import subprocess
+            let pipe = Pipe()
+            process.standardOutput = pipe
+            process.standardError = pipe
 
-            # Use macOS's built-in cookie reader
-            result = subprocess.run([
-                'python3', '-c',
-                '''
-import os
-import struct
-import datetime
-from pathlib import Path
+            do {
+                try process.run()
+                process.waitUntilExit()
 
-cookie_file = Path.home() / "Library/Containers/com.apple.Safari/Data/Library/Cookies/Cookies.binarycookies"
-if not cookie_file.exists():
-    print("[]")
-    sys.exit(0)
+                let data = pipe.fileHandleForReading.readDataToEndOfFile()
+                let output = String(data: data, encoding: .utf8) ?? ""
 
-# Safari binary cookies parsing - simplified for claude.ai domain only
-with open(cookie_file, 'rb') as f:
-    data = f.read()
-
-# Look for claude.ai cookie markers in binary data
-if b'claude.ai' in data:
-    # Find sessionKey cookie
-    if b'sessionKey' in data:
-        print('{"domain": "claude.ai", "name": "sessionKey", "found": true}')
-    else:
-        print('{"domain": "claude.ai", "found": false}')
-else:
-    print('{"domain": "claude.ai", "found": false}')
-'''
-            ], capture_output=True, text=True)
-            print(result.stdout)
-            """
-
-            // For now, just check if we can access the file
-            let canReadSafariCookies = FileManager.default.isReadableFile(atPath: safariCookiesPath.path)
-
-            if !canReadSafariCookies {
-                errorMessage = "Cannot access Safari cookies. Full Disk Access may not be granted yet."
-                step = .error
-                isImporting = false
-                return
-            }
-
-            // Fall back to WKWebView default store for now
-            let cookieStore = WKWebsiteDataStore.default().httpCookieStore
-            let cookies = await withCheckedContinuation { continuation in
-                cookieStore.getAllCookies { cookies in
-                    continuation.resume(returning: cookies)
+                // Parse JSON output
+                guard let jsonData = output.data(using: .utf8),
+                      let cookieArray = try? JSONSerialization.jsonObject(with: jsonData) as? [[String: Any]] else {
+                    errorMessage = "Failed to parse cookies from Safari"
+                    step = .error
+                    isImporting = false
+                    return
                 }
-            }
 
-            // Filter to provider-specific cookies
-            let relevantCookies = cookies.filter { cookie in
-                switch provider {
-                case .claude:
-                    return cookie.domain.contains("claude.ai")
-                case .chatgpt:
-                    return cookie.domain.contains("openai.com")
-                case .gemini:
-                    return cookie.domain.contains("google.com")
-                case .ollama:
-                    return cookie.domain.contains("localhost")
+                // Convert to HTTPCookies
+                var httpCookies: [HTTPCookie] = []
+                for cookieDict in cookieArray {
+                    var properties: [HTTPCookiePropertyKey: Any] = [:]
+                    properties[.domain] = cookieDict["domain"] as? String ?? ""
+                    properties[.name] = cookieDict["name"] as? String ?? ""
+                    properties[.value] = cookieDict["value"] as? String ?? ""
+                    properties[.path] = cookieDict["path"] as? String ?? "/"
+
+                    if let secure = cookieDict["secure"] as? Bool, secure {
+                        properties[.secure] = "TRUE"
+                    }
+
+                    if let cookie = HTTPCookie(properties: properties) {
+                        httpCookies.append(cookie)
+                    }
                 }
-            }
 
-            if !relevantCookies.isEmpty {
+                if httpCookies.isEmpty {
+                    errorMessage = "No valid cookies found"
+                    step = .error
+                    isImporting = false
+                    return
+                }
+
                 // Save cookies
                 do {
-                    try await ClaudeSessionManager.shared.saveSession(cookies: relevantCookies)
+                    try await ClaudeSessionManager.shared.saveSession(cookies: httpCookies)
                     await ProviderManager.shared.setActiveProvider(provider)
 
                     step = .success
-
-                    // Auto-close after 1.5 seconds
                     try? await Task.sleep(nanoseconds: 1_500_000_000)
-                    onSuccess(relevantCookies)
+                    onSuccess(httpCookies)
                     isPresented = false
                 } catch {
                     errorMessage = "Failed to save session: \(error.localizedDescription)"
                     step = .error
                 }
-            } else {
-                errorMessage = "No \(provider.displayName) cookies found. Make sure you're signed in to \(provider.displayName) in Safari."
+            } catch {
+                errorMessage = "Failed to run cookie extraction: \(error.localizedDescription)"
                 step = .error
             }
 
