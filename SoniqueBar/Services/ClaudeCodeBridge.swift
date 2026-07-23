@@ -51,6 +51,10 @@ class ClaudeCodeBridge {
             conversationHistory.append((role: "user", content: text, timestamp: now))
             conversationHistory.append((role: "assistant", content: nativeResponse, timestamp: now))
 
+            // Persist to SQLite for offline fallback
+            ConversationMemory.shared.logUser(text)
+            ConversationMemory.shared.logAssistant(nativeResponse)
+
             // Trim history to maxHistoryDuration window
             trimHistoryToTimeWindow()
 
@@ -66,6 +70,9 @@ class ClaudeCodeBridge {
         // Add user message to history with timestamp
         let now = Date()
         conversationHistory.append((role: "user", content: text, timestamp: now))
+
+        // Persist to SQLite for offline fallback
+        ConversationMemory.shared.logUser(text)
 
         // PERF OPT #7: Trim history to time window instead of fixed count
         trimHistoryToTimeWindow()
@@ -165,6 +172,9 @@ class ClaudeCodeBridge {
             // Add assistant response to history with timestamp
             conversationHistory.append((role: "assistant", content: response, timestamp: Date()))
             trimHistoryToTimeWindow()  // PERF OPT #7: Use time window
+
+            // Persist to SQLite for offline fallback
+            ConversationMemory.shared.logAssistant(response)
 
             // Persist to conversations.jsonl for long-term memory
             await MemoryService.shared.recordExchange(user: text, assistant: response)
