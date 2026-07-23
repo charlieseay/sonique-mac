@@ -87,7 +87,9 @@ class ClaudeCodeBridge {
         // let assistantName = await SoniqueBrain.shared.getAssistantName()
 
         // Generate capability context
-        let capabilityContext = CapabilityIndex.generateCapabilitySummary()
+        // NOTE: Disabled for Quinn - the capability index lists MCP/Lab tools that confuse the voice assistant
+        // Quinn's actual capabilities are defined in IDENTITY.md instead
+        let capabilityContext = ""  // CapabilityIndex.generateCapabilitySummary()
 
         // Detect project mentions and add vault path context
         var projectContext = ""
@@ -108,7 +110,21 @@ class ClaudeCodeBridge {
             }
         }
 
-        let prompt = "Your name is \(assistantName).\n\n\(fullMemory)\n\n\(capabilityContext)\(projectContext)\(historyContext)\n\nUser: \(text)"
+        // CRITICAL: Strong capability constraint at the TOP to prevent hallucination
+        let capabilityConstraint = """
+        CRITICAL CONSTRAINT: You are a VOICE ASSISTANT with NO access to:
+        - Screen capture or visual access
+        - File system or documents
+        - Terminal commands or code execution
+        - System services (Docker, infrastructure, etc.)
+        - Live web browsing
+
+        If asked about ANY of these, respond ONLY: "I can't [action] - I'm a voice assistant without that capability."
+        DO NOT make up responses. DO NOT pretend to check things you cannot access.
+
+        """
+
+        let prompt = capabilityConstraint + "Your name is \(assistantName).\n\n\(fullMemory)\n\n\(capabilityContext)\(projectContext)\(historyContext)\n\nUser: \(text)"
 
         // Route through ModelRouter with context
         // IMPORTANT: Pass the ORIGINAL text for tier determination, not the full prompt
