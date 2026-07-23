@@ -1104,9 +1104,22 @@ final class IntentRouter {
     // MARK: - Pattern Matching
 
     private func matchesPattern(_ query: String, patterns: [String]) -> Bool {
+        // Use word boundary matching to avoid false positives
+        // e.g., "hi" should not match "dolphins" (which contains "hi")
         for pattern in patterns {
-            if query.contains(pattern) {
-                return true
+            // For multi-word patterns like "good morning", check if phrase exists
+            if pattern.contains(" ") {
+                if query.contains(pattern) {
+                    return true
+                }
+            } else {
+                // For single-word patterns, check exact word match
+                let words = query.components(separatedBy: .punctuationCharacters.union(.whitespaces))
+                for word in words {
+                    if word == pattern {
+                        return true
+                    }
+                }
             }
         }
         return false
