@@ -107,6 +107,29 @@ class ModelRouter {
         NSLog("[ModelRouter] Determined tier: \(tier.rawValue)")
         logger.info("[Router] Query tier: \(tier.rawValue)")
 
+        // PRIORITY 1: Check consumer auth system (ProviderManager)
+        if await ProviderManager.shared.isConfigured {
+            NSLog("[ModelRouter] Consumer auth provider available - using it")
+            do {
+                let response = try await ProviderManager.shared.query(prompt)
+                let elapsed = Date().timeIntervalSince(startTime)
+                logger.info("[Router] ✓ Consumer auth provider responded in \(String(format: "%.2f", elapsed))s")
+
+                return RouterResponse(
+                    text: response,
+                    provider: ProviderManager.shared.activeProvider?.rawValue ?? "consumer-auth",
+                    tier: tier,
+                    latency: elapsed,
+                    wasEscalated: false
+                )
+            } catch {
+                NSLog("[ModelRouter] Consumer auth provider failed: \(error.localizedDescription)")
+                logger.warning("[Router] Consumer auth failed, falling back to config providers")
+                // Fall through to legacy provider system
+            }
+        }
+
+        // PRIORITY 2: Legacy config-based providers (model_router.json)
         // Detect query complexity for routing optimization
         let complexity = detectComplexity(context?.originalQuery ?? prompt)
         NSLog("[ModelRouter] Query complexity: \(complexity)")

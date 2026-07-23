@@ -83,13 +83,19 @@ class ProviderManager: ObservableObject {
     }
 
     /// Update configured state based on active provider
-    func updateConfiguredState() {
+    func updateConfiguredState() async {
         guard let provider = activeProvider else {
             isConfigured = false
             return
         }
 
         isConfigured = hasValidSession(for: provider)
+    }
+
+    /// Set active provider and update state
+    func setActiveProvider(_ provider: LLMProvider) async {
+        activeProvider = provider
+        await updateConfiguredState()
     }
 
     /// Query current provider
