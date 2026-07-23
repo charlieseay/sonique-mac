@@ -392,7 +392,12 @@ class ModelRouter {
 
         let executablePath = parts[0]
         var args = Array(parts.dropFirst())
-        args.append(contentsOf: ["-p", prompt])
+
+        // Only add -p if it's not already in the command
+        if !args.contains("-p") {
+            args.append("-p")
+        }
+        args.append(prompt)
 
         return try await callCLI(
             command: executablePath,
