@@ -150,7 +150,7 @@ struct SetupAssistantView: View {
         .frame(width: 600, height: 500)
         .sheet(isPresented: $showingAuth) {
             if let provider = selectedProvider {
-                LLMAuthSheet(
+                BrowserAuthFlow(
                     provider: provider,
                     isPresented: $showingAuth,
                     onSuccess: { _ in

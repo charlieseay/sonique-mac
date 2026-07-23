@@ -16,6 +16,7 @@
 		46EF44A1494CEE9DFC97EB95 /* ConversationMemory.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE0953ED6EF35F797EC3DBB7 /* ConversationMemory.swift */; };
 		81812706DD7B40E195084DF6 /* ClaudeWebClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 92838D1BACA9432C9E2BBC0C /* ClaudeWebClient.swift */; };
 		83419D8281026DE611A5CEFE /* IntentRouter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A7A44954FBD946BB9D023EC /* IntentRouter.swift */; };
+		8A67B97A121EBC69C0C97D95 /* BrowserAuthFlow.swift in Sources */ = {isa = PBXBuildFile; fileRef = C920EF6A02D9C329EFA46DFE /* BrowserAuthFlow.swift */; };
 		A0529A54BF06401FB61E5095 /* UserPermission.swift in Sources */ = {isa = PBXBuildFile; fileRef = 309C3E0E63A34475BC7F85BE /* UserPermission.swift */; };
 		AA16F3F362742E8A477FC066 /* WeatherService.swift in Sources */ = {isa = PBXBuildFile; fileRef = F93FB11F98C153F00F26784A /* WeatherService.swift */; };
 		B30F7BD354DA140D7ECC9A9B /* ClaudeCodeBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3928D62756135B86A135BBBA /* ClaudeCodeBridge.swift */; };
@@ -55,6 +56,7 @@
 		BB000016000000000000016 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; name = Info.plist; path = SoniqueBar/Resources/Info.plist; sourceTree = SOURCE_ROOT; };
 		BB000020000000000000020 /* SoniqueBarApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = SoniqueBarApp.swift; path = SoniqueBar/SoniqueBarApp.swift; sourceTree = SOURCE_ROOT; };
 		BDC2DFD3531ED23758A43B42 /* ChatWindow.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ChatWindow.swift; path = SoniqueBar/Views/ChatWindow.swift; sourceTree = "<group>"; };
+		C920EF6A02D9C329EFA46DFE /* BrowserAuthFlow.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = BrowserAuthFlow.swift; sourceTree = "<group>"; };
 		CAPIDX_FILE_REF_001 /* CapabilityIndex.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SoniqueBar/Services/CapabilityIndex.swift; sourceTree = "<group>"; };
 		EE0953ED6EF35F797EC3DBB7 /* ConversationMemory.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = SoniqueBar/Services/ConversationMemory.swift; sourceTree = "<group>"; };
 		F93FB11F98C153F00F26784A /* WeatherService.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SoniqueBar/Services/WeatherService.swift; sourceTree = "<group>"; };
@@ -170,6 +172,7 @@
 			isa = PBXGroup;
 			children = (
 				B7F51301D2DA015628983FAC /* LLMAuthSheet.swift */,
+				C920EF6A02D9C329EFA46DFE /* BrowserAuthFlow.swift */,
 			);
 			name = Windows;
 			path = Windows;
@@ -283,6 +286,7 @@
 				46EF44A1494CEE9DFC97EB95 /* ConversationMemory.swift in Sources */,
 				E5AE035743E58EDA7A0C2373 /* SetupAssistant.swift in Sources */,
 				F25C7A9DD4A5F719AB5283F9 /* LLMAuthSheet.swift in Sources */,
+				8A67B97A121EBC69C0C97D95 /* BrowserAuthFlow.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
