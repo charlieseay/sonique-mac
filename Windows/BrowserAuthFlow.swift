@@ -158,24 +158,51 @@ struct BrowserAuthFlow: View {
 
         Task { @MainActor in
             // Use Node.js script with @mherod/get-cookie to read Safari cookies
-            let scriptPath = Bundle.main.resourcePath! + "/../../../Scripts/get-safari-cookies.js"
+            // Run from the project directory where node_modules exists
+            let projectDir = "/Users/charlieseay/Projects/sonique-mac"
+            let scriptPath = projectDir + "/Scripts/get-safari-cookies.js"
             let process = Process()
-            process.executableURL = URL(fileURLWithPath: "/usr/local/bin/node")
+            process.executableURL = URL(fileURLWithPath: "/opt/homebrew/opt/node@22/bin/node")
             process.arguments = [scriptPath, provider.chatURL.host!]
+            process.currentDirectoryURL = URL(fileURLWithPath: projectDir)
 
-            let pipe = Pipe()
-            process.standardOutput = pipe
-            process.standardError = pipe
+            let outputPipe = Pipe()
+            let errorPipe = Pipe()
+            process.standardOutput = outputPipe
+            process.standardError = errorPipe  // Separate stderr to ignore dotenv messages
 
             do {
                 try process.run()
                 process.waitUntilExit()
 
-                let data = pipe.fileHandleForReading.readDataToEndOfFile()
+                let data = outputPipe.fileHandleForReading.readDataToEndOfFile()
                 let output = String(data: data, encoding: .utf8) ?? ""
 
+                // Log any errors (for debugging)
+                let errorData = errorPipe.fileHandleForReading.readDataToEndOfFile()
+                if !errorData.isEmpty, let errorOutput = String(data: errorData, encoding: .utf8) {
+                    NSLog("[BrowserAuth] Script stderr: \(errorOutput)")
+                }
+
+                // Extract JSON array - skip everything before the opening bracket
+                // The dotenv log ends with a newline, then the JSON starts
+                let lines = output.components(separatedBy: "\n")
+                NSLog("[BrowserAuth] Total lines: \(lines.count)")
+                NSLog("[BrowserAuth] First 3 lines: \(lines.prefix(3))")
+
+                guard let jsonStartIndex = lines.firstIndex(where: { $0.trimmingCharacters(in: .whitespaces) == "[" }) else {
+                    NSLog("[BrowserAuth] No line found that equals '[' after trimming")
+                    errorMessage = "No JSON array found in output"
+                    step = .error
+                    isImporting = false
+                    return
+                }
+                NSLog("[BrowserAuth] Found JSON start at line \(jsonStartIndex)")
+                let jsonOutput = lines[jsonStartIndex...].joined(separator: "\n")
+                NSLog("[BrowserAuth] JSON output first 100 chars: \(String(jsonOutput.prefix(100)))")
+
                 // Parse JSON output
-                guard let jsonData = output.data(using: .utf8),
+                guard let jsonData = jsonOutput.data(using: .utf8),
                       let cookieArray = try? JSONSerialization.jsonObject(with: jsonData) as? [[String: Any]] else {
                     errorMessage = "Failed to parse cookies from Safari"
                     step = .error

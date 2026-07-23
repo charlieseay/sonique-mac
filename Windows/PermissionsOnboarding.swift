@@ -12,28 +12,12 @@ struct PermissionsOnboarding: View {
 
     let permissions: [Permission] = [
         Permission(
-            type: .microphone,
-            title: "Microphone Access",
-            icon: "mic.fill",
-            why: "Quinn listens for your voice commands and questions",
-            consequence: "You won't be able to talk to Quinn - typing only",
-            required: true
-        ),
-        Permission(
             type: .fullDiskAccess,
             title: "Full Disk Access",
             icon: "externaldrive.fill",
-            why: "Needed to securely save your Claude login session",
-            consequence: "You'll have to manually paste cookies every time Quinn restarts",
-            required: false
-        ),
-        Permission(
-            type: .accessibility,
-            title: "Accessibility",
-            icon: "person.fill.viewfinder",
-            why: "Lets Quinn help you with tasks like opening apps and clicking buttons",
-            consequence: "Quinn can only answer questions, not take actions on your Mac",
-            required: false
+            why: "Needed to import your Safari login session for Claude",
+            consequence: "Setup will fail - you won't be able to use Quinn",
+            required: true
         )
     ]
 
@@ -118,6 +102,7 @@ struct PermissionRequestView: View {
 
     @State private var isChecking = false
     @State private var hasPermission = false
+    @State private var wasDenied = false
 
     var body: some View {
         VStack(spacing: 30) {
@@ -189,6 +174,41 @@ struct PermissionRequestView: View {
                     }
                     .buttonStyle(.borderedProminent)
                     .controlSize(.large)
+                } else if wasDenied {
+                    // Permission was denied - show instructions to fix in System Settings
+                    VStack(spacing: 12) {
+                        HStack {
+                            Image(systemName: "exclamationmark.triangle.fill")
+                                .foregroundColor(.orange)
+                            Text("Permission Denied")
+                                .foregroundColor(.orange)
+                                .font(.headline)
+                        }
+
+                        Text("To enable \(permission.title), open System Settings and toggle it on for SoniqueBar")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                            .multilineTextAlignment(.center)
+                            .padding(.horizontal)
+
+                        Button("Open System Settings") {
+                            if permission.type == .microphone {
+                                if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Microphone") {
+                                    NSWorkspace.shared.open(url)
+                                }
+                            }
+                            // Start polling for permission grant
+                            startPollingForPermission()
+                        }
+                        .buttonStyle(.borderedProminent)
+
+                        if !permission.required {
+                            Button("Skip for Now") {
+                                onSkip()
+                            }
+                            .foregroundColor(.secondary)
+                        }
+                    }
                 } else {
                     Button(action: requestPermission) {
                         Text("Grant \(permission.title)")
@@ -226,19 +246,26 @@ struct PermissionRequestView: View {
     }
 
     private func requestPermission() {
+        NSLog("[PermissionsOnboarding] Requesting \(permission.title)")
         isChecking = true
 
         switch permission.type {
         case .microphone:
+            NSLog("[PermissionsOnboarding] Requesting microphone access")
             AVCaptureDevice.requestAccess(for: .audio) { granted in
+                NSLog("[PermissionsOnboarding] Microphone granted: \(granted)")
                 DispatchQueue.main.async {
                     hasPermission = granted
+                    wasDenied = !granted
                     isChecking = false
                     if granted {
+                        NSLog("[PermissionsOnboarding] Auto-advancing after grant")
                         // Auto-advance after brief delay
                         DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
                             onGrant()
                         }
+                    } else {
+                        NSLog("[PermissionsOnboarding] Permission denied - showing System Settings instructions")
                     }
                 }
             }

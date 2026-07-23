@@ -189,6 +189,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
             // Show setup wizard on first run
             self.showSetupWizardIfNeeded()
+
+            // Start session monitoring
+            self.startSessionMonitoring()
         }
     }
 
@@ -207,6 +210,28 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             assistant.show()
 
             NSLog("[SoniqueBar] ✓ First run: showing setup assistant")
+        }
+    }
+
+    private func startSessionMonitoring() {
+        Task { @MainActor in
+            await ClaudeSessionManager.shared.startSessionMonitoring {
+                NSLog("[SoniqueBar] Session expired - prompting for re-auth")
+
+                // Show re-auth alert
+                let alert = NSAlert()
+                alert.messageText = "Session Expired"
+                alert.informativeText = "Your authentication session has expired. Please sign in again to continue using Quinn."
+                alert.alertStyle = .warning
+                alert.addButton(withTitle: "Sign In")
+                alert.addButton(withTitle: "Later")
+
+                if alert.runModal() == .alertFirstButtonReturn {
+                    // Show setup assistant to re-auth
+                    let assistant = SetupAssistantController()
+                    assistant.show()
+                }
+            }
         }
     }
 

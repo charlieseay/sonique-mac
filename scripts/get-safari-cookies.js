@@ -5,6 +5,9 @@
  * Output: JSON array of cookies
  */
 
+// Suppress dotenv logging
+process.env.DOTENV_CONFIG_SILENT = 'true';
+
 const { getCookie } = require('@mherod/get-cookie');
 
 const domain = process.argv[2] || 'claude.ai';
@@ -34,7 +37,8 @@ async function getSafariCookies() {
             httpOnly: c.httpOnly || false
         }));
 
-        console.log(JSON.stringify(formatted, null, 2));
+        // Write JSON to stdout (process.stdout to bypass console logging)
+        process.stdout.write(JSON.stringify(formatted, null, 2));
         process.exit(0);
 
     } catch (error) {
