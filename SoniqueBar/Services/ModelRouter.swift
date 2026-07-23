@@ -87,14 +87,15 @@ class ModelRouter {
             self.config = loaded
             logger.info("[ModelRouter] Loaded config: \(loaded.mode.rawValue)")
         } else {
-            // Default: Ollama local
+            // Default: No external LLMs configured - system fallback only
+            // User can provide config at ~/Library/Application Support/SoniqueBar/config/model_router.json
             self.config = RouterConfig(
                 mode: .adaptive,
                 providers: [:],
                 escalation: EscalationConfig(),
                 tts: TTSConfig(primary: "system", fallbackChain: ["system"])
             )
-            logger.info("[ModelRouter] Using default config")
+            logger.info("[ModelRouter] Using default config (no LLM providers configured)")
         }
     }
 
@@ -125,8 +126,31 @@ class ModelRouter {
 
         NSLog("[ModelRouter] Got \(providers.count) providers for tier \(tier.rawValue)")
         guard !providers.isEmpty else {
-            NSLog("[ModelRouter] ❌ ERROR: noProvidersAvailable for tier \(tier.rawValue)")
-            throw RouterError.noProvidersAvailable
+            NSLog("[ModelRouter] ⚠️  No LLM providers configured - checking cache...")
+
+            // Try to find a cached response for similar query
+            if let cachedResponse = ConversationMemory.shared.findSimilarResponse(for: prompt) {
+                NSLog("[ModelRouter] ✓ Found cached response for offline fallback")
+                logger.info("[Router] Offline fallback: returning cached response")
+                return RouterResponse(
+                    text: "Based on our earlier conversation: \(cachedResponse)",
+                    provider: "cache",
+                    tier: tier,
+                    latency: 0.001,
+                    wasEscalated: false
+                )
+            }
+
+            // No cache hit - return offline message
+            NSLog("[ModelRouter] ❌ No cached response found - offline")
+            logger.info("[Router] Offline: no providers + no cache")
+            return RouterResponse(
+                text: "I'm currently offline. My language models aren't available right now, and I don't have a cached answer for that question.",
+                provider: "offline",
+                tier: tier,
+                latency: 0.001,
+                wasEscalated: false
+            )
         }
 
         var lastError: Error?
@@ -171,6 +195,21 @@ class ModelRouter {
             }
         }
 
+        // All providers failed - try cached response
+        NSLog("[ModelRouter] ⚠️  All providers failed - checking cache...")
+        if let cachedResponse = ConversationMemory.shared.findSimilarResponse(for: prompt) {
+            NSLog("[ModelRouter] ✓ Found cached response for failed query")
+            logger.info("[Router] Fallback: all providers failed, returning cached response")
+            return RouterResponse(
+                text: "I'm having trouble connecting to my language models right now. Based on our earlier conversation: \(cachedResponse)",
+                provider: "cache-fallback",
+                tier: tier,
+                latency: Date().timeIntervalSince(startTime),
+                wasEscalated: false
+            )
+        }
+
+        // No cache - throw original error
         throw lastError ?? RouterError.allProvidersFailed
     }
 
@@ -521,15 +560,34 @@ class ModelRouter {
     }
 
     private static func loadConfig() -> RouterConfig? {
-        let path = "/Volumes/data/secrets/sonique_model_router.json"
-        guard let data = try? Data(contentsOf: URL(fileURLWithPath: path)) else {
-            NSLog("[ModelRouter] ❌ Failed to read config at \(path)")
+        // Option 1: Lab infrastructure (if available)
+        let labPath = "/Volumes/data/secrets/sonique_model_router.json"
+        var configURL: URL? = nil
+
+        if FileManager.default.fileExists(atPath: labPath) {
+            configURL = URL(fileURLWithPath: labPath)
+        } else {
+            // Option 2: User's Application Support directory
+            if let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first {
+                let userConfigPath = appSupport
+                    .appendingPathComponent("SoniqueBar/config")
+                    .appendingPathComponent("model_router.json")
+
+                if FileManager.default.fileExists(atPath: userConfigPath.path) {
+                    configURL = userConfigPath
+                }
+            }
+        }
+
+        guard let url = configURL,
+              let data = try? Data(contentsOf: url) else {
+            NSLog("[ModelRouter] ⚠️  No config file found (tried lab + user paths). Using defaults.")
             return nil
         }
 
         do {
             let config = try JSONDecoder().decode(RouterConfig.self, from: data)
-            NSLog("[ModelRouter] ✓ Config loaded: \(config.providers.count) providers")
+            NSLog("[ModelRouter] ✓ Config loaded from \(url.path): \(config.providers.count) providers")
             for (name, provider) in config.providers {
                 NSLog("[ModelRouter]   - \(name): enabled=\(provider.enabled), models=\(provider.models)")
             }

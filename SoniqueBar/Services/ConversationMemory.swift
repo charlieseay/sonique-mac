@@ -19,6 +19,10 @@ class ConversationMemory {
             let dbPath = try Self.databasePath()
             try openDatabase(at: dbPath)
             try createTableIfNeeded()
+
+            // Auto-cleanup: delete conversations older than 7 days
+            clearOlderThan(days: 7)
+
             logger.info("[ConversationMemory] Initialized with session \(self.currentSessionId)")
         } catch {
             logger.error("[ConversationMemory] Failed to initialize: \(error.localizedDescription)")
@@ -149,6 +153,66 @@ class ConversationMemory {
             }
         }
         sqlite3_finalize(statement)
+    }
+
+    /// Find a cached response for a similar query (offline fallback)
+    /// Returns the assistant's response if a similar user query was answered before
+    func findSimilarResponse(for query: String) -> String? {
+        guard db != nil else { return nil }
+
+        // Normalize query for fuzzy matching (lowercase, trim whitespace)
+        let normalized = query.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
+
+        // Look for exact or close matches in recent history (last 100 user queries)
+        let searchSQL = """
+        SELECT c1.content as user_query, c2.content as assistant_response
+        FROM conversations c1
+        JOIN conversations c2 ON c1.session_id = c2.session_id
+            AND c2.timestamp > c1.timestamp
+            AND c2.timestamp = (
+                SELECT MIN(timestamp) FROM conversations
+                WHERE session_id = c1.session_id
+                AND timestamp > c1.timestamp
+                AND role = 'assistant'
+            )
+        WHERE c1.role = 'user'
+        ORDER BY c1.timestamp DESC
+        LIMIT 100
+        """
+
+        var statement: OpaquePointer?
+        var bestMatch: String? = nil
+        var bestMatchScore = 0
+
+        if sqlite3_prepare_v2(db, searchSQL, -1, &statement, nil) == SQLITE_OK {
+            while sqlite3_step(statement) == SQLITE_ROW {
+                let userQuery = String(cString: sqlite3_column_text(statement, 0))
+                let response = String(cString: sqlite3_column_text(statement, 1))
+
+                let normalizedHistorical = userQuery.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
+
+                // Score: count matching words
+                let queryWords = Set(normalized.components(separatedBy: .whitespaces))
+                let historicalWords = Set(normalizedHistorical.components(separatedBy: .whitespaces))
+                let matchCount = queryWords.intersection(historicalWords).count
+
+                // Require at least 50% word overlap
+                let threshold = max(3, queryWords.count / 2)
+
+                if matchCount >= threshold && matchCount > bestMatchScore {
+                    bestMatchScore = matchCount
+                    bestMatch = response
+                }
+            }
+        }
+
+        sqlite3_finalize(statement)
+
+        if let match = bestMatch {
+            logger.info("[ConversationMemory] Found cached response (match score: \(bestMatchScore))")
+        }
+
+        return bestMatch
     }
 
     // MARK: - Private Helpers

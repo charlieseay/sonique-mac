@@ -939,62 +939,9 @@ class CommandServer: ObservableObject {
         return Data(bytes: int16Pointer, count: dataSize)
     }
 
-    // MARK: - TTS Providers
-
-    /// Piper TTS - local, free, high quality (primary)
-    private func synthesizeWithPiper(text: String) async throws -> Data {
-        let voice = "en_US-lessac-medium"  // High-quality female voice
-        let piperPath = "/Users/charlieseay/.local/bin/piper"
-        let modelPath = "/Users/charlieseay/.local/share/piper/voices/\(voice).onnx"
-        let outputFile = "/tmp/sonique-piper-\(UUID().uuidString).wav"
-
-        defer {
-            try? FileManager.default.removeItem(atPath: outputFile)
-        }
-
-        // Check if Piper is installed
-        guard FileManager.default.fileExists(atPath: piperPath) else {
-            throw NSError(domain: "Piper", code: 1, userInfo: [NSLocalizedDescriptionKey: "Piper not installed"])
-        }
-
-        // Check if voice model exists
-        guard FileManager.default.fileExists(atPath: modelPath) else {
-            throw NSError(domain: "Piper", code: 2, userInfo: [NSLocalizedDescriptionKey: "Voice model not found: \(voice)"])
-        }
-
-        let process = Process()
-        process.executableURL = URL(fileURLWithPath: piperPath)
-        process.arguments = [
-            "--model", modelPath,
-            "--output_file", outputFile
-        ]
-
-        // BUG FIX #8: Create and close all pipes to prevent file handle leaks
-        let inputPipe = Pipe()
-        let errorPipe = Pipe()  // Suppress stderr
-        process.standardInput = inputPipe
-        process.standardError = errorPipe
-
-        try process.run()
-
-        // Write text to stdin
-        if let textData = text.data(using: .utf8) {
-            inputPipe.fileHandleForWriting.write(textData)
-        }
-        try inputPipe.fileHandleForWriting.close()
-
-        // BUG FIX #8: Close stderr pipe to prevent handle leak
-        try? errorPipe.fileHandleForReading.close()
-
-        process.waitUntilExit()
-
-        guard process.terminationStatus == 0,
-              let audioData = try? Data(contentsOf: URL(fileURLWithPath: outputFile)) else {
-            throw NSError(domain: "Piper", code: 3, userInfo: [NSLocalizedDescriptionKey: "Piper synthesis failed"])
-        }
-
-        return audioData
-    }
+    // MARK: - TTS Providers (ElevenLabs + Kokoro only)
+    // Architecture: iOS requests TTS from macOS proxy endpoints
+    // macOS handles API keys/models, returns PCM to iOS for instant barge-in playback
 
     /// ElevenLabs TTS - cloud, premium (optional - user must configure API key)
     private func synthesizeWithElevenLabs(text: String) async throws -> Data {

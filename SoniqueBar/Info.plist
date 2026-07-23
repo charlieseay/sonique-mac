@@ -16,6 +16,8 @@
 	<string>SoniqueBar needs HomeKit access to control smart home devices via voice.</string>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>SoniqueBar may need microphone access for future voice features.</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>SoniqueBar uses speech recognition to convert voice commands to text for processing.</string>
 	<key>NSRemindersFullAccessUsageDescription</key>
 	<string>SoniqueBar needs full access to reminders to create, read, and update tasks.</string>
 	<key>NSRemindersUsageDescription</key>
