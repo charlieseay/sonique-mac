@@ -24,6 +24,7 @@
 		BB000021000000000000021 /* SoniqueBarApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB000020000000000000020 /* SoniqueBarApp.swift */; };
 		CAPIDX_BUILD_FILE_001 /* CapabilityIndex.swift in Sources */ = {isa = PBXBuildFile; fileRef = CAPIDX_FILE_REF_001 /* CapabilityIndex.swift */; };
 		E5AE035743E58EDA7A0C2373 /* SetupAssistant.swift in Sources */ = {isa = PBXBuildFile; fileRef = 87F364D3EF5E44272B8E8CB2 /* SetupAssistant.swift */; };
+		E8C903F42113258F33B799B4 /* PermissionsOnboarding.swift in Sources */ = {isa = PBXBuildFile; fileRef = 39AC9C007AE2A8F3C4947F6B /* PermissionsOnboarding.swift */; };
 		E9164E1EF110424BA3A91B6D /* PermissionManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B0D3D10EFE34E72A0D47729 /* PermissionManager.swift */; };
 		EE4D45897750406F8769AFC7 /* KeychainHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = F96394CF3C134358BA1D7BD5 /* KeychainHelper.swift */; };
 		F25C7A9DD4A5F719AB5283F9 /* LLMAuthSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = B7F51301D2DA015628983FAC /* LLMAuthSheet.swift */; };
@@ -38,6 +39,7 @@
 		2D5A9661475D2ACDEC62AF3E /* SetupWizard.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SoniqueBar/Views/SetupWizard.swift; sourceTree = "<group>"; };
 		309C3E0E63A34475BC7F85BE /* UserPermission.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SoniqueBar/Models/UserPermission.swift; sourceTree = "<group>"; };
 		3928D62756135B86A135BBBA /* ClaudeCodeBridge.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SoniqueBar/Services/ClaudeCodeBridge.swift; sourceTree = "<group>"; };
+		39AC9C007AE2A8F3C4947F6B /* PermissionsOnboarding.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = PermissionsOnboarding.swift; sourceTree = "<group>"; };
 		51CF32BB11AD3B053074E4B1 /* CommandServer.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = CommandServer.swift; path = SoniqueBar/Services/CommandServer.swift; sourceTree = "<group>"; };
 		5FD7FABF8FD144AC9208A689 /* SoniqueBrain.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SoniqueBar/Services/SoniqueBrain.swift; sourceTree = "<group>"; };
 		66333330393036652D393163352D343738372D393137642D /* MemoryService.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SoniqueBar/Services/MemoryService.swift; sourceTree = "<group>"; };
@@ -173,6 +175,7 @@
 			children = (
 				B7F51301D2DA015628983FAC /* LLMAuthSheet.swift */,
 				C920EF6A02D9C329EFA46DFE /* BrowserAuthFlow.swift */,
+				39AC9C007AE2A8F3C4947F6B /* PermissionsOnboarding.swift */,
 			);
 			name = Windows;
 			path = Windows;
@@ -287,6 +290,7 @@
 				E5AE035743E58EDA7A0C2373 /* SetupAssistant.swift in Sources */,
 				F25C7A9DD4A5F719AB5283F9 /* LLMAuthSheet.swift in Sources */,
 				8A67B97A121EBC69C0C97D95 /* BrowserAuthFlow.swift in Sources */,
+				E8C903F42113258F33B799B4 /* PermissionsOnboarding.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

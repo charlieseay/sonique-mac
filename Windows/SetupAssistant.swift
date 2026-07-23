@@ -35,17 +35,33 @@ struct SetupAssistantView: View {
     let onComplete: () -> Void
 
     @StateObject private var providerManager = ProviderManager.shared
+    @State private var setupPhase: SetupPhase = .permissions
     @State private var selectedProvider: LLMProvider?
     @State private var showingAuth = false
     @State private var setupComplete = false
     @State private var errorMessage: String?
     @State private var testResponse: String?
     @State private var isTesting = false
+    @State private var showingPermissions = true
+
+    enum SetupPhase {
+        case permissions
+        case providerSelection
+        case success
+    }
 
     var body: some View {
         VStack(spacing: 0) {
-            if !setupComplete {
-                // Step 1: Provider Selection
+            if setupPhase == .permissions {
+                // Phase 1: Permissions onboarding
+                PermissionsOnboarding(
+                    isPresented: $showingPermissions,
+                    onComplete: {
+                        setupPhase = .providerSelection
+                    }
+                )
+            } else if setupPhase == .providerSelection {
+                // Phase 2: Provider Selection
                 VStack(spacing: 30) {
                     Spacer()
 
@@ -85,7 +101,7 @@ struct SetupAssistantView: View {
                     Spacer()
                 }
                 .padding()
-            } else {
+            } else if setupPhase == .success {
                 // Step 2: Success + Test
                 VStack(spacing: 30) {
                     Spacer()
@@ -154,7 +170,7 @@ struct SetupAssistantView: View {
                     provider: provider,
                     isPresented: $showingAuth,
                     onSuccess: { _ in
-                        setupComplete = true
+                        setupPhase = .success
                     }
                 )
             }

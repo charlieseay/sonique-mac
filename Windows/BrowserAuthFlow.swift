@@ -157,7 +157,59 @@ struct BrowserAuthFlow: View {
         isImporting = true
 
         Task { @MainActor in
-            // Get cookies from default WKWebsiteDataStore (shared with Safari)
+            // Read cookies from Safari's containerized location (macOS 13+)
+            // This requires Full Disk Access permission
+            let safariCookiesPath = FileManager.default.homeDirectoryForCurrentUser
+                .appendingPathComponent("Library/Containers/com.apple.Safari/Data/Library/Cookies/Cookies.binarycookies")
+
+            // Use python to read Safari's binary cookies format
+            let pythonScript = """
+            import sys
+            import subprocess
+
+            # Use macOS's built-in cookie reader
+            result = subprocess.run([
+                'python3', '-c',
+                '''
+import os
+import struct
+import datetime
+from pathlib import Path
+
+cookie_file = Path.home() / "Library/Containers/com.apple.Safari/Data/Library/Cookies/Cookies.binarycookies"
+if not cookie_file.exists():
+    print("[]")
+    sys.exit(0)
+
+# Safari binary cookies parsing - simplified for claude.ai domain only
+with open(cookie_file, 'rb') as f:
+    data = f.read()
+
+# Look for claude.ai cookie markers in binary data
+if b'claude.ai' in data:
+    # Find sessionKey cookie
+    if b'sessionKey' in data:
+        print('{"domain": "claude.ai", "name": "sessionKey", "found": true}')
+    else:
+        print('{"domain": "claude.ai", "found": false}')
+else:
+    print('{"domain": "claude.ai", "found": false}')
+'''
+            ], capture_output=True, text=True)
+            print(result.stdout)
+            """
+
+            // For now, just check if we can access the file
+            let canReadSafariCookies = FileManager.default.isReadableFile(atPath: safariCookiesPath.path)
+
+            if !canReadSafariCookies {
+                errorMessage = "Cannot access Safari cookies. Full Disk Access may not be granted yet."
+                step = .error
+                isImporting = false
+                return
+            }
+
+            // Fall back to WKWebView default store for now
             let cookieStore = WKWebsiteDataStore.default().httpCookieStore
             let cookies = await withCheckedContinuation { continuation in
                 cookieStore.getAllCookies { cookies in
