@@ -198,18 +198,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private func showSetupWizardIfNeeded() {
         Task { @MainActor in
             // Check if consumer auth is configured
-            let isConfigured = await ProviderManager.shared.isConfigured
+            // DISABLED: We're using CLI-based auth, not browser auth
+            // let isConfigured = await ProviderManager.shared.isConfigured
+            //
+            // guard !isConfigured else {
+            //     NSLog("[SoniqueBar] Setup already complete")
+            //     return
+            // }
+            //
+            // // Show setup assistant
+            // let assistant = SetupAssistantController()
+            // assistant.show()
+            //
+            // NSLog("[SoniqueBar] ✓ First run: showing setup assistant")
 
-            guard !isConfigured else {
-                NSLog("[SoniqueBar] Setup already complete")
-                return
-            }
-
-            // Show setup assistant
-            let assistant = SetupAssistantController()
-            assistant.show()
-
-            NSLog("[SoniqueBar] ✓ First run: showing setup assistant")
+            NSLog("[SoniqueBar] Setup disabled - using CLI-based auth")
         }
     }
 

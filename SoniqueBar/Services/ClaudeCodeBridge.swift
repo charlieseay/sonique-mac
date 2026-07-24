@@ -7,6 +7,41 @@ enum MemoryMode {
     case sessionOnly     // Only remember within current session
 }
 
+/// Autonomy telemetry metrics
+struct AutonomyMetrics: Codable {
+    var totalQueries: Int = 0
+    var technicalQuestions: Int = 0
+    var docsConsulted: Int = 0
+    var errorsDetected: Int = 0
+    var errorsRecovered: Int = 0
+    var lessonsLogged: Int = 0
+    var lastUpdated: String = ISO8601DateFormatter().string(from: Date())
+
+    mutating func save() {
+        let metricsPath = FileManager.default.homeDirectoryForCurrentUser
+            .appendingPathComponent("Library/Application Support/SoniqueBar/autonomy-metrics.json")
+
+        lastUpdated = ISO8601DateFormatter().string(from: Date())
+
+        if let data = try? JSONEncoder().encode(self),
+           let json = String(data: data, encoding: .utf8) {
+            try? json.write(to: metricsPath, atomically: true, encoding: .utf8)
+        }
+    }
+
+    static func load() -> AutonomyMetrics {
+        let metricsPath = FileManager.default.homeDirectoryForCurrentUser
+            .appendingPathComponent("Library/Application Support/SoniqueBar/autonomy-metrics.json")
+
+        guard let data = try? Data(contentsOf: metricsPath),
+              let metrics = try? JSONDecoder().decode(AutonomyMetrics.self, from: data) else {
+            return AutonomyMetrics()
+        }
+
+        return metrics
+    }
+}
+
 /// Routes voice commands directly to Claude Code CLI with full MCP tool access
 class ClaudeCodeBridge {
     private let logger = Logger(subsystem: "com.seayniclabs.soniquebar", category: "ClaudeCodeBridge")
@@ -20,8 +55,14 @@ class ClaudeCodeBridge {
     // Memory mode control
     private var memoryMode: MemoryMode = .persistent  // Default: remember across sessions
 
+    // AUTONOMY: Telemetry tracking
+    private var metrics = AutonomyMetrics.load()
+
     func execute(text: String, imageBase64: String? = nil, mcpToolsAvailable: Bool = true, conversationHistoryFromDevice: [[String: String]]? = nil) async throws -> String {
         logger.info("[ClaudeCodeBridge] Executing: \(text.prefix(80))\(imageBase64 != nil ? " [with image]" : "")")
+
+        // AUTONOMY: Track total queries
+        metrics.totalQueries += 1
 
         // SYNC: Load conversation history from iOS device if provided
         if let deviceHistory = conversationHistoryFromDevice, !deviceHistory.isEmpty {
@@ -115,8 +156,10 @@ class ClaudeCodeBridge {
         // AUTONOMY: Consult documentation if query needs technical reference
         var docContext = ""
         if await shouldConsultDocs(text) {
+            metrics.technicalQuestions += 1
             logger.info("[ClaudeCodeBridge] Technical query detected - consulting documentation")
             if let docs = await consultTechDocs(query: text) {
+                metrics.docsConsulted += 1
                 docContext = "\n\n## Technical Documentation (consulted automatically):\n\(docs)\n"
                 logger.info("[ClaudeCodeBridge] ✓ Documentation retrieved: \(docs.prefix(100))...")
             }
@@ -153,6 +196,7 @@ class ClaudeCodeBridge {
 
             // AUTONOMY: Check if response indicates an error that needs research + retry
             if let errorRecovery = await attemptErrorRecovery(response: response, originalQuery: text, fullMemory: fullMemory, assistantName: assistantName) {
+                metrics.errorsRecovered += 1
                 logger.info("[ClaudeCodeBridge] ✓ Error recovered: \(errorRecovery.prefix(100))")
 
                 // Add recovered response to history
@@ -161,6 +205,10 @@ class ClaudeCodeBridge {
 
                 // Log lesson
                 await SoniqueBrain.shared.recordLesson("Recovered from error by researching docs and retrying")
+                metrics.lessonsLogged += 1
+
+                // Save metrics
+                metrics.save()
 
                 return errorRecovery
             }
@@ -206,6 +254,9 @@ class ClaudeCodeBridge {
 
             // Persist to conversations.jsonl for long-term memory
             await MemoryService.shared.recordExchange(user: text, assistant: response)
+
+            // AUTONOMY: Save metrics after successful query
+            metrics.save()
 
             logger.info("[ClaudeCodeBridge] Success via Claude CLI (MCP-enabled + history): \(response.prefix(50))")
             return response
@@ -524,7 +575,7 @@ class ClaudeCodeBridge {
         logger.info("[ClaudeCodeBridge] Consulting \(notebook) for: \(query.prefix(60))")
 
         // Execute nlm CLI command
-        let command = "/opt/homebrew/bin/nlm"
+        let command = "\(NSHomeDirectory())/.local/bin/nlm"
         let args = ["notebook", "query", notebook, query]
 
         do {
@@ -581,6 +632,9 @@ class ClaudeCodeBridge {
 
         let hasError = errorPatterns.contains { lower.contains($0) }
         guard hasError else { return nil }
+
+        // AUTONOMY: Track error detected
+        metrics.errorsDetected += 1
 
         logger.info("[ClaudeCodeBridge] Error detected in response, attempting recovery...")
 
