@@ -81,6 +81,9 @@ class ClaudeCodeBridge {
         // This includes: Identity + Rules + Soul + Context (Charlie) + Recent Conversations
         let fullMemory = await MemoryService.shared.loadFullContext()
 
+        // AUTONOMY: Load recent lessons learned (last 7 days)
+        let recentLessons = await SoniqueBrain.shared.loadRecentLessons()
+
         // TEMPORARY: Hardcode name to test if iCloud is the blocker
         let assistantName = "Quinn"
         // TODO: Restore this after testing
@@ -109,7 +112,17 @@ class ClaudeCodeBridge {
             }
         }
 
-        let prompt = "Your name is \(assistantName).\n\n\(fullMemory)\n\n\(capabilityContext)\(projectContext)\(historyContext)\n\nUser: \(text)"
+        // AUTONOMY: Consult documentation if query needs technical reference
+        var docContext = ""
+        if await shouldConsultDocs(text) {
+            logger.info("[ClaudeCodeBridge] Technical query detected - consulting documentation")
+            if let docs = await consultTechDocs(query: text) {
+                docContext = "\n\n## Technical Documentation (consulted automatically):\n\(docs)\n"
+                logger.info("[ClaudeCodeBridge] ✓ Documentation retrieved: \(docs.prefix(100))...")
+            }
+        }
+
+        let prompt = "Your name is \(assistantName).\n\n\(fullMemory)\n\n\(recentLessons)\n\n\(capabilityContext)\(projectContext)\(historyContext)\(docContext)\n\nUser: \(text)"
 
         // Route through ModelRouter with context
         // IMPORTANT: Pass the ORIGINAL text for tier determination, not the full prompt
@@ -136,6 +149,20 @@ class ClaudeCodeBridge {
             if response.isEmpty {
                 logger.error("[ClaudeCodeBridge] Empty response from Claude CLI")
                 throw BridgeError.executionFailed("Empty response")
+            }
+
+            // AUTONOMY: Check if response indicates an error that needs research + retry
+            if let errorRecovery = await attemptErrorRecovery(response: response, originalQuery: text, fullMemory: fullMemory, assistantName: assistantName) {
+                logger.info("[ClaudeCodeBridge] ✓ Error recovered: \(errorRecovery.prefix(100))")
+
+                // Add recovered response to history
+                conversationHistory.append((role: "assistant", content: errorRecovery, timestamp: Date()))
+                trimHistoryToTimeWindow()
+
+                // Log lesson
+                await SoniqueBrain.shared.recordLesson("Recovered from error by researching docs and retrying")
+
+                return errorRecovery
             }
 
             // Phase 6C: Check if web search fallback needed
@@ -467,5 +494,155 @@ class ClaudeCodeBridge {
 
         logger.info("[ClaudeCodeBridge] Vision response: \(responseText.prefix(50))")
         return responseText
+    }
+
+    // MARK: - Autonomous Documentation Consultation
+
+    /// Detect if a query requires technical documentation
+    private func shouldConsultDocs(_ query: String) async -> Bool {
+        let lower = query.lowercased()
+
+        // Technical question indicators
+        let technicalPatterns = [
+            "how do", "how to", "how can", "how does",
+            "set up", "setup", "configure", "install",
+            "api", "framework", "library", "sdk",
+            "permission", "authorization", "auth",
+            "error", "failed", "not working", "broken",
+            "homekit", "eventkit", "weatherkit", "siri",
+            "swift", "swiftui", "objective-c", "xcode"
+        ]
+
+        return technicalPatterns.contains { lower.contains($0) }
+    }
+
+    /// Query NotebookLM for technical documentation
+    private func consultTechDocs(query: String) async -> String? {
+        // Determine which notebook to query based on query content
+        let notebook = detectNotebook(for: query)
+
+        logger.info("[ClaudeCodeBridge] Consulting \(notebook) for: \(query.prefix(60))")
+
+        // Execute nlm CLI command
+        let command = "/opt/homebrew/bin/nlm"
+        let args = ["notebook", "query", notebook, query]
+
+        do {
+            let result = try await executeProcess(
+                executable: command,
+                arguments: args,
+                timeout: 15.0
+            )
+
+            if result.exitCode == 0 && !result.stdout.isEmpty {
+                logger.info("[ClaudeCodeBridge] ✓ Documentation retrieved from \(notebook)")
+                return result.stdout
+            } else {
+                logger.warning("[ClaudeCodeBridge] Documentation query failed: \(result.stderr)")
+                return nil
+            }
+        } catch {
+            logger.error("[ClaudeCodeBridge] Documentation query error: \(error.localizedDescription)")
+            return nil
+        }
+    }
+
+    /// Detect which NotebookLM to query based on query content
+    private func detectNotebook(for query: String) -> String {
+        let lower = query.lowercased()
+
+        // Projects/lessons
+        if lower.contains("lesson") || lower.contains("last time") || lower.contains("remember when") {
+            return "projects-kb"
+        }
+
+        // Templates/recipes
+        if lower.contains("template") || lower.contains("example") || lower.contains("how to write") {
+            return "templates-kb"
+        }
+
+        // Technical documentation (default for most queries)
+        return "tech-kb"
+    }
+
+    // MARK: - Autonomous Error Recovery
+
+    /// Detect errors in response and attempt recovery via research + retry
+    private func attemptErrorRecovery(response: String, originalQuery: String, fullMemory: String, assistantName: String) async -> String? {
+        let lower = response.lowercased()
+
+        // Error indicators
+        let errorPatterns = [
+            "permission", "denied", "not authorized",
+            "failed", "error", "couldn't", "unable to",
+            "don't have access", "can't access",
+            "no such file", "not found"
+        ]
+
+        let hasError = errorPatterns.contains { lower.contains($0) }
+        guard hasError else { return nil }
+
+        logger.info("[ClaudeCodeBridge] Error detected in response, attempting recovery...")
+
+        // Extract error context
+        let errorContext = response.components(separatedBy: "\n").first ?? response
+
+        // Research solution via tech-kb
+        guard let solution = await consultTechDocs(query: "How to fix: \(errorContext)") else {
+            logger.warning("[ClaudeCodeBridge] No solution found in docs")
+            return nil
+        }
+
+        logger.info("[ClaudeCodeBridge] Found solution: \(solution.prefix(100))")
+
+        // Retry with solution context (max 3 attempts)
+        for attempt in 1...3 {
+            logger.info("[ClaudeCodeBridge] Recovery attempt \(attempt)/3")
+
+            let retryPrompt = """
+            Your name is \(assistantName).
+
+            \(fullMemory)
+
+            PREVIOUS ATTEMPT FAILED:
+            User: \(originalQuery)
+            Error: \(errorContext)
+
+            SOLUTION FROM DOCUMENTATION:
+            \(solution)
+
+            Based on the documentation, try again with the correct approach.
+            """
+
+            do {
+                let context = QueryContext(
+                    mcpToolsAvailable: true,
+                    conversationLength: conversationHistory.count,
+                    originalQuery: originalQuery
+                )
+
+                let retryResponse = try await ModelRouter.shared.route(prompt: retryPrompt, context: context)
+
+                // Check if retry succeeded (no error indicators)
+                let retryLower = retryResponse.text.lowercased()
+                let stillHasError = errorPatterns.contains { retryLower.contains($0) }
+
+                if !stillHasError {
+                    logger.info("[ClaudeCodeBridge] ✓ Recovery successful on attempt \(attempt)")
+                    return retryResponse.text
+                } else {
+                    logger.warning("[ClaudeCodeBridge] Attempt \(attempt) still has error")
+                }
+
+                // Wait before retry (exponential backoff)
+                try? await Task.sleep(nanoseconds: UInt64(pow(2.0, Double(attempt)) * 1_000_000_000))
+
+            } catch {
+                logger.error("[ClaudeCodeBridge] Recovery attempt \(attempt) failed: \(error.localizedDescription)")
+            }
+        }
+
+        logger.warning("[ClaudeCodeBridge] All recovery attempts exhausted")
+        return nil
     }
 }

@@ -200,6 +200,48 @@ final class SoniqueBrain {
         enforceQuota()
     }
 
+    /// Load recent lessons from the last N days to inject into conversation context
+    func loadRecentLessons(days: Int = 7) -> String {
+        let lessonsFile = deviceDir.appendingPathComponent("lessons.jsonl")
+        let text = readText(lessonsFile)
+
+        guard !text.isEmpty else {
+            return ""
+        }
+
+        let lines = text.components(separatedBy: "\n").filter { !$0.isEmpty }
+        let cutoff = Date().addingTimeInterval(-Double(days * 86400))
+        let formatter = ISO8601DateFormatter()
+
+        var recentLessons: [String] = []
+
+        for line in lines {
+            guard let data = line.data(using: .utf8),
+                  let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                  let ts = json["ts"] as? String,
+                  let date = formatter.date(from: ts),
+                  date > cutoff,
+                  let lesson = json["lesson"] as? String else {
+                continue
+            }
+
+            recentLessons.append(lesson)
+        }
+
+        if recentLessons.isEmpty {
+            return ""
+        }
+
+        return """
+        ## Recent Lessons Learned (Last \(days) Days)
+        The following lessons were learned from past errors and successes:
+
+        \(recentLessons.map { "- \($0)" }.joined(separator: "\n"))
+
+        Apply these lessons when relevant to avoid repeating mistakes.
+        """
+    }
+
     // MARK: - Preferences (iCloud-backed shared config)
 
     private var prefsURL: URL { sharedDir.appendingPathComponent("preferences.json") }

@@ -61,7 +61,8 @@ struct CapabilityIndex {
         "docker": "Container management via Bash tool (ps, logs, restart)",
         "github": "Repository operations via gh CLI",
         "bash": "Shell command execution (sandboxed)",
-        "filesystem": "Read/Write files in trusted paths"
+        "filesystem": "Read/Write files in trusted paths",
+        "notebooklm": "Query knowledge bases (tech-kb, projects-kb, templates-kb, team-kb) for technical documentation, lessons, and templates. Use BEFORE attempting unfamiliar tasks."
     ]
 
     // MARK: - System Capabilities (macOS SoniqueBar)
