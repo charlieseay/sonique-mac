@@ -598,7 +598,7 @@ class ClaudeCodeBridge {
             let result = try await executeProcess(
                 executable: command,
                 arguments: args,
-                timeout: 15.0
+                timeout: 45.0  // NotebookLM queries can take 25-35s
             )
 
             NSLog("[ClaudeCodeBridge] nlm result: exitCode=\(result.exitCode), stdout.count=\(result.stdout.count), stderr.count=\(result.stderr.count)")
