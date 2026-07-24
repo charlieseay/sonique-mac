@@ -83,7 +83,31 @@ class ClaudeCodeBridge {
             return try await handleVisionRequest(text: text, imageBase64: imageData)
         }
 
+        // AUTONOMY STAGE 1: Consult RAG sources BEFORE routing
+        // Skip for pure native intents (time, greetings) but fetch docs for technical questions
+        var docContext = ""
+        NSLog("[ClaudeCodeBridge] Query: '\(text.prefix(80))', isPureNative: \(IntentRouter.shared.isPureNativeIntent(text))")
+        if !IntentRouter.shared.isPureNativeIntent(text) {
+            NSLog("[ClaudeCodeBridge] Not pure native - checking shouldConsultDocs...")
+            if await shouldConsultDocs(text) {
+                metrics.technicalQuestions += 1
+                NSLog("[ClaudeCodeBridge] ✓ Technical query detected - consulting documentation")
+                if let docs = await consultTechDocs(query: text) {
+                    metrics.docsConsulted += 1
+                    docContext = "\n\n## Technical Documentation (consulted automatically):\n\(docs)\n"
+                    NSLog("[ClaudeCodeBridge] ✓ Documentation retrieved: \(docs.prefix(100).description)")
+                } else {
+                    NSLog("[ClaudeCodeBridge] ✗ consultTechDocs returned nil")
+                }
+            } else {
+                NSLog("[ClaudeCodeBridge] shouldConsultDocs returned false")
+            }
+        } else {
+            NSLog("[ClaudeCodeBridge] Pure native intent - skipping docs")
+        }
+
         // TIER 0: Native Intent Router (instant, no LLM)
+        // Now has access to docs if they were fetched above
         if let nativeResponse = await IntentRouter.shared.route(text) {
             logger.info("[ClaudeCodeBridge] ✓ Native intent handled: \(nativeResponse.prefix(50))")
 
@@ -153,17 +177,7 @@ class ClaudeCodeBridge {
             }
         }
 
-        // AUTONOMY: Consult documentation if query needs technical reference
-        var docContext = ""
-        if await shouldConsultDocs(text) {
-            metrics.technicalQuestions += 1
-            logger.info("[ClaudeCodeBridge] Technical query detected - consulting documentation")
-            if let docs = await consultTechDocs(query: text) {
-                metrics.docsConsulted += 1
-                docContext = "\n\n## Technical Documentation (consulted automatically):\n\(docs)\n"
-                logger.info("[ClaudeCodeBridge] ✓ Documentation retrieved: \(docs.prefix(100))...")
-            }
-        }
+        // NOTE: docContext already populated above before IntentRouter
 
         let prompt = "Your name is \(assistantName).\n\n\(fullMemory)\n\n\(recentLessons)\n\n\(capabilityContext)\(projectContext)\(historyContext)\(docContext)\n\nUser: \(text)"
 
@@ -572,11 +586,13 @@ class ClaudeCodeBridge {
         // Determine which notebook to query based on query content
         let notebook = detectNotebook(for: query)
 
-        logger.info("[ClaudeCodeBridge] Consulting \(notebook) for: \(query.prefix(60))")
+        NSLog("[ClaudeCodeBridge] consultTechDocs() called - notebook: \(notebook), query: \(query.prefix(60).description)")
 
         // Execute nlm CLI command
         let command = "\(NSHomeDirectory())/.local/bin/nlm"
         let args = ["notebook", "query", notebook, query]
+
+        NSLog("[ClaudeCodeBridge] Executing: \(command) \(args.joined(separator: " "))")
 
         do {
             let result = try await executeProcess(
@@ -585,15 +601,17 @@ class ClaudeCodeBridge {
                 timeout: 15.0
             )
 
+            NSLog("[ClaudeCodeBridge] nlm result: exitCode=\(result.exitCode), stdout.count=\(result.stdout.count), stderr.count=\(result.stderr.count)")
+
             if result.exitCode == 0 && !result.stdout.isEmpty {
-                logger.info("[ClaudeCodeBridge] ✓ Documentation retrieved from \(notebook)")
+                NSLog("[ClaudeCodeBridge] ✓ Documentation retrieved from \(notebook): \(result.stdout.prefix(200).description)")
                 return result.stdout
             } else {
-                logger.warning("[ClaudeCodeBridge] Documentation query failed: \(result.stderr)")
+                NSLog("[ClaudeCodeBridge] ✗ Documentation query failed: \(result.stderr)")
                 return nil
             }
         } catch {
-            logger.error("[ClaudeCodeBridge] Documentation query error: \(error.localizedDescription)")
+            NSLog("[ClaudeCodeBridge] ✗ Documentation query error: \(error.localizedDescription)")
             return nil
         }
     }

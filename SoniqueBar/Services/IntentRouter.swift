@@ -6,7 +6,6 @@ import IOKit.ps
 
 /// Routes queries to native system capabilities before hitting LLM.
 /// Handles time, date, calendar, weather, and other macOS/iOS-native intents.
-@MainActor
 final class IntentRouter {
     static let shared = IntentRouter()
 
@@ -22,6 +21,29 @@ final class IntentRouter {
         // Ensure log directory exists (Quinn's observability architecture!)
         let logDir = "/Library/Logs/SoniqueBar"
         try? FileManager.default.createDirectory(atPath: logDir, withIntermediateDirectories: true)
+    }
+
+    /// Check if query is a pure native intent (no RAG needed).
+    /// These are instant lookups: time, date, greetings, simple math.
+    func isPureNativeIntent(_ query: String) -> Bool {
+        let lower = query.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
+
+        // Pure native = things that don't benefit from knowledge retrieval
+        let purePatterns = [
+            "good morning", "morning", "hello", "hi", "hey",
+            "what time is it", "what's the time", "current time",
+            "what's the date", "what date is it",
+            "what day is it", "what's today",
+            "day and date"
+        ]
+
+        for pattern in purePatterns {
+            if lower.contains(pattern) {
+                return true
+            }
+        }
+
+        return false
     }
 
     /// Attempts to handle query with native intent.
