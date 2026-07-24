@@ -42,9 +42,93 @@ struct AutonomyMetrics: Codable {
     }
 }
 
+/// Conversation memory manager for Quinn's persistent memory
+class ConversationMemoryManager {
+    private var conversationHistory: [(user: String, assistant: String)] = []
+    private var exchangesSinceLastSave = 0
+    private let saveThreshold = 5
+
+    func recordExchange(user: String, assistant: String) {
+        conversationHistory.append((user, assistant))
+        exchangesSinceLastSave += 1
+
+        if exchangesSinceLastSave >= saveThreshold {
+            Task {
+                await saveToMemory()
+            }
+        }
+    }
+
+    func saveToMemory() async {
+        // Load config
+        guard let config = loadMemoryConfig(),
+              let notebookId = config["memory_notebook_id"] as? String else {
+            NSLog("[Quinn Memory] No memory notebook configured")
+            return
+        }
+
+        // Format conversation
+        let timestamp = ISO8601DateFormatter().string(from: Date())
+        var content = "# Conversation \(timestamp)\n\n"
+        for (i, exchange) in conversationHistory.enumerated() {
+            content += "**User:** \(exchange.user)\n\n"
+            content += "**Quinn:** \(exchange.assistant)\n\n---\n\n"
+        }
+
+        // Save to NotebookLM
+        let command = "\(NSHomeDirectory())/.local/bin/nlm"
+        let args = [
+            "source", "add", notebookId,
+            "--text", content,
+            "--title", "Conversation \(timestamp)"
+        ]
+
+        do {
+            let process = Process()
+            process.executableURL = URL(fileURLWithPath: command)
+            process.arguments = args
+
+            let outputPipe = Pipe()
+            let errorPipe = Pipe()
+            process.standardOutput = outputPipe
+            process.standardError = errorPipe
+
+            try process.run()
+            process.waitUntilExit()
+
+            let exitCode = process.terminationStatus
+            let stdout = String(data: outputPipe.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8) ?? ""
+            let stderr = String(data: errorPipe.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8) ?? ""
+
+            if exitCode == 0 {
+                NSLog("[Quinn Memory] ✓ Saved conversation to memory")
+                conversationHistory.removeAll()
+                exchangesSinceLastSave = 0
+            } else {
+                NSLog("[Quinn Memory] ✗ Save failed: \(stderr)")
+            }
+        } catch {
+            NSLog("[Quinn Memory] ✗ Save error: \(error.localizedDescription)")
+        }
+    }
+
+    private func loadMemoryConfig() -> [String: Any]? {
+        let configPath = FileManager.default.homeDirectoryForCurrentUser
+            .appendingPathComponent("Library/Application Support/SoniqueBar/quinn-memory-config.json")
+
+        guard let data = try? Data(contentsOf: configPath),
+              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+            return nil
+        }
+
+        return json
+    }
+}
+
 /// Routes voice commands directly to Claude Code CLI with full MCP tool access
 class ClaudeCodeBridge {
     private let logger = Logger(subsystem: "com.seayniclabs.soniquebar", category: "ClaudeCodeBridge")
+    private let memoryManager = ConversationMemoryManager()
 
     // PERF OPT #7: Time-based conversation history instead of fixed count
     // Keep messages from last 7 days (sliding window) to maintain context across gaps in usage
@@ -268,6 +352,9 @@ class ClaudeCodeBridge {
 
             // Persist to conversations.jsonl for long-term memory
             await MemoryService.shared.recordExchange(user: text, assistant: response)
+
+            // Also record to Quinn's memory manager for NotebookLM sync
+            memoryManager.recordExchange(user: text, assistant: response)
 
             // AUTONOMY: Save metrics after successful query
             metrics.save()
@@ -619,6 +706,18 @@ class ClaudeCodeBridge {
     /// Detect which NotebookLM to query based on query content
     private func detectNotebook(for query: String) -> String {
         let lower = query.lowercased()
+
+        // Quinn's personal memory (past conversations, preferences, notes)
+        if lower.contains("what did i") ||
+           lower.contains("did i tell you") ||
+           lower.contains("earlier") ||
+           lower.contains("this morning") ||
+           lower.contains("yesterday") ||
+           lower.contains("my preference") ||
+           lower.contains("i mentioned") ||
+           lower.contains("we talked about") {
+            return "quinn-memory"
+        }
 
         // Projects/lessons
         if lower.contains("lesson") || lower.contains("last time") || lower.contains("remember when") {
