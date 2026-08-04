@@ -1168,25 +1168,92 @@ class CommandServer: ObservableObject {
                 return
             }
 
-            // Return MP3 directly (iOS AVFoundation can play MP3 natively)
+            // Convert MP3 to PCM for iOS (AVAudioConverter)
+            guard let pcmData = try? await convertMP3ToPCM(mp3Data) else {
+                logger.error("[handleSynthesizeElevenLabs] Failed to convert MP3 to PCM")
+                sendResponse("HTTP/1.1 500 Internal Server Error\r\n\r\n{\"error\":\"Failed to convert audio\"}", to: connection)
+                return
+            }
+
             let responseHeader = """
             HTTP/1.1 200 OK\r
-            Content-Type: audio/mpeg\r
-            Content-Length: \(mp3Data.count)\r
+            Content-Type: audio/pcm\r
+            X-Sample-Rate: 16000\r
+            X-Channels: 1\r
+            X-Bit-Depth: 16\r
+            Content-Length: \(pcmData.count)\r
             \r
 
             """
 
             connection.send(content: responseHeader.data(using: .utf8)!, completion: .contentProcessed { _ in })
-            connection.send(content: mp3Data, completion: .contentProcessed { _ in
+            connection.send(content: pcmData, completion: .contentProcessed { _ in
                 connection.cancel()
             })
 
-            logger.info("[handleSynthesizeElevenLabs] ElevenLabs TTS → MP3: \(mp3Data.count) bytes")
+            logger.info("[handleSynthesizeElevenLabs] ElevenLabs TTS → PCM: \(pcmData.count) bytes")
         } catch {
             logger.error("[handleSynthesizeElevenLabs] Synthesis failed: \(error.localizedDescription)")
             sendResponse("HTTP/1.1 500 Internal Server Error\r\n\r\n{\"error\":\"\(error.localizedDescription)\"}", to: connection)
         }
+    }
+
+    // MARK: - Audio Conversion
+
+    /// Convert MP3 data to 16kHz mono 16-bit PCM
+    private func convertMP3ToPCM(_ mp3Data: Data) async throws -> Data {
+        // Write MP3 to temp file
+        let tempMP3 = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent("temp_\(UUID().uuidString).mp3")
+        try mp3Data.write(to: tempMP3)
+        defer { try? FileManager.default.removeItem(at: tempMP3) }
+
+        // Load MP3 as AVAudioFile
+        let audioFile = try AVAudioFile(forReading: tempMP3)
+        let format = audioFile.processingFormat
+
+        // Target format: 16kHz mono 16-bit PCM
+        guard let targetFormat = AVAudioFormat(commonFormat: .pcmFormatInt16, sampleRate: 16000, channels: 1, interleaved: false) else {
+            throw NSError(domain: "CommandServer", code: -1, userInfo: [NSLocalizedDescriptionKey: "Failed to create target format"])
+        }
+
+        // Create converter
+        guard let converter = AVAudioConverter(from: format, to: targetFormat) else {
+            throw NSError(domain: "CommandServer", code: -1, userInfo: [NSLocalizedDescriptionKey: "Failed to create audio converter"])
+        }
+
+        // Read entire file into buffer
+        let frameCount = AVAudioFrameCount(audioFile.length)
+        guard let inputBuffer = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: frameCount) else {
+            throw NSError(domain: "CommandServer", code: -1, userInfo: [NSLocalizedDescriptionKey: "Failed to create input buffer"])
+        }
+
+        try audioFile.read(into: inputBuffer)
+
+        // Convert to target format
+        let outputFrameCapacity = AVAudioFrameCount(Double(inputBuffer.frameLength) * (16000.0 / format.sampleRate))
+        guard let outputBuffer = AVAudioPCMBuffer(pcmFormat: targetFormat, frameCapacity: outputFrameCapacity) else {
+            throw NSError(domain: "CommandServer", code: -1, userInfo: [NSLocalizedDescriptionKey: "Failed to create output buffer"])
+        }
+
+        var error: NSError?
+        converter.convert(to: outputBuffer, error: &error) { inNumPackets, outStatus in
+            outStatus.pointee = .haveData
+            return inputBuffer
+        }
+
+        if let error = error {
+            throw error
+        }
+
+        // Extract PCM data from buffer
+        guard let channelData = outputBuffer.int16ChannelData else {
+            throw NSError(domain: "CommandServer", code: -1, userInfo: [NSLocalizedDescriptionKey: "Failed to get channel data"])
+        }
+
+        let frameLength = Int(outputBuffer.frameLength)
+        let pcmData = Data(bytes: channelData[0], count: frameLength * MemoryLayout<Int16>.size)
+
+        return pcmData
     }
 
     // MARK: - Bonjour Advertising
