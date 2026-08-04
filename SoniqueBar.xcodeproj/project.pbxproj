@@ -13,6 +13,7 @@
 		2F88F083EC944F3A9943638D /* ClaudeSessionManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = AED81DCE6EE948658E34C064 /* ClaudeSessionManager.swift */; };
 		32633465633763612D656461612D346232642D623835302D /* MemoryService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 66333330393036652D393163352D343738372D393137642D /* MemoryService.swift */; };
 		334F7B1506DB40EBAC5A455F /* VoiceBoxTTS.swift in Sources */ = {isa = PBXBuildFile; fileRef = 194B3C5E1A524B6FB29B3C9C /* VoiceBoxTTS.swift */; };
+		7F3FFDDD717041FBA138C815 /* VoiceBoxManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9960EE46204044A2A36D4E1C /* VoiceBoxManager.swift */; };
 		46EF44A1494CEE9DFC97EB95 /* ConversationMemory.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE0953ED6EF35F797EC3DBB7 /* ConversationMemory.swift */; };
 		81812706DD7B40E195084DF6 /* ClaudeWebClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 92838D1BACA9432C9E2BBC0C /* ClaudeWebClient.swift */; };
 		83419D8281026DE611A5CEFE /* IntentRouter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A7A44954FBD946BB9D023EC /* IntentRouter.swift */; };
@@ -48,6 +49,7 @@
 		87F364D3EF5E44272B8E8CB2 /* SetupAssistant.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = SetupAssistant.swift; path = SetupAssistant.swift; sourceTree = "<group>"; };
 		8A7A44954FBD946BB9D023EC /* IntentRouter.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = IntentRouter.swift; path = SoniqueBar/Services/IntentRouter.swift; sourceTree = "<group>"; };
 		194B3C5E1A524B6FB29B3C9C /* VoiceBoxTTS.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = VoiceBoxTTS.swift; path = SoniqueBar/Services/VoiceBoxTTS.swift; sourceTree = "<group>"; };
+		9960EE46204044A2A36D4E1C /* VoiceBoxManager.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = VoiceBoxManager.swift; path = SoniqueBar/Services/VoiceBoxManager.swift; sourceTree = "<group>"; };
 		92838D1BACA9432C9E2BBC0C /* ClaudeWebClient.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = SoniqueBar/Services/ClaudeWebClient.swift; sourceTree = "<group>"; };
 		AED81DCE6EE948658E34C064 /* ClaudeSessionManager.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = SoniqueBar/Services/ClaudeSessionManager.swift; sourceTree = "<group>"; };
 		B0E513728E4141D8867D5539 /* ModelRouter.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SoniqueBar/Services/ModelRouter.swift; sourceTree = "<group>"; };
@@ -148,6 +150,7 @@
 				5FD7FABF8FD144AC9208A689 /* SoniqueBrain.swift */,
 				51CF32BB11AD3B053074E4B1 /* CommandServer.swift */,
 				194B3C5E1A524B6FB29B3C9C /* VoiceBoxTTS.swift */,
+				9960EE46204044A2A36D4E1C /* VoiceBoxManager.swift */,
 				F93FB11F98C153F00F26784A /* WeatherService.swift */,
 			);
 			name = Services;
@@ -275,6 +278,7 @@
 				BB000021000000000000021 /* SoniqueBarApp.swift in Sources */,
 				FA925571F17B6BA9C9106F30 /* CommandServer.swift in Sources */,
 				334F7B1506DB40EBAC5A455F /* VoiceBoxTTS.swift in Sources */,
+				7F3FFDDD717041FBA138C815 /* VoiceBoxManager.swift in Sources */,
 				b790639f3b5044d2950dd59c /* SettingsView.swift in Sources */,
 				B30F7BD354DA140D7ECC9A9B /* ClaudeCodeBridge.swift in Sources */,
 				32633465633763612D656461612D346232642D623835302D /* MemoryService.swift in Sources */,
@@ -331,7 +335,7 @@
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 75;
+				CURRENT_PROJECT_VERSION = 76;
 				DEVELOPMENT_TEAM = 7NSS5CJL9E;
 				ENABLE_HARDENED_RUNTIME = YES;
 				INFOPLIST_FILE = SoniqueBar/Resources/Info.plist;
@@ -356,7 +360,7 @@
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 75;
+				CURRENT_PROJECT_VERSION = 76;
 				DEVELOPMENT_TEAM = 7NSS5CJL9E;
 				ENABLE_HARDENED_RUNTIME = YES;
 				INFOPLIST_FILE = SoniqueBar/Resources/Info.plist;
