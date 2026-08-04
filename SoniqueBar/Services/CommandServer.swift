@@ -356,8 +356,8 @@ class CommandServer: ObservableObject {
             await handleCommand(data, connection)
         } else if path == "/synthesize" && method == "POST" {
             await handleSynthesize(data, connection)
-        } else if path == "/synthesize/voicebox" && method == "POST" {
-            await handleSynthesizeVoiceBox(data, connection)
+        } else if path == "/synthesize/fish" && method == "POST" {
+            await handleSynthesizeFish(data, connection)
         } else if path == "/synthesize/elevenlabs" && method == "POST" {
             await handleSynthesizeElevenLabs(data, connection)
         } else if path == "/feedback" && method == "POST" {
@@ -940,7 +940,7 @@ class CommandServer: ObservableObject {
         return Data(bytes: int16Pointer, count: dataSize)
     }
 
-    // MARK: - TTS Providers (VoiceBox + ElevenLabs)
+    // MARK: - TTS Providers (Fish TTS + ElevenLabs)
     // Architecture: iOS requests TTS from macOS proxy endpoints
     // macOS handles API keys/models, returns PCM to iOS for instant barge-in playback
 
@@ -1059,34 +1059,34 @@ class CommandServer: ObservableObject {
         })
     }
 
-    private func handleSynthesizeVoiceBox(_ data: Data, _ connection: NWConnection) async {
+    private func handleSynthesizeFish(_ data: Data, _ connection: NWConnection) async {
         // Extract JSON body
         guard let requestString = String(data: data, encoding: .utf8),
               let range = requestString.range(of: "\r\n\r\n"),
               let bodyData = String(requestString[range.upperBound...]).data(using: .utf8),
               let json = try? JSONSerialization.jsonObject(with: bodyData) as? [String: Any] else {
-            logger.error("[handleSynthesizeVoiceBox] Failed to parse JSON")
+            logger.error("[handleSynthesizeFish] Failed to parse JSON")
             sendResponse("HTTP/1.1 400 Bad Request\r\n\r\n{\"error\":\"Invalid JSON\"}", to: connection)
             return
         }
 
         guard let text = json["text"] as? String else {
-            logger.error("[handleSynthesizeVoiceBox] Missing text field")
+            logger.error("[handleSynthesizeFish] Missing text field")
             sendResponse("HTTP/1.1 400 Bad Request\r\n\r\n{\"error\":\"Missing text field\"}", to: connection)
             return
         }
 
         let voice = (json["voice"] as? String) ?? "default"
 
-        logger.info("[handleSynthesizeVoiceBox] Synthesizing \(text.count) chars with profile \(voice)")
+        logger.info("[handleSynthesizeFish] Synthesizing \(text.count) chars with voice \(voice)")
 
         do {
-            let pcmData = try await VoiceBoxTTS.shared.synthesize(text: text, voice: voice)
+            let pcmData = try await FishTTS.shared.synthesize(text: text, voice: voice)
 
             let response = """
             HTTP/1.1 200 OK\r
             Content-Type: audio/pcm\r
-            X-Sample-Rate: 24000\r
+            X-Sample-Rate: 16000\r
             X-Channels: 1\r
             X-Bit-Depth: 16\r
             Content-Length: \(pcmData.count)\r
@@ -1099,9 +1099,9 @@ class CommandServer: ObservableObject {
                 connection.cancel()
             })
 
-            logger.info("[handleSynthesizeVoiceBox] VoiceBox TTS → PCM: \(pcmData.count) bytes @ 24kHz")
+            logger.info("[handleSynthesizeFish] Fish TTS → PCM: \(pcmData.count) bytes @ 16kHz")
         } catch {
-            logger.error("[handleSynthesizeVoiceBox] Synthesis failed: \(error.localizedDescription)")
+            logger.error("[handleSynthesizeFish] Synthesis failed: \(error.localizedDescription)")
             sendResponse("HTTP/1.1 500 Internal Server Error\r\n\r\n{\"error\":\"\(error.localizedDescription)\"}", to: connection)
         }
     }

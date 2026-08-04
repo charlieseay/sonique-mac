@@ -187,13 +187,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 NSLog("[SoniqueBar] ⚠️ Wake-up incomplete: personality not found (check iCloud sync)")
             }
 
-            // Start VoiceBox backend
-            NSLog("[SoniqueBar] Starting VoiceBox TTS backend...")
-            let voiceboxStarted = await VoiceBoxManager.shared.start()
-            if voiceboxStarted {
-                NSLog("[SoniqueBar] ✓ VoiceBox TTS ready")
+            // Start Fish TTS backend
+            NSLog("[SoniqueBar] Starting Fish TTS backend...")
+            let fishStarted = await FishTTSManager.shared.start()
+            if fishStarted {
+                NSLog("[SoniqueBar] ✓ Fish TTS ready")
             } else {
-                NSLog("[SoniqueBar] ⚠️ VoiceBox failed to start - TTS will not work")
+                NSLog("[SoniqueBar] ⚠️ Fish TTS failed to start - TTS will not work")
             }
 
             // Show setup wizard on first run
@@ -249,6 +249,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationWillTerminate(_ notification: Notification) {
         NSLog("[SoniqueBar] Terminating")
-        VoiceBoxManager.shared.stop()
+        FishTTSManager.shared.stop()
     }
 }
