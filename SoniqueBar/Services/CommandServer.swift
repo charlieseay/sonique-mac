@@ -357,7 +357,7 @@ class CommandServer: ObservableObject {
         } else if path == "/synthesize" && method == "POST" {
             await handleSynthesize(data, connection)
         } else if path == "/synthesize/voicebox" && method == "POST" {
-            await handleSynthesizeKokoro(data, connection)
+            await handleSynthesizeVoiceBox(data, connection)
         } else if path == "/synthesize/elevenlabs" && method == "POST" {
             await handleSynthesizeElevenLabs(data, connection)
         } else if path == "/feedback" && method == "POST" {
@@ -428,7 +428,8 @@ class CommandServer: ObservableObject {
             "last_command": recentCommand,
             "model_router": routerStatus,
             "tts": [
-                "kokoro_available": FileManager.default.fileExists(atPath: "/Users/charlieseay/Library/Developer/Xcode/DerivedData/Kokoro-bucjbiopclclewcdvhstvyngclfr/Build/Products/Release/KokoroCLI")
+                "voicebox_url": "http://127.0.0.1:17493",
+                "elevenlabs_configured": FileManager.default.fileExists(atPath: Self.getSecretsPath(for: "elevenlabs_api_key"))
             ],
             "quinn_feedback": recentFeedback,
             "timestamp": ISO8601DateFormatter().string(from: Date())
@@ -805,7 +806,7 @@ class CommandServer: ObservableObject {
         }
 
         // No fallback - ElevenLabs is required for TTS
-        // TODO: Implement VoiceBox/Kokoro as primary TTS option
+        // VoiceBox is now the primary TTS option (local, free)
         logger.error("[CommandServer] TTS failed - ElevenLabs unavailable and no fallback configured")
         sendResponse("HTTP/1.1 500 Internal Server Error\r\n\r\n{\"error\":\"TTS unavailable - ElevenLabs API key not configured\"}", to: connection)
     }
@@ -939,7 +940,7 @@ class CommandServer: ObservableObject {
         return Data(bytes: int16Pointer, count: dataSize)
     }
 
-    // MARK: - TTS Providers (ElevenLabs + Kokoro only)
+    // MARK: - TTS Providers (VoiceBox + ElevenLabs)
     // Architecture: iOS requests TTS from macOS proxy endpoints
     // macOS handles API keys/models, returns PCM to iOS for instant barge-in playback
 
@@ -1058,29 +1059,29 @@ class CommandServer: ObservableObject {
         })
     }
 
-    private func handleSynthesizeKokoro(_ data: Data, _ connection: NWConnection) async {
+    private func handleSynthesizeVoiceBox(_ data: Data, _ connection: NWConnection) async {
         // Extract JSON body
         guard let requestString = String(data: data, encoding: .utf8),
               let range = requestString.range(of: "\r\n\r\n"),
               let bodyData = String(requestString[range.upperBound...]).data(using: .utf8),
               let json = try? JSONSerialization.jsonObject(with: bodyData) as? [String: Any] else {
-            logger.error("[handleSynthesizeKokoro] Failed to parse JSON")
+            logger.error("[handleSynthesizeVoiceBox] Failed to parse JSON")
             sendResponse("HTTP/1.1 400 Bad Request\r\n\r\n{\"error\":\"Invalid JSON\"}", to: connection)
             return
         }
 
         guard let text = json["text"] as? String else {
-            logger.error("[handleSynthesizeKokoro] Missing text field")
+            logger.error("[handleSynthesizeVoiceBox] Missing text field")
             sendResponse("HTTP/1.1 400 Bad Request\r\n\r\n{\"error\":\"Missing text field\"}", to: connection)
             return
         }
 
-        let voice = (json["voice"] as? String) ?? "af_jessica"
+        let voice = (json["voice"] as? String) ?? "default"
 
-        logger.info("[handleSynthesizeKokoro] Synthesizing \(text.count) chars with voice \(voice)")
+        logger.info("[handleSynthesizeVoiceBox] Synthesizing \(text.count) chars with profile \(voice)")
 
         do {
-            let pcmData = try await KokoroTTS.shared.synthesize(text: text, voice: voice)
+            let pcmData = try await VoiceBoxTTS.shared.synthesize(text: text, voice: voice)
 
             let response = """
             HTTP/1.1 200 OK\r
@@ -1098,9 +1099,9 @@ class CommandServer: ObservableObject {
                 connection.cancel()
             })
 
-            logger.info("[handleSynthesizeKokoro] Kokoro TTS → PCM: \(pcmData.count) bytes @ 24kHz")
+            logger.info("[handleSynthesizeVoiceBox] VoiceBox TTS → PCM: \(pcmData.count) bytes @ 24kHz")
         } catch {
-            logger.error("[handleSynthesizeKokoro] Synthesis failed: \(error.localizedDescription)")
+            logger.error("[handleSynthesizeVoiceBox] Synthesis failed: \(error.localizedDescription)")
             sendResponse("HTTP/1.1 500 Internal Server Error\r\n\r\n{\"error\":\"\(error.localizedDescription)\"}", to: connection)
         }
     }

@@ -6,8 +6,9 @@ struct SettingsView: View {
     @AppStorage("assistant.name") private var assistantName: String = "Quinn"
 
     // Voice (TTS)
-    @AppStorage("tts.kokoro.speed") private var kokoroSpeed: Double = 1.02
-    @AppStorage("tts.kokoro.voice") private var kokoroVoice: String = "af_jessica"
+    @AppStorage("tts.voicebox.speed") private var voiceboxSpeed: Double = 1.0
+    @AppStorage("tts.voicebox.profile") private var voiceboxProfile: String = "default"
+    @AppStorage("tts.voicebox.url") private var voiceboxURL: String = "http://127.0.0.1:17493"
 
     // Permissions
     @State private var users: [UserPermission] = []
@@ -51,11 +52,11 @@ struct SettingsView: View {
 
             Section("Current Setup") {
                 VStack(alignment: .leading, spacing: 8) {
-                    Text("Voice: Kokoro (on-device)")
-                    Text("LLM: Claude CLI with adaptive routing")
-                    Text("• Conversational: Haiku")
-                    Text("• Thinking: Sonnet")
-                    Text("• Tools: Opus")
+                    Text("Voice: VoiceBox (local, free)")
+                    Text("LLM: Subscription-based routing")
+                    Text("• Claude CLI (subscription)")
+                    Text("• Ollama (local, free)")
+                    Text("• BYO-AI: Configure your own API keys")
                 }
                 .font(.caption)
                 .foregroundColor(.secondary)
@@ -192,35 +193,42 @@ struct SettingsView: View {
 
     private var voiceTab: some View {
         Form {
-            Section("Voice Settings") {
-                Picker("Kokoro Voice", selection: $kokoroVoice) {
-                    Text("Jessica (Warm)").tag("af_jessica")
-                    Text("Bella (Soft)").tag("af_bella")
-                    Text("Sarah (Clear)").tag("af_sarah")
-                    Text("Nicole (British)").tag("af_nicole")
-                    Text("Sky (Bright)").tag("af_sky")
-                }
+            Section("VoiceBox Settings") {
+                TextField("VoiceBox URL", text: $voiceboxURL)
+                    .font(.system(.body, design: .monospaced))
+
+                TextField("Voice Profile", text: $voiceboxProfile)
 
                 VStack(alignment: .leading, spacing: 8) {
                     HStack {
                         Text("Speech Rate")
                         Spacer()
-                        Text("\(Int(kokoroSpeed * 100))%")
+                        Text("\(Int(voiceboxSpeed * 100))%")
                             .foregroundColor(.secondary)
                     }
 
-                    Slider(value: $kokoroSpeed, in: 0.5...2.0, step: 0.01)
+                    Slider(value: $voiceboxSpeed, in: 0.5...2.0, step: 0.01)
 
                     HStack {
-                        Button("Slower") { kokoroSpeed = max(0.5, kokoroSpeed - 0.05) }
+                        Button("Slower") { voiceboxSpeed = max(0.5, voiceboxSpeed - 0.05) }
                             .controlSize(.small)
-                        Button("Reset") { kokoroSpeed = 1.0 }
+                        Button("Reset") { voiceboxSpeed = 1.0 }
                             .controlSize(.small)
-                        Button("Faster") { kokoroSpeed = min(2.0, kokoroSpeed + 0.05) }
+                        Button("Faster") { voiceboxSpeed = min(2.0, voiceboxSpeed + 0.05) }
                             .controlSize(.small)
                     }
                     .buttonStyle(.bordered)
                 }
+            }
+
+            Section("Help") {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("VoiceBox must be running on the configured URL")
+                    Text("Default: http://127.0.0.1:17493")
+                    Text("Voice profiles: create custom voices in VoiceBox app")
+                }
+                .font(.caption)
+                .foregroundColor(.secondary)
             }
         }
         .formStyle(.grouped)
