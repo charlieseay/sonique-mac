@@ -356,7 +356,7 @@ class CommandServer: ObservableObject {
             await handleCommand(data, connection)
         } else if path == "/synthesize" && method == "POST" {
             await handleSynthesize(data, connection)
-        } else if path == "/synthesize/kokoro" && method == "POST" {
+        } else if path == "/synthesize/voicebox" && method == "POST" {
             await handleSynthesizeKokoro(data, connection)
         } else if path == "/synthesize/elevenlabs" && method == "POST" {
             await handleSynthesizeElevenLabs(data, connection)
@@ -532,9 +532,9 @@ class CommandServer: ObservableObject {
                     "voice_id": "cgSgspJ2msm6clMCkdW9",
                     "model": "eleven_multilingual_v2"
                 },
-                "kokoro": {
+                "voicebox": {
                     "enabled": true,
-                    "url": "http://127.0.0.1:8890/synthesize/kokoro"
+                    "url": "http://127.0.0.1:8890/synthesize/voicebox"
                 },
                 "conversation": {
                     "session_id": "\(UUID().uuidString)",

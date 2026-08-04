@@ -342,16 +342,12 @@ class ModelRouter {
         switch provider.config.type {
         case .ollama:
             return try await callOllama(provider: provider, prompt: prompt, timeout: timeout)
-        case .claudeCLI:
-            return try await callClaudeCLI(provider: provider, prompt: prompt, timeout: timeout)
-        case .geminiCLI:
-            return try await callGeminiCLI(provider: provider, prompt: prompt, timeout: timeout)
-        case .bedrock:
-            return try await callBedrock(provider: provider, prompt: prompt, timeout: timeout)
+        case .claudeAPI:
+            return try await callClaudeAPI(provider: provider, prompt: prompt, timeout: timeout)
         case .openaiAPI:
             return try await callOpenAI(provider: provider, prompt: prompt, timeout: timeout)
-        case .nvidiaAPI:
-            return try await callNVIDIA(provider: provider, prompt: prompt, timeout: timeout)
+        default:
+            throw RouterError.executionFailed("Provider type not supported in bundled App Store mode")
         }
     }
 
@@ -403,68 +399,40 @@ class ModelRouter {
         return ProviderResult(text: content)
     }
 
-    private func callClaudeCLI(provider: ProviderInfo, prompt: String, timeout: Double) async throws -> ProviderResult {
-        guard let command = provider.config.cliCommand else {
-            throw RouterError.missingConfig("Claude CLI command not specified")
+    private func callClaudeAPI(provider: ProviderInfo, prompt: String, timeout: Double) async throws -> ProviderResult {
+        guard let apiKey = provider.config.apiKey else {
+            throw RouterError.missingConfig("Claude API key missing")
         }
 
-        // Parse command and args from cliCommand (e.g. "/path/to/claude -p")
-        let parts = command.split(separator: " ").map(String.init)
-        guard !parts.isEmpty else {
-            throw RouterError.missingConfig("Empty cliCommand for provider: \(provider.name)")
+        let url = URL(string: "https://api.anthropic.com/v1/messages")!
+        var request = URLRequest(url: url, timeoutInterval: timeout)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.setValue("2023-06-01", forHTTPHeaderField: "anthropic-version")
+        request.setValue(apiKey, forHTTPHeaderField: "x-api-key")
+
+        let body: [String: Any] = [
+            "model": provider.model,
+            "max_tokens": 1024,
+            "messages": [["role": "user", "content": prompt]]
+        ]
+        request.httpBody = try JSONSerialization.data(withJSONObject: body)
+
+        let (data, response) = try await URLSession.shared.data(for: request)
+
+        guard let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 else {
+            throw RouterError.executionFailed("Claude API HTTP \((response as? HTTPURLResponse)?.statusCode ?? -1)")
         }
 
-        let executablePath = parts[0]
-        var args = Array(parts.dropFirst())
-
-        // Only add -p if it's not already in the command
-        if !args.contains("-p") {
-            args.append("-p")
-        }
-        args.append(prompt)
-
-        return try await callCLI(
-            command: executablePath,
-            args: args,
-            timeout: timeout,
-            providerName: provider.name
-        )
-    }
-
-    private func callGeminiCLI(provider: ProviderInfo, prompt: String, timeout: Double) async throws -> ProviderResult {
-        guard let command = provider.config.cliCommand else {
-            throw RouterError.missingConfig("Gemini CLI command not specified")
+        let json = try JSONSerialization.jsonObject(with: data) as? [String: Any]
+        guard let contentArray = json?["content"] as? [[String: Any]],
+              let firstContent = contentArray.first,
+              let text = firstContent["text"] as? String else {
+            throw RouterError.executionFailed("Invalid Claude API response format")
         }
 
-        return try await callCLI(
-            command: command,
-            args: ["--model", provider.model, "-p", prompt],
-            timeout: timeout,
-            providerName: provider.name
-        )
-    }
-
-    private func callBedrock(provider: ProviderInfo, prompt: String, timeout: Double) async throws -> ProviderResult {
-        guard let command = provider.config.cliCommand else {
-            throw RouterError.missingConfig("No cliCommand for provider: \(provider.name)")
-        }
-
-        // Parse command and args from cliCommand (e.g. "/path/to/cmd --model haiku")
-        let parts = command.split(separator: " ").map(String.init)
-        guard !parts.isEmpty else {
-            throw RouterError.missingConfig("Empty cliCommand for provider: \(provider.name)")
-        }
-
-        let executablePath = parts[0]
-        var args = Array(parts.dropFirst())
-        args.append(contentsOf: ["-p", prompt])
-
-        return try await callCLI(
-            command: executablePath,
-            args: args,
-            timeout: timeout,
-            providerName: provider.name
-        )
+        updateProviderHealth(provider.name, healthy: true)
+        return ProviderResult(text: text)
     }
 
     private func callOpenAI(provider: ProviderInfo, prompt: String, timeout: Double) async throws -> ProviderResult {
@@ -500,77 +468,6 @@ class ModelRouter {
 
         updateProviderHealth(provider.name, healthy: true)
         return ProviderResult(text: content)
-    }
-
-    private func callNVIDIA(provider: ProviderInfo, prompt: String, timeout: Double) async throws -> ProviderResult {
-        return try await callCLI(
-            command: "/usr/local/bin/ask_llm",
-            args: ["--lane", provider.model, "-p", prompt],
-            timeout: timeout,
-            providerName: provider.name
-        )
-    }
-
-    private func callCLI(command: String, args: [String], timeout: Double, providerName: String) async throws -> ProviderResult {
-        let process = Process()
-        process.executableURL = URL(fileURLWithPath: command)
-        process.arguments = args
-
-        var env = ProcessInfo.processInfo.environment
-        env["PATH"] = "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin"
-        process.environment = env
-
-        let outputPipe = Pipe()
-        let errorPipe = Pipe()
-        process.standardOutput = outputPipe
-        process.standardError = errorPipe
-
-        // PERF OPT #4: Use Timer with proper resource cleanup (async-safe alternative)
-        // withCheckedThrowingContinuation ensures continuation safety
-        return try await withCheckedThrowingContinuation { continuation in
-            var didComplete = false
-            let lock = NSLock()
-
-            let timer = Timer.scheduledTimer(withTimeInterval: timeout, repeats: false) { _ in
-                lock.lock()
-                defer { lock.unlock() }
-                guard !didComplete else { return }
-                didComplete = true
-
-                process.terminate()
-                continuation.resume(throwing: RouterError.timeout("CLI timed out after \(timeout)s"))
-            }
-
-            process.terminationHandler = { _ in
-                lock.lock()
-                defer { lock.unlock() }
-                guard !didComplete else { return }
-                didComplete = true
-
-                timer.invalidate()
-
-                let output = String(data: outputPipe.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8) ?? ""
-                let error = String(data: errorPipe.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8) ?? ""
-
-                if process.terminationStatus == 0 {
-                    continuation.resume(returning: ProviderResult(text: output.trimmingCharacters(in: .whitespacesAndNewlines)))
-                } else {
-                    continuation.resume(throwing: RouterError.executionFailed("CLI failed: \(error)"))
-                }
-            }
-
-            do {
-                try process.run()
-            } catch {
-                lock.lock()
-                defer { lock.unlock() }
-                guard !didComplete else { return }
-                didComplete = true
-
-                timer.invalidate()
-                continuation.resume(throwing: error)
-            }
-        }
     }
 
     private func updateProviderHealth(_ name: String, healthy: Bool) {
@@ -714,11 +611,8 @@ struct ProviderConfiguration: Codable {
 
     enum ProviderType: String, Codable {
         case ollama
-        case claudeCLI
-        case geminiCLI
-        case bedrock
+        case claudeAPI
         case openaiAPI
-        case nvidiaAPI
     }
 
     private enum CodingKeys: String, CodingKey {
