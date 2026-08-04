@@ -1077,11 +1077,12 @@ class CommandServer: ObservableObject {
         }
 
         let voice = (json["voice"] as? String) ?? "default"
+        let speed = (json["speed"] as? Float) ?? 1.3  // Default 1.3x faster (Jessica-like energy)
 
-        logger.info("[handleSynthesizeFish] Synthesizing \(text.count) chars with voice \(voice)")
+        logger.info("[handleSynthesizeFish] Synthesizing \(text.count) chars with voice \(voice) @ \(speed)x")
 
         do {
-            let pcmData = try await FishTTS.shared.synthesize(text: text, voice: voice)
+            let pcmData = try await FishTTS.shared.synthesize(text: text, voice: voice, speed: speed)
 
             let response = """
             HTTP/1.1 200 OK\r
