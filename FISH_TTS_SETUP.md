@@ -49,28 +49,120 @@ let url = URL(string: "http://\(soniqueBarHost):8890/synthesize/voicebox")
 let url = URL(string: "http://\(soniqueBarHost):8890/synthesize/fish")
 ```
 
-### 3. Antigravity CLI Setup
+### 3. LLM Provider Configuration (BYO-AI)
 
-Install Antigravity CLI for LLM routing:
+**Architecture:** Sonique supports both **subscriptions** (CLI) and **API keys** (user brings own).
+
+**Seaynic Labs defaults (zero API cost):**
+- ✅ Ollama (local, bundled)
+- ✅ Claude CLI (`ask_claude` subscription)
+- ✅ Antigravity CLI (`agy` subscription - replaces Gemini CLI)
+
+**User can provide (BYO-AI):**
+- Anthropic API key
+- OpenAI API key
+- Gemini API key
+- Grok API key
+- Custom endpoints (e.g., OpenRouter, LocalAI)
+
+**Config file:** `~/Library/Application Support/SoniqueBar/config/model_router.json`
+
+Example config showing both patterns:
+
+```json
+{
+  "mode": "adaptive",
+  "providers": {
+    "ollama": {
+      "enabled": true,
+      "type": "ollama",
+      "endpoint": "http://localhost:11434",
+      "models": {
+        "conversational": "llama3.3",
+        "thinking": "llama3.3:70b",
+        "tools": "qwen3"
+      },
+      "timeout": 30.0,
+      "priority": 1
+    },
+    "claude-cli": {
+      "enabled": true,
+      "type": "claudeAPI",
+      "cliCommand": "ask_claude -p",
+      "models": {
+        "conversational": "claude-sonnet-4.6",
+        "thinking": "claude-sonnet-4.6",
+        "tools": "claude-sonnet-4.6"
+      },
+      "timeout": 60.0,
+      "priority": 2
+    },
+    "antigravity": {
+      "enabled": true,
+      "type": "openaiAPI",
+      "cliCommand": "agy -p",
+      "models": {
+        "conversational": "gemini-3-flash",
+        "thinking": "gemini-3-pro",
+        "tools": "gemini-3-pro"
+      },
+      "timeout": 60.0,
+      "priority": 3
+    },
+    "anthropic-api": {
+      "enabled": false,
+      "type": "claudeAPI",
+      "endpoint": "https://api.anthropic.com/v1/messages",
+      "apiKey": "<user-provided-anthropic-key>",
+      "models": {
+        "conversational": "claude-sonnet-4.6",
+        "thinking": "claude-opus-5",
+        "tools": "claude-sonnet-4.6"
+      },
+      "timeout": 60.0,
+      "priority": 4
+    },
+    "openai-api": {
+      "enabled": false,
+      "type": "openaiAPI",
+      "endpoint": "https://api.openai.com/v1/chat/completions",
+      "apiKey": "<user-provided-openai-key>",
+      "models": {
+        "conversational": "gpt-4o-mini",
+        "thinking": "gpt-4o",
+        "tools": "gpt-4o"
+      },
+      "timeout": 60.0,
+      "priority": 5
+    }
+  },
+  "escalation": {
+    "enabled": true,
+    "thinkingKeywords": true,
+    "toolUseDetected": true,
+    "responseUnsatisfactory": true,
+    "revertAfterResponse": true
+  },
+  "tts": {
+    "primary": "fish",
+    "fallbackChain": ["fish", "system"]
+  }
+}
+```
+
+**Install Antigravity CLI** (replaces deprecated Gemini CLI):
 
 ```bash
 # Install agy CLI
 curl -fsSL https://antigravity.google/install.sh | sh
 
-# Login with Google Account (subscription required)
+# Login with Google Account (subscription required: $20/mo Pro or $100/mo Ultra)
 agy login
 
 # Test multi-model access
 agy -p "test" --model gemini-3-flash
 agy -p "test" --model claude-sonnet-4.6
 ```
-
-**Subscription tiers:**
-- $20/month (Pro) - 1x limits
-- $100/month (Ultra) - 5x limits  
-- Compute refreshes every 5 hours
-
-**Update ModelRouter.swift** to use `agy -p` for Gemini tier.
 
 ## 📊 Architecture
 
