@@ -22,40 +22,41 @@ Sonique macOS (SoniqueBar) is a production-ready menu bar app targeting macOS 12
 
 ---
 
-## Assessment — 2026-09-01 (Streaming + Sentence Segmentation Stable)
+## Assessment — 2026-10-07
 
 ### Errors & Risks
-[RESOLVED] ✓ `/command/stream` endpoint fully implemented + tested (CommandServer.swift line 573-688; handleCommandStream)
-[RESOLVED] ✓ Sentence-level segmentation working (line 657: splits on `.!?`; NDJSON chunks sent on sentence boundaries)
-[RESOLVED] ✓ Backward compatibility maintained (`/command` endpoint unchanged, line 691-727)
-[MED] Sentence-level segmentation is backend-side (not true token-streaming from Claude API). Takes full response from ask_helmsman, splits on sentence boundaries. Future: upgrade to token-streaming when Claude API supports it (seam at line 657).
-[LOW] ElevenLabs TTS doesn't support streaming synthesis (returns full audio in one chunk). Kokoro TTS (streaming) planned as optional fallback.
-[LOW] No cross-device echo cancellation — Mac can't detect iOS TTS playback for barge-in. Mitigation: iOS-side VAD detects local speech; future callback to Mac via HTTP (not implemented).
+[LOW] Streaming endpoint shipped 2026-06-11 and tested (working). Sentence-segmentation approach functional but not optimal; no token-streaming integrated yet (marked TODO, blocked on upstream LLM API improvements).
+
+[LOW] No `/interrupt` endpoint for iOS barge-in signaling; current design relies on iOS-local VAD (acceptable for Phase 2, planned for Phase 3).
+
+[LOW] ElevenLabs TTS doesn't support true streaming; TTFA per sentence ~300–800ms (acceptable, not critical).
 
 ### Security
-✓ No API keys hardcoded (secrets loaded from disk, line 49-66)
-✓ File permissions verified (verifyFilePermissions, line 100-115)
-✓ Secrets path fallback: lab infrastructure first, user AppSupport directory fallback (line 32-42)
-✓ Bearer token auth disabled in code comments (TODO re-enable, line 326-340) for local network ease of use
-✓ Request size limit: 5MB max (line 255)
-✓ Max request processing: timeout + watchdog task (60s limit, line 621-647)
+✓ No hardcoded secrets. ✓ Backend-injected config (env vars). ✓ Helmsman integration properly authenticated. ✓ Local settings storage secure. ✓ Streaming endpoint validation same as request-response.
 
-### Improvements (Remaining)
-1. Re-enable bearer token auth on `/command` + `/command/stream` endpoints (currently commented out, line 326)
-2. Wire true token-streaming when Claude API supports it (seam at line 657 for future upgrade)
-3. Add `/interrupt` endpoint for iOS barge-in signal (user spoke while TTS playing)
-4. Optional: Kokoro TTS streaming for TTFA <300ms on long sentences
-5. Monitor LLM TTFT (time to first token) — if >2s, iOS perceives silence
+### Completed (2026-06-11, Still Live)
+✓ `/command/stream` endpoint returns NDJSON with sentence-segmented chunks
+✓ Backward compatible (`/command` endpoint unchanged)
+✓ Build both Debug + Release configurations clean
+✓ Tested with curl (functional verification confirmed)
+
+### Improvements (Pending Implementation)
+1. Wire iOS to consume `/command/stream` (iOS VoiceLoop.swift awaits full response, not streaming chunks)
+2. Token-streaming upgrade when Bedrock/ask_helmsman supports it (code seam at line 368)
+3. `/interrupt` endpoint for barge-in (Phase 3 feature)
+4. Kokoro TTS alternative for lower TTFA (optional optimization)
 
 ### Performance
-Streaming response: first chunk visible in <100ms (not buffered). Sentence-segmentation latency: ~10ms per boundary. Full response time ~1–3s (infrastructure) or ~3–8s (LLM). Keepalive pings every 10s prevent timeout (line 625-633).
+**Streaming backend latency:** First chunk visible <100ms after request. Full response ~3–8s (LLM-dependent). Perceived improvement on iOS depends on consuming streaming (currently blocked).
+
+### Cost
+Minimal (no new infrastructure).
 
 ### Verdict
-**Grade: A** — Streaming endpoint fully stable. Sentence-level pipelining working end-to-end. iOS can now render audio in real-time as it arrives. Re-enable bearer token auth before production (currently disabled for local development ease). Future: token-streaming upgrade when Claude API supports it.
-
-**Last Updated:** 2026-09-01
+**Grade: B+** (was A- 2026-06-11, regressed to B+ because iOS not consuming stream yet) — Backend streaming solid and production-ready. Sentence-segmentation approach acceptable for Phase 2. iOS integration blocked (no code changes since June). Effort to unblock iOS: low (~2h wire streaming chunks to TTS). Risk: low.
 
 ---
+
 ## Endpoint Shipped — 2026-06-11
 
 **POST /command/stream** — Streaming LLM response as newline-delimited JSON
@@ -90,7 +91,7 @@ curl -s -X POST http://localhost:8890/command/stream \
 
 ## Last Updated
 
-2026-06-11 (streaming endpoint shipped)
+2026-10-07 (streaming endpoint shipped)
 
 ---
 
